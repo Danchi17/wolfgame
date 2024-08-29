@@ -1,4 +1,3 @@
-
 function updateUI() {
     document.getElementById('setupArea').style.display = 'none';
     document.getElementById('gameArea').style.display = 'block';
@@ -9,8 +8,8 @@ function updateUI() {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'player';
         let roleToShow = '?';
-        if (gameState.phase === "役職確認" || gameState.phase === "結果") {
-            roleToShow = player.id === currentPlayer.id ? currentPlayer.role : '?';
+        if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
+            roleToShow = gameState.assignedRoles[player.id];
         } else if (gameState.phase === "結果") {
             roleToShow = gameState.assignedRoles[player.id];
         }
@@ -19,6 +18,9 @@ function updateUI() {
     });
 
     document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
+    if (gameState.phase === "結果") {
+        document.getElementById('gameInfo').textContent += ` - ${gameState.result}`;
+    }
     document.getElementById('startGame').style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
     document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
     document.getElementById('resetGame').style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
@@ -32,8 +34,8 @@ function updateActionArea() {
 
     if (gameState.phase === "役職確認") {
         actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-    } else if (gameState.phase === currentPlayer.role && !gameState.actions[currentPlayer.id]) {
-        switch (currentPlayer.role) {
+    } else if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
+        switch (currentPlayer.originalRole) {
             case '占い師':
                 actionArea.innerHTML = `
                     <p>誰を占いますか？</p>
@@ -76,4 +78,8 @@ function updateActionArea() {
             ).join('')}
         `;
     }
+}
+
+function showActionResult(result) {
+    document.getElementById('actionResult').textContent = result;
 }
