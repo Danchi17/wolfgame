@@ -16,24 +16,13 @@
             border: 1px solid #ccc;
             padding: 10px;
             margin: 10px 0;
-            display: flex;
-            align-items: center;
         }
-        .player-info {
-            margin-left: 20px;
-        }
-        #gameInfo, #actionArea {
+        #gameInfo, #actionArea, #actionResult {
             margin-top: 20px;
         }
         button {
             margin: 5px;
             padding: 5px 10px;
-        }
-        .role-image {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            margin-right: 10px;
         }
     </style>
 </head>
@@ -49,6 +38,7 @@
         <div id="playerList"></div>
         <div id="gameInfo"></div>
         <div id="actionArea"></div>
+        <div id="actionResult"></div>
         <button id="startGame" style="display: none;">ゲーム開始</button>
         <button id="nextPhase" style="display: none;">次のフェーズへ</button>
         <button id="resetGame" style="display: none;">ゲームをリセット</button>
@@ -65,16 +55,8 @@
             graveyard: [],
             actions: {}
         };
-        let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
+        let currentPlayer = { id: "", name: "", role: "" };
         let isHost = false;
-
-        const roleImages = {
-            "村人": "https://example.com/villager.png",
-            "占い師": "https://example.com/seer.png",
-            "怪盗": "https://example.com/thief.png",
-            "人狼": "https://example.com/werewolf.png",
-            "unknown": "https://example.com/unknown.png"
-        };
 
         peer.on('open', id => {
             console.log('My peer ID is: ' + id);
@@ -89,7 +71,7 @@
         function createGame() {
             const playerName = document.getElementById('playerName').value;
             if (playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+                currentPlayer = { id: peer.id, name: playerName, role: "" };
                 gameState.players.push(currentPlayer);
                 isHost = true;
                 updateUI();
@@ -101,7 +83,7 @@
             const gameId = document.getElementById('gameId').value;
             const playerName = document.getElementById('playerName').value;
             if (gameId && playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+                currentPlayer = { id: peer.id, name: playerName, role: "" };
                 const conn = peer.connect(gameId);
                 setupConnection(conn);
             }
@@ -134,7 +116,6 @@
                 case 'gameState':
                     gameState = data.state;
                     currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
-                    currentPlayer.originalRole = currentPlayer.role;
                     break;
                 case 'startGame':
                     startGame();
@@ -144,6 +125,9 @@
                     break;
                 case 'action':
                     handleAction(data.action, data.playerId);
+                    break;
+                case 'actionResult':
+                    showActionResult(data.result);
                     break;
                 case 'resetGame':
                     resetGame();
@@ -165,16 +149,7 @@
             gameState.players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
-                const roleToShow = (gameState.phase === "待機中" || gameState.phase === "終了") ? currentPlayer.role : 
-                                   (player.id === currentPlayer.id ? currentPlayer.originalRole : "unknown");
-                const roleImage = roleImages[roleToShow] || roleImages.unknown;
-                playerDiv.innerHTML = `
-                    <img src="${roleImage}" alt="${roleToShow}" class="role-image">
-                    <div class="player-info">
-                        <h3>${player.name}</h3>
-                        <p>役職: ${roleToShow === "unknown" ? "?" : roleToShow}</p>
-                    </div>
-                `;
+                playerDiv.textContent = `${player.name}: ${player.id === currentPlayer.id && gameState.phase !== "占い師" && gameState.phase !== "怪盗" ? currentPlayer.role : '?'}`;
                 playerList.appendChild(playerDiv);
             });
 
@@ -190,8 +165,8 @@
             const actionArea = document.getElementById('actionArea');
             actionArea.innerHTML = '';
 
-            if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
-                switch (currentPlayer.originalRole) {
+            if (gameState.phase === currentPlayer.role && !gameState.actions[currentPlayer.id]) {
+                switch (currentPlayer.role) {
                     case '占い師':
                         actionArea.innerHTML = `
                             <p>誰を占いますか？</p>
@@ -221,7 +196,7 @@
                         actionArea.innerHTML = otherWerewolf ? 
                             `<p>他の人狼は ${otherWerewolf.name} です。</p>` : 
                             '<p>あなたは唯一の人狼です。</p>';
-                        actionArea.innerHTML += `<button onclick="performAction('werewolf', null)">確認しました</button>`;
+                        actionArea.innerHTML += `<button onclick="performAction('werewolf', null)">確認</button>`;
                         break;
                 }
             }
@@ -234,7 +209,6 @@
                 gameState.assignedRoles[player.id] = shuffledRoles[index];
                 if (player.id === currentPlayer.id) {
                     currentPlayer.role = shuffledRoles[index];
-                    currentPlayer.originalRole = shuffledRoles[index];
                 }
             });
             gameState.graveyard = shuffledRoles.slice(4);
@@ -255,28 +229,23 @@
         }
 
         function performAction(role, target) {
-            if (gameState.actions[currentPlayer.id]) return;  // 既に行動済みの場合は何もしない
-
             const action = { role, target };
             gameState.actions[currentPlayer.id] = action;
-            if (isHost) {
-                handleAction(action, currentPlayer.id);
-            } else {
-                sendToAll({ type: 'action', action, playerId: currentPlayer.id });
-            }
-            updateUI();
+            sendToAll({ type: 'action', action, playerId: currentPlayer.id });
+            document.getElementById('actionArea').innerHTML = '<p>アクションを実行しました。</p>';
         }
 
         function handleAction(action, playerId) {
+            let result = '';
             const player = gameState.players.find(p => p.id === playerId);
             switch (action.role) {
                 case 'seer':
                     if (action.target === 'graveyard') {
-                        alert(`墓地の役職: ${gameState.graveyard[0]}, ${gameState.graveyard[1]}`);
+                        result = `墓地の役職: ${gameState.graveyard[0]}`;
                     } else {
                         const targetRole = gameState.assignedRoles[action.target];
                         const targetPlayer = gameState.players.find(p => p.id === action.target);
-                        alert(`${targetPlayer.name}の役職: ${targetRole}`);
+                        result = `${targetPlayer.name}の役職: ${targetRole}`;
                     }
                     break;
                 case 'thief':
@@ -285,26 +254,25 @@
                         const targetRole = gameState.assignedRoles[action.target];
                         gameState.assignedRoles[playerId] = targetRole;
                         gameState.assignedRoles[action.target] = thiefRole;
-                        if (playerId === currentPlayer.id) {
-                            currentPlayer.role = targetRole;
-                            alert(`あなたの新しい役職: ${targetRole}`);
-                        }
+                        result = `あなたの新しい役職: ${targetRole}`;
                     } else {
-                        alert('役職を交換しませんでした。');
+                        result = '役職を交換しませんでした。';
                     }
                     break;
                 case 'werewolf':
-                    // 人狼の確認アクション（特に何もしない）
+                    result = '人狼の確認を行いました。';
                     break;
             }
-            if (isHost) {
-                sendToAll({ type: 'gameState', state: gameState });
-            }
+            connections.find(conn => conn.peer === playerId).send({ type: 'actionResult', result });
+        }
+
+        function showActionResult(result) {
+            document.getElementById('actionResult').textContent = result;
         }
 
         function resetGame() {
             gameState = {
-                players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
+                players: gameState.players.map(p => ({ ...p, role: "" })),
                 phase: "待機中",
                 roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
                 assignedRoles: {},
@@ -312,7 +280,6 @@
                 actions: {}
             };
             currentPlayer.role = "";
-            currentPlayer.originalRole = "";
             sendToAll({ type: 'gameState', state: gameState });
             updateUI();
         }
