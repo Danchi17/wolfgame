@@ -7,9 +7,10 @@ let gameState = {
     assignedRoles: {},
     graveyard: [],
     actions: {},
-    votes: {}
+    votes: {},
+    result: ""
 };
-let currentPlayer = { id: "", name: "", role: "" };
+let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
 let isHost = false;
 
 const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
@@ -27,7 +28,7 @@ document.getElementById('resetGame').addEventListener('click', resetGame);
 function createGame() {
     const playerName = document.getElementById('playerName').value;
     if (playerName) {
-        currentPlayer = { id: peer.id, name: playerName, role: "" };
+        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         gameState.players.push(currentPlayer);
         isHost = true;
         updateUI();
@@ -39,7 +40,7 @@ function joinGame() {
     const gameId = document.getElementById('gameId').value;
     const playerName = document.getElementById('playerName').value;
     if (gameId && playerName) {
-        currentPlayer = { id: peer.id, name: playerName, role: "" };
+        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         const conn = peer.connect(gameId);
         setupConnection(conn);
     }
@@ -52,6 +53,7 @@ function startGame() {
         gameState.assignedRoles[player.id] = shuffledRoles[index];
         if (player.id === currentPlayer.id) {
             currentPlayer.role = shuffledRoles[index];
+            currentPlayer.originalRole = shuffledRoles[index];
         }
     });
     gameState.graveyard = shuffledRoles.slice(4);
@@ -73,15 +75,17 @@ function nextPhase() {
 
 function resetGame() {
     gameState = {
-        players: gameState.players.map(p => ({ ...p, role: "" })),
+        players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
         phase: "待機中",
         roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
         assignedRoles: {},
         graveyard: [],
         actions: {},
-        votes: {}
+        votes: {},
+        result: ""
     };
     currentPlayer.role = "";
+    currentPlayer.originalRole = "";
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
