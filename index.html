@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>修正版P2Pオンラインワンナイト人狼ゲーム</title>
+    <title>改良版P2Pオンラインワンナイト人狼ゲーム</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js"></script>
     <style>
         body {
@@ -27,7 +27,7 @@
     </style>
 </head>
 <body>
-    <h1>修正版P2Pオンラインワンナイト人狼ゲーム</h1>
+    <h1>改良版P2Pオンラインワンナイト人狼ゲーム</h1>
     <div id="setupArea">
         <input type="text" id="playerName" placeholder="プレイヤー名を入力">
         <button id="createGame">ゲームを作成</button>
@@ -53,10 +53,13 @@
             roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
             assignedRoles: {},
             graveyard: [],
-            actions: {}
+            actions: {},
+            votes: {}
         };
         let currentPlayer = { id: "", name: "", role: "" };
         let isHost = false;
+
+        const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
         peer.on('open', id => {
             console.log('My peer ID is: ' + id);
@@ -126,8 +129,8 @@
                 case 'action':
                     handleAction(data.action, data.playerId);
                     break;
-                case 'actionResult':
-                    showActionResult(data.result);
+                case 'vote':
+                    handleVote(data.voterId, data.targetId);
                     break;
                 case 'resetGame':
                     resetGame();
@@ -149,14 +152,20 @@
             gameState.players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
-                playerDiv.textContent = `${player.name}: ${player.id === currentPlayer.id && gameState.phase !== "占い師" && gameState.phase !== "怪盗" ? currentPlayer.role : '?'}`;
+                let roleToShow = '?';
+                if (gameState.phase === "役職確認" || gameState.phase === "結果") {
+                    roleToShow = player.id === currentPlayer.id ? currentPlayer.role : '?';
+                } else if (gameState.phase === "結果") {
+                    roleToShow = gameState.assignedRoles[player.id];
+                }
+                playerDiv.textContent = `${player.name}: ${roleToShow}`;
                 playerList.appendChild(playerDiv);
             });
 
             document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
             document.getElementById('startGame').style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
-            document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "終了") ? 'inline' : 'none';
-            document.getElementById('resetGame').style.display = (isHost && gameState.phase === "終了") ? 'inline' : 'none';
+            document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
+            document.getElementById('resetGame').style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
 
             updateActionArea();
         }
@@ -165,7 +174,9 @@
             const actionArea = document.getElementById('actionArea');
             actionArea.innerHTML = '';
 
-            if (gameState.phase === currentPlayer.role && !gameState.actions[currentPlayer.id]) {
+            if (gameState.phase === "役職確認") {
+                actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
+            } else if (gameState.phase === currentPlayer.role && !gameState.actions[currentPlayer.id]) {
                 switch (currentPlayer.role) {
                     case '占い師':
                         actionArea.innerHTML = `
@@ -199,6 +210,15 @@
                         actionArea.innerHTML += `<button onclick="performAction('werewolf', null)">確認</button>`;
                         break;
                 }
+            } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
+                actionArea.innerHTML = `
+                    <p>誰に投票しますか？</p>
+                    ${gameState.players.map(player => 
+                        player.id !== currentPlayer.id ? 
+                        `<button onclick="vote('${player.id}')">投票: ${player.name}</button>` : 
+                        ''
+                    ).join('')}
+                `;
             }
         }
 
@@ -212,14 +232,14 @@
                 }
             });
             gameState.graveyard = shuffledRoles.slice(4);
-            gameState.phase = '占い師';
+            gameState.phase = '役職確認';
             gameState.actions = {};
+            gameState.votes = {};
             sendToAll({ type: 'gameState', state: gameState });
             updateUI();
         }
 
         function nextPhase() {
-            const phases = ["待機中", "占い師", "人狼", "怪盗", "昼", "投票", "終了"];
             const currentIndex = phases.indexOf(gameState.phase);
             if (currentIndex < phases.length - 1) {
                 gameState.phase = phases[currentIndex + 1];
@@ -263,11 +283,31 @@
                     result = '人狼の確認を行いました。';
                     break;
             }
-            connections.find(conn => conn.peer === playerId).send({ type: 'actionResult', result });
+            const connection = connections.find(conn => conn.peer === playerId);
+            if (connection) {
+                connection.send({ type: 'actionResult', result });
+            }
         }
 
-        function showActionResult(result) {
-            document.getElementById('actionResult').textContent = result;
+        function vote(targetId) {
+            gameState.votes[currentPlayer.id] = targetId;
+            sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+            document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
+        }
+
+        function handleVote(voterId, targetId) {
+            gameState.votes[voterId] = targetId;
+            if (Object.keys(gameState.votes).length === gameState.players.length) {
+                calculateResults();
+            }
+        }
+
+        function calculateResults() {
+            // Here you would implement the logic to determine the game outcome
+            // For now, we'll just move to the results phase
+            gameState.phase = "結果";
+            sendToAll({ type: 'gameState', state: gameState });
+            updateUI();
         }
 
         function resetGame() {
@@ -277,7 +317,8 @@
                 roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
                 assignedRoles: {},
                 graveyard: [],
-                actions: {}
+                actions: {},
+                votes: {}
             };
             currentPlayer.role = "";
             sendToAll({ type: 'gameState', state: gameState });
