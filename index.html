@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2Pオンラインワンナイト人狼ゲーム</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js"></script>
+    <title>ワンナイト人狼ゲーム</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,11 +15,6 @@
             border: 1px solid #ccc;
             padding: 10px;
             margin: 10px 0;
-            display: flex;
-            align-items: center;
-        }
-        .player-info {
-            margin-left: 20px;
         }
         #gameInfo {
             margin-top: 20px;
@@ -30,163 +24,79 @@
             margin: 5px;
             padding: 5px 10px;
         }
-        .role-image {
-            width: 100px;
-            height: 150px;
-            object-fit: cover;
-        }
     </style>
 </head>
 <body>
-    <h1>P2Pオンラインワンナイト人狼ゲーム</h1>
-    <div id="setupArea">
-        <input type="text" id="playerName" placeholder="プレイヤー名を入力">
-        <button id="createGame">ゲームを作成</button>
-        <input type="text" id="gameId" placeholder="ゲームIDを入力">
-        <button id="joinGame">ゲームに参加</button>
+    <h1>ワンナイト人狼ゲーム</h1>
+    <div id="joinArea">
+        <input type="text" id="playerName" placeholder="プレイヤー名">
+        <input type="text" id="gameId" placeholder="ゲームID">
+        <button onclick="joinGame()">ゲームに参加</button>
     </div>
-    <div id="gameArea" style="display: none;">
+    <div id="gameArea" style="display:none;">
         <div id="playerList"></div>
         <div id="gameInfo"></div>
-        <button id="startGame" style="display: none;">ゲーム開始</button>
-        <button id="nextPhase" style="display: none;">次のフェーズへ</button>
+        <button id="startButton" onclick="startGame()" style="display:none;">ゲーム開始</button>
+        <button id="nextPhaseButton" onclick="nextPhase()" style="display:none;">次のフェーズへ</button>
     </div>
 
     <script>
-        const peer = new Peer();
-        let connections = [];
-        let gameState = {
-            players: [],
-            phase: "待機中",
-            roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
-            assignedRoles: {}
-        };
-        let currentPlayer = { id: "", name: "", role: "" };
+        let ws;
+        let currentPlayer;
+        let gameId;
 
-        peer.on('open', (id) => {
-            console.log('My peer ID is: ' + id);
-        });
-
-        document.getElementById('createGame').addEventListener('click', () => {
+        function joinGame() {
             const playerName = document.getElementById('playerName').value;
-            if (playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "" };
-                gameState.players.push(currentPlayer);
-                updateUI();
-                alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
+            gameId = document.getElementById('gameId').value;
+            if (playerName && gameId) {
+                ws = new WebSocket('ws://localhost:8080');
+                ws.onopen = () => {
+                    ws.send(JSON.stringify({ type: 'join', name: playerName, gameId: gameId }));
+                };
+                ws.onmessage = handleMessage;
+                document.getElementById('joinArea').style.display = 'none';
+                document.getElementById('gameArea').style.display = 'block';
             }
-        });
-
-        document.getElementById('joinGame').addEventListener('click', () => {
-            const gameId = document.getElementById('gameId').value;
-            const playerName = document.getElementById('playerName').value;
-            if (gameId && playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "" };
-                const conn = peer.connect(gameId);
-                setupConnection(conn);
-            }
-        });
-
-        peer.on('connection', (conn) => {
-            setupConnection(conn);
-        });
-
-        function setupConnection(conn) {
-            connections.push(conn);
-            conn.on('open', () => {
-                conn.on('data', (data) => {
-                    handleReceivedData(data);
-                });
-                sendToAll({ type: 'playerJoined', player: currentPlayer });
-            });
         }
 
-        function handleReceivedData(data) {
-            switch (data.type) {
-                case 'playerJoined':
-                    if (!gameState.players.some(p => p.id === data.player.id)) {
-                        gameState.players.push(data.player);
-                    }
-                    break;
-                case 'gameState':
-                    gameState = data.state;
-                    break;
-                case 'startGame':
-                    startGame();
-                    break;
-                case 'nextPhase':
-                    nextPhase();
-                    break;
+        function handleMessage(event) {
+            const data = JSON.parse(event.data);
+            if (data.type === 'error') {
+                alert(data.message);
+                document.getElementById('joinArea').style.display = 'block';
+                document.getElementById('gameArea').style.display = 'none';
+            } else {
+                currentPlayer = data.currentPlayer;
+                updateUI(data);
             }
-            updateUI();
         }
 
-        function sendToAll(data) {
-            connections.forEach(conn => conn.send(data));
-        }
-
-        function updateUI() {
-            document.getElementById('setupArea').style.display = 'none';
-            document.getElementById('gameArea').style.display = 'block';
-
+        function updateUI(gameState) {
             const playerList = document.getElementById('playerList');
             playerList.innerHTML = '';
             gameState.players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
-                playerDiv.innerHTML = `
-                    <div class="player-info">
-                        <h3>${player.name}</h3>
-                        <p>役職: ${player.id === currentPlayer.id ? player.role : '?'}</p>
-                    </div>
-                `;
+                playerDiv.textContent = `${player.name}: ${player.role}`;
                 playerList.appendChild(playerDiv);
             });
 
-            document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
-            document.getElementById('startGame').style.display = gameState.players.length === 4 ? 'inline' : 'none';
-            document.getElementById('nextPhase').style.display = gameState.phase !== "待機中" && gameState.phase !== "終了" ? 'inline' : 'none';
-        }
+            const gameInfo = document.getElementById('gameInfo');
+            gameInfo.textContent = `ゲーム状態: ${gameState.status}`;
+            gameInfo.textContent += `\nあなたの役職: ${currentPlayer.role}`;
 
-        document.getElementById('startGame').addEventListener('click', () => {
-            sendToAll({ type: 'startGame' });
-            startGame();
-        });
+            document.getElementById('startButton').style.display = 
+                gameState.players.length === 4 && gameState.status === 'waiting' ? 'inline' : 'none';
+            document.getElementById('nextPhaseButton').style.display = 
+                gameState.status !== 'waiting' && gameState.status !== 'end' ? 'inline' : 'none';
+        }
 
         function startGame() {
-            const shuffledRoles = shuffleArray([...gameState.roles]);
-            gameState.players.forEach((player, index) => {
-                gameState.assignedRoles[player.id] = shuffledRoles[index];
-                if (player.id === currentPlayer.id) {
-                    currentPlayer.role = shuffledRoles[index];
-                }
-            });
-            gameState.phase = '占い師';
-            sendToAll({ type: 'gameState', state: gameState });
-            updateUI();
+            ws.send(JSON.stringify({ type: 'start', gameId: gameId }));
         }
-
-        document.getElementById('nextPhase').addEventListener('click', () => {
-            sendToAll({ type: 'nextPhase' });
-            nextPhase();
-        });
 
         function nextPhase() {
-            const phases = ["待機中", "占い師", "人狼", "怪盗", "昼", "投票", "終了"];
-            const currentIndex = phases.indexOf(gameState.phase);
-            if (currentIndex < phases.length - 1) {
-                gameState.phase = phases[currentIndex + 1];
-                sendToAll({ type: 'gameState', state: gameState });
-                updateUI();
-            }
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
+            ws.send(JSON.stringify({ type: 'nextPhase', gameId: gameId }));
         }
     </script>
 </body>
