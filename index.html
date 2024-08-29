@@ -354,15 +354,12 @@
             updateUI();
         }
 
-        function showGameResult(result, finalRoles) {
-            gameState.phase = "結果";
-            gameState.
-                function showGameResult(result, finalRoles) {
-            gameState.phase = "結果";
-            gameState.assignedRoles = finalRoles;
-            document.getElementById('actionResult').textContent = result;
-            updateUI();
-        }
+       function showGameResult(result, finalRoles) {
+    gameState.phase = "結果";
+    gameState.assignedRoles = finalRoles;
+    document.getElementById('actionResult').textContent = result;
+    updateUI();
+}
 
         function resetGame() {
             gameState = {
