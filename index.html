@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2Pオンラインワンナイト人狼ゲーム（修正版）</title>
+    <title>P2Pオンラインワンナイト人狼ゲーム（更新版）</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js"></script>
     <style>
         body {
@@ -38,7 +38,7 @@
     </style>
 </head>
 <body>
-    <h1>P2Pオンラインワンナイト人狼ゲーム（修正版）</h1>
+    <h1>P2Pオンラインワンナイト人狼ゲーム（更新版）</h1>
     <div id="setupArea">
         <input type="text" id="playerName" placeholder="プレイヤー名を入力">
         <button id="createGame">ゲームを作成</button>
@@ -71,9 +71,9 @@
         document.getElementById('createGame').addEventListener('click', () => {
             const playerName = document.getElementById('playerName').value;
             if (playerName) {
-                isHost = true;
                 currentPlayer = { id: peer.id, name: playerName, role: "" };
                 gameState.players.push(currentPlayer);
+                isHost = true;
                 updateUI();
                 alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
             }
@@ -90,13 +90,6 @@
         });
 
         peer.on('connection', (conn) => {
-            if (gameState.players.length >= 4) {
-                conn.on('open', () => {
-                    conn.send({ type: 'gameFull' });
-                    conn.close();
-                });
-                return;
-            }
             setupConnection(conn);
         });
 
@@ -104,28 +97,25 @@
             connections.push(conn);
             conn.on('open', () => {
                 conn.on('data', (data) => {
-                    handleReceivedData(data, conn);
+                    handleReceivedData(data);
                 });
-                if (isHost) {
-                    conn.send({ type: 'gameState', state: gameState });
-                } else {
-                    conn.send({ type: 'playerJoined', player: currentPlayer });
-                }
+                sendToAll({ type: 'playerJoined', player: currentPlayer });
             });
         }
 
-        function handleReceivedData(data, conn) {
+        function handleReceivedData(data) {
             switch (data.type) {
                 case 'playerJoined':
-                    if (!gameState.players.some(p => p.id === data.player.id) && gameState.players.length < 4) {
+                    if (!gameState.players.some(p => p.id === data.player.id)) {
                         gameState.players.push(data.player);
-                        if (isHost) {
-                            sendToAll({ type: 'gameState', state: gameState });
-                        }
+                    }
+                    if (isHost) {
+                        sendToAll({ type: 'gameState', state: gameState });
                     }
                     break;
                 case 'gameState':
                     gameState = data.state;
+                    currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
                     break;
                 case 'startGame':
                     startGame();
@@ -133,10 +123,6 @@
                 case 'nextPhase':
                     nextPhase();
                     break;
-                case 'gameFull':
-                    alert('ゲームの定員に達しました。参加できません。');
-                    conn.close();
-                    return;
             }
             updateUI();
         }
@@ -157,22 +143,20 @@
                 playerDiv.innerHTML = `
                     <div class="player-info">
                         <h3>${player.name}</h3>
-                        <p>役職: ${player.id === currentPlayer.id ? player.role : '?'}</p>
+                        <p>役職: ${player.id === currentPlayer.id ? currentPlayer.role : '?'}</p>
                     </div>
                 `;
                 playerList.appendChild(playerDiv);
             });
 
             document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
-            document.getElementById('startGame').style.display = (isHost && gameState.players.length === 4) ? 'inline' : 'none';
-            document.getElementById('nextPhase').style.display = gameState.phase !== "待機中" && gameState.phase !== "終了" ? 'inline' : 'none';
+            document.getElementById('startGame').style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
+            document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "終了") ? 'inline' : 'none';
         }
 
         document.getElementById('startGame').addEventListener('click', () => {
-            if (isHost) {
-                sendToAll({ type: 'startGame' });
-                startGame();
-            }
+            sendToAll({ type: 'startGame' });
+            startGame();
         });
 
         function startGame() {
@@ -184,17 +168,13 @@
                 }
             });
             gameState.phase = '占い師';
-            if (isHost) {
-                sendToAll({ type: 'gameState', state: gameState });
-            }
+            sendToAll({ type: 'gameState', state: gameState });
             updateUI();
         }
 
         document.getElementById('nextPhase').addEventListener('click', () => {
-            if (isHost) {
-                sendToAll({ type: 'nextPhase' });
-                nextPhase();
-            }
+            sendToAll({ type: 'nextPhase' });
+            nextPhase();
         });
 
         function nextPhase() {
@@ -202,9 +182,7 @@
             const currentIndex = phases.indexOf(gameState.phase);
             if (currentIndex < phases.length - 1) {
                 gameState.phase = phases[currentIndex + 1];
-                if (isHost) {
-                    sendToAll({ type: 'gameState', state: gameState });
-                }
+                sendToAll({ type: 'gameState', state: gameState });
                 updateUI();
             }
         }
