@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>改良版P2Pオンラインワンナイト人狼ゲーム</title>
+    <title>完全版P2Pオンラインワンナイト人狼ゲーム</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js"></script>
     <style>
         body {
@@ -27,7 +27,7 @@
     </style>
 </head>
 <body>
-    <h1>改良版P2Pオンラインワンナイト人狼ゲーム</h1>
+    <h1>完全版P2Pオンラインワンナイト人狼ゲーム</h1>
     <div id="setupArea">
         <input type="text" id="playerName" placeholder="プレイヤー名を入力">
         <button id="createGame">ゲームを作成</button>
@@ -56,7 +56,7 @@
             actions: {},
             votes: {}
         };
-        let currentPlayer = { id: "", name: "", role: "" };
+        let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
         let isHost = false;
 
         const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
@@ -74,7 +74,7 @@
         function createGame() {
             const playerName = document.getElementById('playerName').value;
             if (playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "" };
+                currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
                 gameState.players.push(currentPlayer);
                 isHost = true;
                 updateUI();
@@ -86,7 +86,7 @@
             const gameId = document.getElementById('gameId').value;
             const playerName = document.getElementById('playerName').value;
             if (gameId && playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "" };
+                currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
                 const conn = peer.connect(gameId);
                 setupConnection(conn);
             }
@@ -119,6 +119,7 @@
                 case 'gameState':
                     gameState = data.state;
                     currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
+                    currentPlayer.originalRole = currentPlayer.role;
                     break;
                 case 'startGame':
                     startGame();
@@ -129,8 +130,14 @@
                 case 'action':
                     handleAction(data.action, data.playerId);
                     break;
+                case 'actionResult':
+                    showActionResult(data.result);
+                    break;
                 case 'vote':
                     handleVote(data.voterId, data.targetId);
+                    break;
+                case 'gameResult':
+                    showGameResult(data.result, data.finalRoles);
                     break;
                 case 'resetGame':
                     resetGame();
@@ -153,8 +160,8 @@
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'player';
                 let roleToShow = '?';
-                if (gameState.phase === "役職確認" || gameState.phase === "結果") {
-                    roleToShow = player.id === currentPlayer.id ? currentPlayer.role : '?';
+                if (gameState.phase === "役職確認" || gameState.phase === "占い師" || gameState.phase === "人狼" || gameState.phase === "怪盗") {
+                    roleToShow = player.id === currentPlayer.id ? currentPlayer.originalRole : '?';
                 } else if (gameState.phase === "結果") {
                     roleToShow = gameState.assignedRoles[player.id];
                 }
@@ -176,8 +183,8 @@
 
             if (gameState.phase === "役職確認") {
                 actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-            } else if (gameState.phase === currentPlayer.role && !gameState.actions[currentPlayer.id]) {
-                switch (currentPlayer.role) {
+            } else if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
+                switch (currentPlayer.originalRole) {
                     case '占い師':
                         actionArea.innerHTML = `
                             <p>誰を占いますか？</p>
@@ -229,6 +236,7 @@
                 gameState.assignedRoles[player.id] = shuffledRoles[index];
                 if (player.id === currentPlayer.id) {
                     currentPlayer.role = shuffledRoles[index];
+                    currentPlayer.originalRole = shuffledRoles[index];
                 }
             });
             gameState.graveyard = shuffledRoles.slice(4);
@@ -274,6 +282,9 @@
                         const targetRole = gameState.assignedRoles[action.target];
                         gameState.assignedRoles[playerId] = targetRole;
                         gameState.assignedRoles[action.target] = thiefRole;
+                        if (playerId === currentPlayer.id) {
+                            currentPlayer.role = targetRole;
+                        }
                         result = `あなたの新しい役職: ${targetRole}`;
                     } else {
                         result = '役職を交換しませんでした。';
@@ -287,6 +298,10 @@
             if (connection) {
                 connection.send({ type: 'actionResult', result });
             }
+        }
+
+        function showActionResult(result) {
+            document.getElementById('actionResult').textContent = result;
         }
 
         function vote(targetId) {
@@ -303,16 +318,38 @@
         }
 
         function calculateResults() {
-            // Here you would implement the logic to determine the game outcome
-            // For now, we'll just move to the results phase
+            const voteCount = {};
+            for (const targetId of Object.values(gameState.votes)) {
+                voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+            }
+            const maxVotes = Math.max(...Object.values(voteCount));
+            const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
+
+            let result;
+            if (executedPlayers.some(id => gameState.assignedRoles[id] === '人狼')) {
+                result = "村人陣営の勝利！";
+            } else {
+                result = "人狼陣営の勝利！";
+            }
+
             gameState.phase = "結果";
-            sendToAll({ type: 'gameState', state: gameState });
+            sendToAll({ type: 'gameResult', result
+
+            gameState.phase = "結果";
+            sendToAll({ type: 'gameResult', result: result, finalRoles: gameState.assignedRoles });
+            updateUI();
+        }
+
+        function showGameResult(result, finalRoles) {
+            gameState.phase = "結果";
+            gameState.assignedRoles = finalRoles;
+            document.getElementById('actionResult').textContent = result;
             updateUI();
         }
 
         function resetGame() {
             gameState = {
-                players: gameState.players.map(p => ({ ...p, role: "" })),
+                players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
                 phase: "待機中",
                 roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
                 assignedRoles: {},
@@ -321,6 +358,7 @@
                 votes: {}
             };
             currentPlayer.role = "";
+            currentPlayer.originalRole = "";
             sendToAll({ type: 'gameState', state: gameState });
             updateUI();
         }
