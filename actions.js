@@ -1,4 +1,3 @@
-
 function performAction(role, target) {
     const action = { role, target };
     gameState.actions[currentPlayer.id] = action;
@@ -25,6 +24,9 @@ function handleAction(action, playerId) {
                 const targetRole = gameState.assignedRoles[action.target];
                 gameState.assignedRoles[playerId] = targetRole;
                 gameState.assignedRoles[action.target] = thiefRole;
+                if (playerId === currentPlayer.id) {
+                    currentPlayer.role = targetRole;
+                }
                 result = `あなたの新しい役職: ${targetRole}`;
             } else {
                 result = '役職を交換しませんでした。';
@@ -36,7 +38,7 @@ function handleAction(action, playerId) {
     }
     const connection = connections.find(conn => conn.peer === playerId);
     if (connection) {
-        connection.send({ type: 'actionResult', result });
+        connection.send({ type: 'actionResult', result, playerId });
     }
 }
 
@@ -54,8 +56,16 @@ function handleVote(voterId, targetId) {
 }
 
 function calculateResults() {
-    // Here you would implement the logic to determine the game outcome
-    // For now, we'll just move to the results phase
+    const voteCount = {};
+    for (const targetId of Object.values(gameState.votes)) {
+        voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+    }
+    const maxVotes = Math.max(...Object.values(voteCount));
+    const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
+
+    const werewolfExecuted = executedPlayers.some(id => gameState.assignedRoles[id] === '人狼');
+    gameState.result = werewolfExecuted ? "村人陣営の勝利！" : "人狼陣営の勝利！";
+
     gameState.phase = "結果";
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
