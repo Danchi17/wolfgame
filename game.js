@@ -1,10 +1,5 @@
-// network.js からの import
-import { setupConnection, handleReceivedData, sendToAll } from './network.js';
-
-// ui.js からの import
+import { setupConnection, handleReceivedData, sendToAll, initNetwork } from './network.js';
 import { updateUI } from './ui.js';
-
-// actions.js からの import
 import { handleAction, vote, handleVote, calculateResults } from './actions.js';
 
 const peer = new Peer();
@@ -112,5 +107,12 @@ function shuffleArray(array) {
     return array;
 }
 
-// グローバルスコープで必要な変数や関数をエクスポート
-export { gameState, currentPlayer, isHost, connections, peer, handleReceivedData };
+initNetwork(
+    gameState,
+    currentPlayer,
+    isHost,
+    connections,
+    { startGame, nextPhase, handleAction, vote, handleVote, resetGame, updateUI }
+);
+
+export { gameState, currentPlayer, isHost, connections, peer };
