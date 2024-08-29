@@ -13,9 +13,9 @@ function handleReceivedData(data) {
         case 'playerJoined':
             if (!gameState.players.some(p => p.id === data.player.id)) {
                 gameState.players.push(data.player);
-            }
-            if (isHost) {
-                sendToAll({ type: 'gameState', state: gameState });
+                if (isHost) {
+                    sendToAll({ type: 'gameState', state: gameState });
+                }
             }
             break;
         case 'gameState':
@@ -50,3 +50,6 @@ function handleReceivedData(data) {
 function sendToAll(data) {
     connections.forEach(conn => conn.send(data));
 }
+
+// この関数をエクスポートして、game.jsから使用できるようにします
+export { setupConnection, handleReceivedData, sendToAll };
