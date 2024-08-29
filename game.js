@@ -1,5 +1,10 @@
+// network.js からの import
 import { setupConnection, handleReceivedData, sendToAll } from './network.js';
+
+// ui.js からの import
 import { updateUI } from './ui.js';
+
+// actions.js からの import
 import { handleAction, vote, handleVote, calculateResults } from './actions.js';
 
 const peer = new Peer();
@@ -55,7 +60,57 @@ peer.on('connection', conn => {
     setupConnection(conn);
 });
 
-// その他の関数（startGame, nextPhase, resetGame, shuffleArray）は変更なし
+function startGame() {
+    const allRoles = [...gameState.roles];
+    const shuffledRoles = shuffleArray(allRoles);
+    gameState.players.forEach((player, index) => {
+        gameState.assignedRoles[player.id] = shuffledRoles[index];
+        if (player.id === currentPlayer.id) {
+            currentPlayer.role = shuffledRoles[index];
+            currentPlayer.originalRole = shuffledRoles[index];
+        }
+    });
+    gameState.graveyard = shuffledRoles.slice(4);
+    gameState.phase = '役職確認';
+    gameState.actions = {};
+    gameState.votes = {};
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+function nextPhase() {
+    const currentIndex = phases.indexOf(gameState.phase);
+    if (currentIndex < phases.length - 1) {
+        gameState.phase = phases[currentIndex + 1];
+        sendToAll({ type: 'gameState', state: gameState });
+        updateUI();
+    }
+}
+
+function resetGame() {
+    gameState = {
+        players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
+        phase: "待機中",
+        roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
+        assignedRoles: {},
+        graveyard: [],
+        actions: {},
+        votes: {},
+        result: ""
+    };
+    currentPlayer.role = "";
+    currentPlayer.originalRole = "";
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 // グローバルスコープで必要な変数や関数をエクスポート
-export { gameState, currentPlayer, isHost, connections, startGame, nextPhase, resetGame };
+export { gameState, currentPlayer, isHost, connections, peer, handleReceivedData };
