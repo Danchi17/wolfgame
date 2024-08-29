@@ -45,7 +45,9 @@
     </div>
 
     <script>
-        const peer = new Peer();
+        const peer = new Peer(null, {
+            debug: 2
+        });
         let connections = [];
         let gameState = {
             players: [],
@@ -65,6 +67,11 @@
             console.log('My peer ID is: ' + id);
         });
 
+        peer.on('error', (error) => {
+            console.error('PeerJS error:', error);
+            alert('接続エラーが発生しました。ページをリロードして再試行してください。');
+        });
+
         document.getElementById('createGame').addEventListener('click', createGame);
         document.getElementById('joinGame').addEventListener('click', joinGame);
         document.getElementById('startGame').addEventListener('click', startGame);
@@ -74,12 +81,22 @@
         function createGame() {
             const playerName = document.getElementById('playerName').value;
             if (playerName) {
-                currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
-                gameState.players.push(currentPlayer);
-                isHost = true;
-                updateUI();
-                alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
+                if (peer.id) {
+                    initializeGame(peer.id, playerName);
+                } else {
+                    peer.on('open', (id) => {
+                        initializeGame(id, playerName);
+                    });
+                }
             }
+        }
+
+        function initializeGame(peerId, playerName) {
+            currentPlayer = { id: peerId, name: playerName, role: "", originalRole: "" };
+            gameState.players.push(currentPlayer);
+            isHost = true;
+            updateUI();
+            alert(`ゲームID: ${peerId} を他のプレイヤーに共有してください。`);
         }
 
         function joinGame() {
@@ -333,14 +350,14 @@
             }
 
             gameState.phase = "結果";
-            sendToAll({ type: 'gameResult', result
-
-            gameState.phase = "結果";
             sendToAll({ type: 'gameResult', result: result, finalRoles: gameState.assignedRoles });
             updateUI();
         }
 
         function showGameResult(result, finalRoles) {
+            gameState.phase = "結果";
+            gameState.
+                function showGameResult(result, finalRoles) {
             gameState.phase = "結果";
             gameState.assignedRoles = finalRoles;
             document.getElementById('actionResult').textContent = result;
