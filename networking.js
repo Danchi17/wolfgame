@@ -1,4 +1,3 @@
-
 function setupConnection(conn) {
     connections.push(conn);
     conn.on('open', () => {
@@ -22,6 +21,7 @@ function handleReceivedData(data) {
         case 'gameState':
             gameState = data.state;
             currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
+            currentPlayer.originalRole = currentPlayer.role;
             break;
         case 'startGame':
             startGame();
@@ -31,6 +31,11 @@ function handleReceivedData(data) {
             break;
         case 'action':
             handleAction(data.action, data.playerId);
+            break;
+        case 'actionResult':
+            if (data.playerId === currentPlayer.id) {
+                showActionResult(data.result);
+            }
             break;
         case 'vote':
             handleVote(data.voterId, data.targetId);
