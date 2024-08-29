@@ -1,4 +1,4 @@
-function setupConnection(conn) {
+export function setupConnection(conn) {
     connections.push(conn);
     conn.on('open', () => {
         conn.on('data', data => {
@@ -8,20 +8,23 @@ function setupConnection(conn) {
     });
 }
 
-function handleReceivedData(data) {
+export function handleReceivedData(data) {
+    console.log('Received data:', data);
     switch (data.type) {
         case 'playerJoined':
             if (!gameState.players.some(p => p.id === data.player.id)) {
                 gameState.players.push(data.player);
-                if (isHost) {
-                    sendToAll({ type: 'gameState', state: gameState });
-                }
+                console.log('Player joined:', data.player);
+            }
+            if (isHost) {
+                sendToAll({ type: 'gameState', state: gameState });
             }
             break;
         case 'gameState':
             gameState = data.state;
             currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
             currentPlayer.originalRole = currentPlayer.role;
+            console.log('Updated game state:', gameState);
             break;
         case 'startGame':
             startGame();
@@ -47,9 +50,18 @@ function handleReceivedData(data) {
     updateUI();
 }
 
-function sendToAll(data) {
+export function sendToAll(data) {
+    console.log('Sending to all:', data);
     connections.forEach(conn => conn.send(data));
 }
 
-// この関数をエクスポートして、game.jsから使用できるようにします
-export { setupConnection, handleReceivedData, sendToAll };
+let gameState, currentPlayer, isHost, connections;
+let startGame, nextPhase, handleAction, showActionResult, handleVote, resetGame, updateUI;
+
+export function initNetwork(state, player, host, conns, functions) {
+    gameState = state;
+    currentPlayer = player;
+    isHost = host;
+    connections = conns;
+    ({ startGame, nextPhase, handleAction, showActionResult, handleVote, resetGame, updateUI } = functions);
+}
