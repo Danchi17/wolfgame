@@ -69,10 +69,10 @@ function createGame() {
     if (playerName && peer && peer.id) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         isHost = true;
-        updateGameState(prevState => ({
-            ...prevState,
-            players: [...prevState.players, currentPlayer]
-        }));
+        gameState = {
+            ...gameState,
+            players: [...gameState.players, currentPlayer]
+        };
         console.log("Game created. Current game state:", gameState);
         console.log("Is host:", isHost);
         sendToAll({ type: 'gameState', state: gameState });
