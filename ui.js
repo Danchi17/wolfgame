@@ -1,10 +1,12 @@
-import { gameState, currentPlayer, isHost, performAction } from './game.js';
+import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } from './game.js';
+import { sendToAll } from './network.js';
+import { performAction, vote } from './actions.js';
 
 export function updateUI() {
     console.log('updateUI called');
     const setupArea = document.getElementById('setupArea');
     const gameArea = document.getElementById('gameArea');
-    
+
     if (!setupArea || !gameArea) {
         console.error('Setup area or game area not found in the DOM');
         return;
@@ -14,12 +16,6 @@ export function updateUI() {
     console.log("Current game state:", JSON.stringify(gameState, null, 2));
     console.log("Is host:", isHost);
     console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
-
-    // Update currentPlayer's role if it's not set
-    if (currentPlayer.role === "" && gameState.assignedRoles[currentPlayer.id]) {
-        currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
-        currentPlayer.originalRole = currentPlayer.role;
-    }
 
     if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
@@ -58,10 +54,7 @@ export function updateUI() {
 
     const startGameButton = document.getElementById('startGame');
     if (startGameButton) {
-        const shouldShowStartButton = isHost && gameState.players.length >= 3 && gameState.phase === "待機中";
-        startGameButton.style.display = shouldShowStartButton ? 'inline' : 'none';
-        console.log("Should show start game button:", shouldShowStartButton);
-        console.log("Start game button display:", startGameButton.style.display);
+        startGameButton.style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
     }
 
     const nextPhaseButton = document.getElementById('nextPhase');
@@ -135,23 +128,16 @@ export function showActionResult(result) {
     }
 }
 
-// グローバルスコープで関数を利用可能にする
-window.updateUI = updateUI;
-window.executeAction = executeAction;
-window.vote = vote;
-
-function executeAction(action, target) {
+window.executeAction = function(action, target) {
     const result = performAction(action, target);
     showActionResult(result);
     updateUI();
-}
+};
 
-function vote(targetId) {
-    // 投票処理をここに実装
-    // 例: gameState.votes[currentPlayer.id] = targetId;
-    // sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+window.vote = function(targetId) {
+    vote(targetId);
     updateUI();
-}
+};
 
 // 初期UIの更新
 document.addEventListener('DOMContentLoaded', () => {
