@@ -4,21 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ワンナイト人狼ゲーム</title>
-    <link rel="icon" href="data:,">
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        button {
-            margin: 5px;
-            padding: 10px;
-        }
-        #gameArea {
-            display: none;
-        }
+        #gameArea { display: none; }
     </style>
 </head>
 <body>
@@ -28,7 +16,7 @@
         <h2>ゲームセットアップ</h2>
         <input type="text" id="playerName" placeholder="プレイヤー名">
         <button id="createGame">ゲームを作成</button>
-        <br>
+        <br><br>
         <input type="text" id="gameId" placeholder="ゲームID">
         <button id="joinGame">ゲームに参加</button>
     </div>
@@ -44,7 +32,6 @@
         <button id="resetGame">ゲームをリセット</button>
     </div>
 
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script type="module" src="game.js"></script>
     <script type="module" src="network.js"></script>
     <script type="module" src="actions.js"></script>
