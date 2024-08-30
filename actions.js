@@ -1,11 +1,14 @@
-function performAction(role, target) {
+import { gameState, currentPlayer, connections, sendToAll } from './game.js';
+import { updateUI } from './ui.js';
+
+export function performAction(role, target) {
     const action = { role, target };
     gameState.actions[currentPlayer.id] = action;
     sendToAll({ type: 'action', action, playerId: currentPlayer.id });
     document.getElementById('actionArea').innerHTML = '<p>アクションを実行しました。</p>';
 }
 
-function handleAction(action, playerId) {
+export function handleAction(action, playerId) {
     let result = '';
     const player = gameState.players.find(p => p.id === playerId);
     switch (action.role) {
@@ -42,20 +45,20 @@ function handleAction(action, playerId) {
     }
 }
 
-function vote(targetId) {
+export function vote(targetId) {
     gameState.votes[currentPlayer.id] = targetId;
     sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
     document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
 }
 
-function handleVote(voterId, targetId) {
+export function handleVote(voterId, targetId) {
     gameState.votes[voterId] = targetId;
     if (Object.keys(gameState.votes).length === gameState.players.length) {
         calculateResults();
     }
 }
 
-function calculateResults() {
+export function calculateResults() {
     const voteCount = {};
     for (const targetId of Object.values(gameState.votes)) {
         voteCount[targetId] = (voteCount[targetId] || 0) + 1;
