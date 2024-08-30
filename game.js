@@ -108,6 +108,10 @@ export function updateGameState(updater) {
         gameState = updater;
     }
     console.log("Game state updated:", gameState);
+    if (gameState.assignedRoles[currentPlayer.id]) {
+        currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
+        currentPlayer.originalRole = currentPlayer.role;
+    }
     updateUI();
     return gameState;
 }
@@ -140,11 +144,6 @@ export function startGame() {
         votes: {}
     }));
 
-    currentPlayer.role = newAssignedRoles[currentPlayer.id];
-    currentPlayer.originalRole = currentPlayer.role;
-
-    console.log("Game started. New game state:", gameState);
-    console.log("Current player's new role:", currentPlayer.role);
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
