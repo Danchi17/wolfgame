@@ -44,20 +44,13 @@ function updatePlayerList() {
             const playerDiv = document.createElement('div');
             playerDiv.className = 'player';
             let roleToShow = '?';
-            if (player.id === currentPlayer.id) {
-                if (phases.indexOf(gameState.phase) <= phases.indexOf("役職確認") || gameState.phase === "結果") {
-                    roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
-                    if (gameState.roleChanges[player.id]) {
-                        roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
-                    }
-                } else {
-                    roleToShow = '役職確認済み';
-                }
-            } else if (gameState.phase === "結果") {
+            if (player.id === currentPlayer.id || gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
                 if (gameState.roleChanges[player.id]) {
                     roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
                 }
+            } else if (phases.indexOf(gameState.phase) > phases.indexOf("役職確認")) {
+                roleToShow = '役職確認済み';
             }
             playerDiv.textContent = `${player.name}: ${roleToShow} (${player.points}ポイント)`;
             if (gameState.pigmanMark === player.id) {
