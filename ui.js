@@ -1,8 +1,8 @@
 import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } from './game.js';
 import { sendToAll } from './network.js';
-import { performAction, vote } from './actions.js';
+import { performAction, vote, placeBet } from './actions.js';
 
-const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "チップ掛け", "結果"];
 
 export function updateUI() {
     console.log('updateUI called');
@@ -29,6 +29,13 @@ export function updateUI() {
         console.log("Displaying setup area");
     }
 
+    updatePlayerList();
+    updateGameInfo();
+    updateButtons();
+    updateActionArea();
+}
+
+function updatePlayerList() {
     const playerList = document.getElementById('playerList');
     if (playerList) {
         playerList.innerHTML = '';
@@ -51,11 +58,16 @@ export function updateUI() {
                     roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
                 }
             }
-            playerDiv.textContent = `${player.name}: ${roleToShow}`;
+            playerDiv.textContent = `${player.name}: ${roleToShow} (${player.points}ポイント)`;
+            if (gameState.troublesomePigmanMark === player.id) {
+                playerDiv.textContent += ' ★';
+            }
             playerList.appendChild(playerDiv);
         });
     }
+}
 
+function updateGameInfo() {
     const gameInfoElement = document.getElementById('gameInfo');
     if (gameInfoElement) {
         gameInfoElement.textContent = `ゲームフェーズ: ${gameState.phase}`;
@@ -63,10 +75,12 @@ export function updateUI() {
             gameInfoElement.textContent += ` - ${gameState.result}`;
         }
     }
+}
 
+function updateButtons() {
     const startGameButton = document.getElementById('startGame');
     if (startGameButton) {
-        startGameButton.style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
+        startGameButton.style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
     }
 
     const nextPhaseButton = document.getElementById('nextPhase');
@@ -78,8 +92,6 @@ export function updateUI() {
     if (resetGameButton) {
         resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
     }
-
-    updateActionArea();
 }
 
 function updateActionArea() {
@@ -91,53 +103,107 @@ function updateActionArea() {
 
     actionArea.innerHTML = '';
 
-    if (gameState.phase === "待機中") {
-        actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
-    } else if (gameState.phase === "役職確認") {
-        actionArea.innerHTML = `<p>あなたの役職は ${gameState.assignedRoles[currentPlayer.id]} です。</p>`;
-    } else if (gameState.phase === "占い師" && gameState.assignedRoles[currentPlayer.id] === "占い師" && !gameState.actions[currentPlayer.id]) {
-        actionArea.innerHTML = `
-            <p>誰を占いますか？</p>
-            ${gameState.players.map(player => 
-                player.id !== currentPlayer.id ? 
-                `<button onclick="window.executeAction('占い師', '${player.id}')">占う: ${player.name}</button>` : 
-                ''
-            ).join('')}
-            <button onclick="window.executeAction('占い師', 'graveyard')">墓地を占う</button>
-        `;
-    } else if (gameState.phase === "人狼" && gameState.assignedRoles[currentPlayer.id] === "人狼" && !gameState.actions[currentPlayer.id]) {
-        actionArea.innerHTML = `<button onclick="window.executeAction('人狼', null)">他の人狼を確認</button>`;
-    } else if (gameState.phase === "怪盗" && gameState.assignedRoles[currentPlayer.id] === "怪盗" && !gameState.actions[currentPlayer.id]) {
-        actionArea.innerHTML = `
-            <p>誰と役職を交換しますか？</p>
-            ${gameState.players.map(player => 
-                player.id !== currentPlayer.id ? 
-                `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>` : 
-                ''
-            ).join('')}
-            <button onclick="window.executeAction('怪盗', null)">交換しない</button>
-        `;
-    } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
-        actionArea.innerHTML = `
-            <p>誰に投票しますか？</p>
-            ${gameState.players.map(player => 
-                player.id !== currentPlayer.id ? 
-                `<button onclick="window.vote('${player.id}')">投票: ${player.name}</button>` : 
-                ''
-            ).join('')}
-        `;
-    } else if (gameState.phase === "結果") {
-        let finalRole = gameState.assignedRoles[currentPlayer.id];
-        if (gameState.roleChanges[currentPlayer.id]) {
-            finalRole += ` (元: ${gameState.roleChanges[currentPlayer.id].from})`;
-        }
-        actionArea.innerHTML = `
-            <p>ゲーム結果: ${gameState.result}</p>
-            <p>あなたの最終役職: ${finalRole}</p>
-        `;
-    } else {
-        actionArea.innerHTML = `<p>現在のフェーズ: ${gameState.phase}</p>`;
+    switch (gameState.phase) {
+        case "待機中":
+            actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
+            break;
+        case "役職確認":
+            actionArea.innerHTML = `<p>あなたの役職は ${gameState.assignedRoles[currentPlayer.id]} です。</p>`;
+            break;
+        case "占い師":
+        case "人狼":
+        case "怪盗":
+            if (gameState.assignedRoles[currentPlayer.id] === gameState.phase || 
+                (gameState.phase === "人狼" && ["大熊", "占い人狼"].includes(gameState.assignedRoles[currentPlayer.id])) ||
+                (gameState.phase === "占い師" && gameState.assignedRoles[currentPlayer.id] === "占い人狼")) {
+                createActionButtons();
+            } else {
+                actionArea.innerHTML = `<p>他のプレイヤーの行動を待っています。</p>`;
+            }
+            break;
+        case "議論":
+            actionArea.innerHTML = `<p>議論の時間です。他のプレイヤーと話し合ってください。</p>`;
+            break;
+        case "投票":
+            if (!gameState.votes[currentPlayer.id]) {
+                createVoteButtons();
+            } else {
+                actionArea.innerHTML = `<p>投票済みです。結果を待っています。</p>`;
+            }
+            break;
+        case "チップ掛け":
+            if (!gameState.chips[currentPlayer.id]) {
+                createBetButtons();
+            } else {
+                actionArea.innerHTML = `<p>チップを賭けました。結果を待っています。</p>`;
+            }
+            break;
+        case "結果":
+            displayResults();
+            break;
     }
+}
+
+function createActionButtons() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML = `
+        <p>${gameState.phase}のアクションを選択してください：</p>
+    `;
+
+    switch (gameState.phase) {
+        case "占い師":
+        case "占い人狼":
+            gameState.players.forEach(player => {
+                if (player.id !== currentPlayer.id) {
+                    actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.phase}', '${player.id}')">占う: ${player.name}</button>`;
+                }
+            });
+            actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.phase}', 'graveyard')">墓地を占う</button>`;
+            break;
+        case "怪盗":
+            gameState.players.forEach(player => {
+                if (player.id !== currentPlayer.id) {
+                    actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>`;
+                }
+            });
+            actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', null)">交換しない</button>`;
+            break;
+        case "人狼":
+            actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.assignedRoles[currentPlayer.id]}', null)">他の人狼を確認</button>`;
+            break;
+    }
+}
+
+function createVoteButtons() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML = `
+        <p>誰に投票しますか？</p>
+    `;
+    gameState.players.forEach(player => {
+        if (player.id !== currentPlayer.id) {
+            actionArea.innerHTML += `<button onclick="window.vote('${player.id}')">投票: ${player.name}</button>`;
+        }
+    });
+}
+
+function createBetButtons() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML = `
+        <p>チップを賭けますか？（現在の持ち点：${currentPlayer.points}）</p>
+        <input type="number" id="betAmount" min="0" max="${currentPlayer.points}" value="0">
+        <input type="text" id="guessedRole" placeholder="推測する役職">
+        <button onclick="window.placeBet()">賭ける</button>
+        <button onclick="window.skipBet()">賭けない</button>
+    `;
+}
+
+function displayResults() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML = `
+        <p>ゲーム結果: ${gameState.result}</p>
+        <p>あなたの最終役職: ${gameState.assignedRoles[currentPlayer.id]}</p>
+        <p>現在の持ち点: ${currentPlayer.points}</p>
+    `;
 }
 
 export function showActionResult(result) {
@@ -155,6 +221,18 @@ window.executeAction = function(action, target) {
 
 window.vote = function(targetId) {
     vote(targetId);
+    updateUI();
+};
+
+window.placeBet = function() {
+    const amount = parseInt(document.getElementById('betAmount').value);
+    const guessedRole = document.getElementById('guessedRole').value;
+    placeBet(amount, guessedRole);
+    updateUI();
+};
+
+window.skipBet = function() {
+    placeBet(0, null);
     updateUI();
 };
 
