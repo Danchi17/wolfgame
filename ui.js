@@ -1,4 +1,4 @@
-import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } from './game.js';
+import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame, usePigmanAbility } from './game.js';
 import { sendToAll } from './network.js';
 import { performAction, vote, placeBet } from './actions.js';
 
@@ -33,6 +33,7 @@ export function updateUI() {
     updateGameInfo();
     updateButtons();
     updateActionArea();
+    updatePigmanMarkCountdown();
 }
 
 function updatePlayerList() {
@@ -59,7 +60,7 @@ function updatePlayerList() {
                 }
             }
             playerDiv.textContent = `${player.name}: ${roleToShow} (${player.points}ポイント)`;
-            if (gameState.troublesomePigmanMark === player.id) {
+            if (gameState.pigmanMark === player.id) {
                 playerDiv.textContent += ' ★';
             }
             playerList.appendChild(playerDiv);
@@ -123,6 +124,9 @@ function updateActionArea() {
             break;
         case "議論":
             actionArea.innerHTML = `<p>議論の時間です。他のプレイヤーと話し合ってください。</p>`;
+            if (gameState.assignedRoles[currentPlayer.id] === "やっかいな豚男") {
+                createPigmanActionButtons();
+            }
             break;
         case "投票":
             if (!gameState.votes[currentPlayer.id]) {
@@ -174,6 +178,15 @@ function createActionButtons() {
     }
 }
 
+function createPigmanActionButtons() {
+    const actionArea = document.getElementById('actionArea');
+    gameState.players.forEach(player => {
+        if (player.id !== currentPlayer.id) {
+            actionArea.innerHTML += `<button onclick="window.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
+        }
+    });
+}
+
 function createVoteButtons() {
     const actionArea = document.getElementById('actionArea');
     actionArea.innerHTML = `
@@ -213,6 +226,21 @@ export function showActionResult(result) {
     }
 }
 
+function updatePigmanMarkCountdown() {
+    const pigmanMarkCountdown = document.getElementById('pigmanMarkCountdown');
+    if (pigmanMarkCountdown) {
+        if (gameState.pigmanMarkTimeout) {
+            const remainingTime = Math.max(0, Math.floor((gameState.pigmanMarkTimeout - Date.now()) / 1000));
+            pigmanMarkCountdown.textContent = `★マーク残り時間: ${remainingTime}秒`;
+            if (remainingTime > 0) {
+                requestAnimationFrame(updatePigmanMarkCountdown);
+            }
+        } else {
+            pigmanMarkCountdown.textContent = '';
+        }
+    }
+}
+
 window.executeAction = function(action, target) {
     const result = performAction(action, target);
     showActionResult(result);
@@ -233,6 +261,11 @@ window.placeBet = function() {
 
 window.skipBet = function() {
     placeBet(0, null);
+    updateUI();
+};
+
+window.usePigmanAbility = function(targetId) {
+    usePigmanAbility(targetId);
     updateUI();
 };
 
