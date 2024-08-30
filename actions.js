@@ -1,4 +1,5 @@
-import { gameState, currentPlayer, connections, sendToAll } from './game.js';
+import { gameState, currentPlayer, connections } from './game.js';
+import { sendToAll } from './network.js';
 import { updateUI } from './ui.js';
 
 export function performAction(role, target) {
