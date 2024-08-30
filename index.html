@@ -36,5 +36,14 @@
     <script type="module" src="network.js"></script>
     <script type="module" src="actions.js"></script>
     <script type="module" src="ui.js"></script>
+    <script>
+        window.onload = function() {
+            if (typeof updateUI === 'function') {
+                updateUI();
+            } else {
+                console.error('updateUI function not found');
+            }
+        };
+    </script>
 </body>
 </html>
