@@ -2,6 +2,8 @@ import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } fro
 import { sendToAll } from './network.js';
 import { performAction, vote } from './actions.js';
 
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
+
 export function updateUI() {
     console.log('updateUI called');
     const setupArea = document.getElementById('setupArea');
@@ -35,7 +37,11 @@ export function updateUI() {
             playerDiv.className = 'player';
             let roleToShow = '?';
             if (player.id === currentPlayer.id) {
-                roleToShow = currentPlayer.role || '未割り当て';
+                if (phases.indexOf(gameState.phase) <= phases.indexOf("役職確認")) {
+                    roleToShow = currentPlayer.role || '未割り当て';
+                } else {
+                    roleToShow = '役職確認済み';
+                }
             } else if (gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
             }
@@ -83,7 +89,7 @@ function updateActionArea() {
         actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
     } else if (gameState.phase === "役職確認") {
         actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師") {
+    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰を占いますか？</p>
             ${gameState.players.map(player => 
@@ -93,9 +99,9 @@ function updateActionArea() {
             ).join('')}
             <button onclick="window.executeAction('占い師', 'graveyard')">墓地を占う</button>
         `;
-    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼") {
+    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `<button onclick="window.executeAction('人狼', null)">他の人狼を確認</button>`;
-    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗") {
+    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰と役職を交換しますか？</p>
             ${gameState.players.map(player => 
