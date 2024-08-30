@@ -19,7 +19,9 @@ const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "�
 
 function initializePeer() {
     return new Promise((resolve, reject) => {
-        peer = new Peer();
+        peer = new Peer({
+            debug: 2 // デバッグレベルを上げる
+        });
 
         peer.on('open', id => {
             console.log('My peer ID is: ' + id);
@@ -31,6 +33,13 @@ function initializePeer() {
             console.error('Peer connection error:', error);
             reject(error);
         });
+
+        // タイムアウトを設定
+        setTimeout(() => {
+            if (peer.id === null) {
+                reject(new Error('Peer initialization timed out'));
+            }
+        }, 20000); // 20秒のタイムアウト
     });
 }
 
@@ -40,7 +49,7 @@ window.addEventListener('load', async () => {
         setupUI();
     } catch (error) {
         console.error('Failed to initialize Peer.js:', error);
-        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。');
+        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。エラー: ' + error.message);
     }
 });
 
