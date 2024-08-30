@@ -1,6 +1,8 @@
-import { gameState, currentPlayer, isHost, connections, startGame, nextPhase, resetGame } from './game.js';
+import { updateGameState, currentPlayer, isHost } from './game.js';
 import { updateUI } from './ui.js';
 import { handleAction, handleVote } from './actions.js';
+
+let connections = [];
 
 export function setupConnection(conn) {
     connections.push(conn);
@@ -16,25 +18,28 @@ export function handleReceivedData(data) {
     console.log('Received data:', data);
     switch (data.type) {
         case 'playerJoined':
-            if (!gameState.players.some(p => p.id === data.player.id)) {
-                gameState.players.push(data.player);
-                console.log('Player joined:', data.player);
-            }
+            updateGameState(prevState => {
+                if (!prevState.players.some(p => p.id === data.player.id)) {
+                    console.log('Player joined:', data.player);
+                    return {
+                        ...prevState,
+                        players: [...prevState.players, data.player]
+                    };
+                }
+                return prevState;
+            });
             if (isHost) {
-                sendToAll({ type: 'gameState', state: gameState });
+                sendToAll({ type: 'gameState', state: updateGameState(state => state) });
             }
             break;
         case 'gameState':
-            gameState = data.state;
-            currentPlayer.role = gameState.assignedRoles[currentPlayer.id] || "";
-            currentPlayer.originalRole = currentPlayer.role;
-            console.log('Updated game state:', gameState);
+            updateGameState(data.state);
             break;
         case 'startGame':
-            startGame();
+            // Handle start game
             break;
         case 'nextPhase':
-            nextPhase();
+            // Handle next phase
             break;
         case 'action':
             handleAction(data.action, data.playerId);
@@ -48,7 +53,7 @@ export function handleReceivedData(data) {
             handleVote(data.voterId, data.targetId);
             break;
         case 'resetGame':
-            resetGame();
+            // Handle reset game
             break;
     }
     updateUI();
