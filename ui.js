@@ -4,6 +4,7 @@ import { performAction, vote } from './actions.js';
 export function updateUI() {
     console.log("Updating UI. Current game phase:", gameState.phase);
     console.log("Current game state:", gameState);
+    console.log("Is host:", isHost);
 
     const setupArea = document.getElementById('setupArea');
     const gameArea = document.getElementById('gameArea');
@@ -25,9 +26,9 @@ export function updateUI() {
         playerDiv.className = 'player';
         let roleToShow = '?';
         if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
-            roleToShow = gameState.assignedRoles[player.id];
+            roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
         } else if (gameState.phase === "結果") {
-            roleToShow = gameState.assignedRoles[player.id];
+            roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
         }
         playerDiv.textContent = `${player.name}: ${roleToShow}`;
         playerList.appendChild(playerDiv);
@@ -39,7 +40,9 @@ export function updateUI() {
     }
 
     const startGameButton = document.getElementById('startGame');
-    startGameButton.style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
+    const shouldShowStartButton = isHost && gameState.players.length >= 3 && gameState.phase === "待機中";
+    startGameButton.style.display = shouldShowStartButton ? 'inline' : 'none';
+    console.log("Should show start game button:", shouldShowStartButton);
     console.log("Start game button display:", startGameButton.style.display);
 
     document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
