@@ -12,14 +12,28 @@ export function performAction(role, target) {
 
     switch (role) {
         case '占い師':
+        case '占い人狼':
             result = handleSeerAction(target);
             break;
         case '怪盗':
             result = handleThiefAction(target);
             break;
         case '人狼':
+        case '大熊':
             result = handleWerewolfAction();
             break;
+        case 'やっかいな豚男':
+            result = handleTroublesomePigmanAction(target);
+            break;
+        case 'スパイ':
+            result = handleSpyAction();
+            break;
+        case 'ギャンブラー':
+        case '博識な子犬':
+            result = 'チップ掛けのターンでアクションを実行できます。';
+            break;
+        default:
+            result = '特別なアクションはありません。';
     }
 
     updateGameState(prevState => ({
@@ -30,18 +44,14 @@ export function performAction(role, target) {
         }
     }));
 
-    if (role === '怪盗') {
-        sendToAll({ type: 'gameState', state: gameState });
-    } else {
-        sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
-    }
+    sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
 
     return result;
 }
 
 function handleSeerAction(target) {
     if (target === 'graveyard') {
-        return `墓地の役職: ${gameState.graveyard.join(', ')}`;
+        return `墓地の役職: ${gameState.centerCards.map(card => card.name).join(', ')}`;
     } else {
         const targetRole = gameState.assignedRoles[target];
         const targetPlayer = gameState.players.find(p => p.id === target);
@@ -79,17 +89,30 @@ function handleThiefAction(target) {
 
 function handleWerewolfAction() {
     const otherWerewolves = gameState.players.filter(p => 
-        p.id !== currentPlayer.id && gameState.assignedRoles[p.id] === '人狼'
+        p.id !== currentPlayer.id && 
+        (gameState.assignedRoles[p.id] === '人狼' || gameState.assignedRoles[p.id] === '大熊' || gameState.assignedRoles[p.id] === '占い人狼')
     );
     return otherWerewolves.length > 0 ? 
         `他の人狼: ${otherWerewolves.map(p => p.name).join(', ')}` : 
         'あなたは唯一の人狼です。';
 }
 
-export function handleAction(action, playerId) {
-    const player = gameState.players.find(p => p.id === playerId);
-    const result = performAction(action.role, action.target);
-    sendToPlayer(playerId, { type: 'actionResult', result, playerId });
+function handleTroublesomePigmanAction(target) {
+    const targetPlayer = gameState.players.find(p => p.id === target);
+    updateGameState(prevState => ({
+        ...prevState,
+        troublesomePigmanMark: target
+    }));
+    return `${targetPlayer.name}に★マークを付与しました。`;
+}
+
+function handleSpyAction() {
+    const werewolves = gameState.players.filter(p => 
+        gameState.assignedRoles[p.id] === '人狼' || 
+        gameState.assignedRoles[p.id] === '大熊' || 
+        gameState.assignedRoles[p.id] === '占い人狼'
+    );
+    return `人狼陣営のプレイヤー: ${werewolves.map(p => p.name).join(', ')}`;
 }
 
 export function vote(targetId) {
@@ -102,6 +125,18 @@ export function vote(targetId) {
     }));
     sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
     document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
+}
+
+export function placeBet(amount, guessedRole) {
+    updateGameState(prevState => ({
+        ...prevState,
+        chips: {
+            ...prevState.chips,
+            [currentPlayer.id]: { amount, guessedRole }
+        }
+    }));
+    sendToAll({ type: 'bet', betterId: currentPlayer.id, amount: amount, guessedRole: guessedRole });
+    document.getElementById('actionArea').innerHTML = '<p>チップを賭けました。</p>';
 }
 
 export function handleVote(voterId, targetId) {
@@ -125,13 +160,185 @@ export function calculateResults() {
     const maxVotes = Math.max(...Object.values(voteCount));
     const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
 
-    const werewolfExecuted = executedPlayers.some(id => gameState.assignedRoles[id] === '人狼');
-    const result = werewolfExecuted ? "村人陣営の勝利！" : "人狼陣営の勝利！";
+    let result = "";
+    let winningTeam = "";
+
+    // 特殊勝利条件のチェック
+    if (checkSpecialVictoryConditions(executedPlayers)) {
+        return;
+    }
+
+    // 通常の勝利条件
+    const werewolfExecuted = executedPlayers.some(id => 
+        ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[id])
+    );
+
+    if (werewolfExecuted) {
+        result = "人狼が処刑されました。市民陣営の勝利！";
+        winningTeam = "市民";
+    } else {
+        result = "人狼は生き残りました。人狼陣営の勝利！";
+        winningTeam = "人狼";
+    }
+
+    // チップ掛けの結果を処理
+    handleBettingResults(winningTeam);
 
     updateGameState(prevState => ({
         ...prevState,
         phase: "結果",
         result: result
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+function checkSpecialVictoryConditions(executedPlayers) {
+    // 大熊の特殊勝利条件
+    if (executedPlayers.includes(gameState.players.find(p => gameState.assignedRoles[p.id] === '大熊')?.id)) {
+        const werewolfCount = gameState.players.filter(p => 
+            ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[p.id])
+        ).length;
+        if (werewolfCount > gameState.players.length / 2) {
+            updateGameState(prevState => ({
+                ...prevState,
+                phase: "結果",
+                result: "大熊の特殊勝利条件達成！人狼陣営の勝利！"
+            }));
+            sendToAll({ type: 'gameState', state: gameState });
+            updateUI();
+            return true;
+        }
+    }
+
+    // 蛇女の特殊勝利条件
+    if (executedPlayers.length > 1 && executedPlayers.includes(gameState.players.find(p => gameState.assignedRoles[p.id] === '蛇女')?.id)) {
+        updateGameState(prevState => ({
+            ...prevState,
+            phase: "結果",
+            result: "蛇女の特殊勝利条件達成！蛇女の単独勝利！"
+        }));
+        sendToAll({ type: 'gameState', state: gameState });
+        updateUI();
+        return true;
+    }
+
+    // 全員が右隣に投票した場合の特殊勝利条件
+    const allVotedRight = gameState.players.every((player, index) => {
+        const rightNeighborIndex = (index + 1) % gameState.players.length;
+        return gameState.votes[player.id] === gameState.players[rightNeighborIndex].id;
+    });
+    if (allVotedRight) {
+        updateGameState(prevState => ({
+            ...prevState,
+            phase: "結果",
+            result: "全員が右隣に投票しました。特殊勝利条件達成！"
+        }));
+        sendToAll({ type: 'gameState', state: gameState });
+        updateUI();
+        return true;
+    }
+
+    return false;
+}
+
+function handleBettingResults(winningTeam) {
+    for (const [playerId, bet] of Object.entries(gameState.chips)) {
+        const player = gameState.players.find(p => p.id === playerId);
+        const playerRole = gameState.assignedRoles[playerId];
+
+        if (playerRole === 'ギャンブラー' && winningTeam === '人狼') {
+            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                }));
+                return;
+            } else {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                }));
+            }
+        } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
+            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                }));
+                return;
+            } else {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                }));
+            }
+        }
+    }
+
+    // サイキックの能力を適用
+    const psychic = gameState.players.find(p => gameState.assignedRoles[p.id] === 'サイキック');
+    if (psychic && Object.keys(gameState.chips).length > 0) {
+        updateGameState(prevState => ({
+            ...prevState,
+            players: prevState.players.map(p => {
+                if (p.id !== psychic.id && gameState.chips[p.id]) {
+                    return {...p, points: p.points - 2};
+                }
+                return p;
+            })
+        }));
+    }
+}
+
+export function applyResults() {
+    const losingTeam = gameState.result.includes('市民陣営の勝利') ? '人狼' : '市民';
+    
+    updateGameState(prevState => ({
+        ...prevState,
+        players: prevState.players.map(player => {
+            const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
+            if (role.team === losingTeam) {
+                return {...player, points: player.points - role.cost};
+            }
+            return player;
+        })
+    }));
+
+    // 無法者の能力を適用
+    const outlaw = gameState.players.find(p => gameState.assignedRoles[p.id] === '無法者');
+    if (outlaw) {
+        const leftNeighborIndex = (gameState.players.indexOf(outlaw) - 1 + gameState.players.length) % gameState.players.length;
+        const leftNeighbor = gameState.players[leftNeighborIndex];
+        
+        updateGameState(prevState => ({
+            ...prevState,
+            assignedRoles: {
+                ...prevState.assignedRoles,
+                [outlaw.id]: prevState.assignedRoles[leftNeighbor.id],
+                [leftNeighbor.id]: '無法者'
+            }
+        }));
+    }
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+
+    // ゲーム終了条件のチェック
+    if (gameState.players.some(player => player.points <= 0)) {
+        endGame();
+    }
+}
+
+function endGame() {
+    const winner = gameState.players.reduce((prev, current) => (prev.points > current.points) ? prev : current);
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "ゲーム終了",
+        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`
     }));
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
