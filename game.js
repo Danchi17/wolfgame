@@ -25,7 +25,9 @@ export let gameState = {
     votes: {},
     chips: {},
     result: "",
-    centerCards: []
+    centerCards: [],
+    pigmanMark: null,
+    pigmanMarkTimeout: null
 };
 export let currentPlayer = { id: "", name: "", role: "", originalRole: "", points: 10 };
 export let isHost = false;
@@ -174,7 +176,9 @@ export function resetGame() {
         actions: {},
         votes: {},
         chips: {},
-        result: ""
+        result: "",
+        pigmanMark: null,
+        pigmanMarkTimeout: null
     }));
     gameState.players.forEach(player => {
         player.points = 10;
@@ -230,6 +234,33 @@ export function applyResults() {
     if (gameState.players.some(player => player.points <= 0)) {
         endGame();
     }
+}
+
+export function usePigmanAbility(targetPlayerId) {
+    if (gameState.assignedRoles[currentPlayer.id] !== 'やっかいな豚男') {
+        alert('あなたはやっかいな豚男ではありません。');
+        return;
+    }
+
+    updateGameState(prevState => ({
+        ...prevState,
+        pigmanMark: targetPlayerId,
+        pigmanMarkTimeout: Date.now() + 60000 // 1分後
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+
+    // 1分後に★マークを消す
+    setTimeout(() => {
+        updateGameState(prevState => ({
+            ...prevState,
+            pigmanMark: null,
+            pigmanMarkTimeout: null
+        }));
+        sendToAll({ type: 'gameState', state: gameState });
+        updateUI();
+    }, 60000);
 }
 
 function endGame() {
