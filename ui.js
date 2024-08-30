@@ -15,7 +15,6 @@ export function updateUI() {
     console.log("Is host:", isHost);
     console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
 
-    // Update currentPlayer's role if it's not set
     if (currentPlayer.role === "" && gameState.assignedRoles[currentPlayer.id]) {
         currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
         currentPlayer.originalRole = currentPlayer.role;
@@ -31,6 +30,13 @@ export function updateUI() {
         console.log("Displaying setup area");
     }
 
+    updatePlayerList();
+    updateGraveyardDisplay();
+    updateGameInfo();
+    updateActionArea();
+}
+
+function updatePlayerList() {
     const playerList = document.getElementById('playerList');
     if (playerList) {
         playerList.innerHTML = '';
@@ -47,7 +53,26 @@ export function updateUI() {
             playerList.appendChild(playerDiv);
         });
     }
+}
 
+function updateGraveyardDisplay() {
+    const graveyardDisplay = document.getElementById('graveyardDisplay');
+    if (graveyardDisplay) {
+        graveyardDisplay.innerHTML = '';
+        const graveyardTitle = document.createElement('h3');
+        graveyardTitle.textContent = '墓地';
+        graveyardDisplay.appendChild(graveyardTitle);
+        
+        gameState.graveyard.forEach((role, index) => {
+            const roleDiv = document.createElement('div');
+            roleDiv.className = 'graveyard-role';
+            roleDiv.textContent = gameState.phase === "結果" ? role : '?';
+            graveyardDisplay.appendChild(roleDiv);
+        });
+    }
+}
+
+function updateGameInfo() {
     const gameInfoElement = document.getElementById('gameInfo');
     if (gameInfoElement) {
         gameInfoElement.textContent = `ゲームフェーズ: ${gameState.phase}`;
@@ -60,8 +85,6 @@ export function updateUI() {
     if (startGameButton) {
         const shouldShowStartButton = isHost && gameState.players.length >= 3 && gameState.phase === "待機中";
         startGameButton.style.display = shouldShowStartButton ? 'inline' : 'none';
-        console.log("Should show start game button:", shouldShowStartButton);
-        console.log("Start game button display:", startGameButton.style.display);
     }
 
     const nextPhaseButton = document.getElementById('nextPhase');
@@ -73,8 +96,6 @@ export function updateUI() {
     if (resetGameButton) {
         resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
     }
-
-    updateActionArea();
 }
 
 function updateActionArea() {
@@ -90,7 +111,7 @@ function updateActionArea() {
         actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
     } else if (gameState.phase === "役職確認") {
         actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師") {
+    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰を占いますか？</p>
             ${gameState.players.map(player => 
@@ -100,9 +121,9 @@ function updateActionArea() {
             ).join('')}
             <button onclick="window.executeAction('占い師', 'graveyard')">墓地を占う</button>
         `;
-    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼") {
+    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `<button onclick="window.executeAction('人狼', null)">他の人狼を確認</button>`;
-    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗") {
+    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰と役職を交換しますか？</p>
             ${gameState.players.map(player => 
