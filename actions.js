@@ -60,4 +60,47 @@ export function handleAction(action, playerId) {
     sendToAll({ type: 'actionResult', result, playerId });
 }
 
-// ... (他のコードは変更なし) ...
+export function vote(targetId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        votes: {
+            ...prevState.votes,
+            [currentPlayer.id]: targetId
+        }
+    }));
+    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+    document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
+}
+
+export function handleVote(voterId, targetId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        votes: {
+            ...prevState.votes,
+            [voterId]: targetId
+        }
+    }));
+    if (Object.keys(gameState.votes).length === gameState.players.length) {
+        calculateResults();
+    }
+}
+
+export function calculateResults() {
+    const voteCount = {};
+    for (const targetId of Object.values(gameState.votes)) {
+        voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+    }
+    const maxVotes = Math.max(...Object.values(voteCount));
+    const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
+
+    const werewolfExecuted = executedPlayers.some(id => gameState.assignedRoles[id] === '人狼');
+    const result = werewolfExecuted ? "村人陣営の勝利！" : "人狼陣営の勝利！";
+
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "結果",
+        result: result
+    }));
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
