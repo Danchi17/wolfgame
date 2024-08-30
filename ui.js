@@ -37,8 +37,11 @@ export function updateUI() {
             playerDiv.className = 'player';
             let roleToShow = '?';
             if (player.id === currentPlayer.id) {
-                if (phases.indexOf(gameState.phase) <= phases.indexOf("役職確認")) {
+                if (phases.indexOf(gameState.phase) <= phases.indexOf("役職確認") || gameState.phase === "結果") {
                     roleToShow = currentPlayer.role || '未割り当て';
+                    if (currentPlayer.originalRole === "怪盗" && currentPlayer.originalRole !== currentPlayer.role) {
+                        roleToShow += ` (元: 怪盗)`;
+                    }
                 } else {
                     roleToShow = '役職確認済み';
                 }
@@ -121,7 +124,14 @@ function updateActionArea() {
             ).join('')}
         `;
     } else if (gameState.phase === "結果") {
-        actionArea.innerHTML = `<p>ゲーム結果: ${gameState.result}</p>`;
+        let finalRole = currentPlayer.role;
+        if (currentPlayer.originalRole === "怪盗" && currentPlayer.originalRole !== currentPlayer.role) {
+            finalRole += ` (元: 怪盗)`;
+        }
+        actionArea.innerHTML = `
+            <p>ゲーム結果: ${gameState.result}</p>
+            <p>あなたの最終役職: ${finalRole}</p>
+        `;
     } else {
         actionArea.innerHTML = `<p>現在のフェーズ: ${gameState.phase}</p>`;
     }
