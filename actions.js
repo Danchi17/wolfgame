@@ -1,4 +1,8 @@
+// actions.js の先頭に以下の行を追加
 export { handleAction, handleVote, calculateResults };
+
+// 既存の handleAction 関数の定義
+export function handleAction(action, playerId) {
 import { gameState, currentPlayer, updateGameState } from './game.js';
 import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
@@ -343,4 +347,5 @@ function endGame() {
     }));
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
+}
 }
