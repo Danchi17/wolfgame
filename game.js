@@ -7,6 +7,7 @@ export let gameState = {
     phase: "待機中",
     roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
     assignedRoles: {},
+    roleChanges: {},
     graveyard: [],
     actions: {},
     votes: {},
@@ -110,7 +111,9 @@ export function updateGameState(updater) {
     console.log("Game state updated:", gameState);
     if (gameState.assignedRoles[currentPlayer.id]) {
         currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
-        currentPlayer.originalRole = currentPlayer.role;
+        if (!currentPlayer.originalRole) {
+            currentPlayer.originalRole = currentPlayer.role;
+        }
     }
     updateUI();
     return gameState;
@@ -138,6 +141,7 @@ export function startGame() {
     updateGameState(prevState => ({
         ...prevState,
         assignedRoles: newAssignedRoles,
+        roleChanges: {},
         graveyard: graveyardRoles,
         phase: '役職確認',
         actions: {},
@@ -165,6 +169,7 @@ export function resetGame() {
         ...prevState,
         phase: "待機中",
         assignedRoles: {},
+        roleChanges: {},
         graveyard: [],
         actions: {},
         votes: {},
