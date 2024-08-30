@@ -3,15 +3,18 @@ import { performAction, vote } from './actions.js';
 
 export function updateUI() {
     console.log('updateUI called');
-    console.log('setupArea:', document.getElementById('setupArea'));
-    console.log('gameArea:', document.getElementById('gameArea'));
+    const setupArea = document.getElementById('setupArea');
+    const gameArea = document.getElementById('gameArea');
+    
+    if (!setupArea || !gameArea) {
+        console.error('Setup area or game area not found in the DOM');
+        return;
+    }
+
     console.log("Updating UI. Current game phase:", gameState.phase);
     console.log("Current game state:", gameState);
     console.log("Is host:", isHost);
     console.log("Current player:", currentPlayer);
-
-    const setupArea = document.getElementById('setupArea');
-    const gameArea = document.getElementById('gameArea');
 
     if (gameState.phase === "待機中") {
         setupArea.style.display = 'block';
@@ -24,39 +27,58 @@ export function updateUI() {
     }
 
     const playerList = document.getElementById('playerList');
-    playerList.innerHTML = '';
-    gameState.players.forEach(player => {
-        const playerDiv = document.createElement('div');
-        playerDiv.className = 'player';
-        let roleToShow = '?';
-        if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
-            roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
-        } else if (gameState.phase === "結果") {
-            roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
-        }
-        playerDiv.textContent = `${player.name}: ${roleToShow}`;
-        playerList.appendChild(playerDiv);
-    });
+    if (playerList) {
+        playerList.innerHTML = '';
+        gameState.players.forEach(player => {
+            const playerDiv = document.createElement('div');
+            playerDiv.className = 'player';
+            let roleToShow = '?';
+            if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
+                roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
+            } else if (gameState.phase === "結果") {
+                roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
+            }
+            playerDiv.textContent = `${player.name}: ${roleToShow}`;
+            playerList.appendChild(playerDiv);
+        });
+    }
 
-    document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
-    if (gameState.phase === "結果") {
-        document.getElementById('gameInfo').textContent += ` - ${gameState.result}`;
+    const gameInfoElement = document.getElementById('gameInfo');
+    if (gameInfoElement) {
+        gameInfoElement.textContent = `ゲームフェーズ: ${gameState.phase}`;
+        if (gameState.phase === "結果") {
+            gameInfoElement.textContent += ` - ${gameState.result}`;
+        }
     }
 
     const startGameButton = document.getElementById('startGame');
-    const shouldShowStartButton = isHost && gameState.players.length >= 3 && gameState.phase === "待機中";
-    startGameButton.style.display = shouldShowStartButton ? 'inline' : 'none';
-    console.log("Should show start game button:", shouldShowStartButton);
-    console.log("Start game button display:", startGameButton.style.display);
+    if (startGameButton) {
+        const shouldShowStartButton = isHost && gameState.players.length >= 3 && gameState.phase === "待機中";
+        startGameButton.style.display = shouldShowStartButton ? 'inline' : 'none';
+        console.log("Should show start game button:", shouldShowStartButton);
+        console.log("Start game button display:", startGameButton.style.display);
+    }
 
-    document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
-    document.getElementById('resetGame').style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
+    const nextPhaseButton = document.getElementById('nextPhase');
+    if (nextPhaseButton) {
+        nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
+    }
+
+    const resetGameButton = document.getElementById('resetGame');
+    if (resetGameButton) {
+        resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
+    }
 
     updateActionArea();
 }
 
 function updateActionArea() {
     const actionArea = document.getElementById('actionArea');
+    if (!actionArea) {
+        console.error('Action area not found in the DOM');
+        return;
+    }
+
     actionArea.innerHTML = '';
 
     if (gameState.phase === "役職確認") {
@@ -102,7 +124,10 @@ function updateActionArea() {
 }
 
 export function showActionResult(result) {
-    document.getElementById('actionResult').textContent = result;
+    const actionResultElement = document.getElementById('actionResult');
+    if (actionResultElement) {
+        actionResultElement.textContent = result;
+    }
 }
 
 // グローバルスコープで関数を利用可能にする
