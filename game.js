@@ -19,8 +19,11 @@ const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "�
 
 function initializePeer() {
     return new Promise((resolve, reject) => {
-        peer = new Peer({
-            debug: 2 // デバッグレベルを上げる
+        peer = new Peer(null, {
+            host: 'peerjs-server.herokuapp.com',
+            secure: true,
+            port: 443,
+            debug: 2
         });
 
         peer.on('open', id => {
@@ -34,12 +37,11 @@ function initializePeer() {
             reject(error);
         });
 
-        // タイムアウトを設定
         setTimeout(() => {
             if (peer.id === null) {
                 reject(new Error('Peer initialization timed out'));
             }
-        }, 20000); // 20秒のタイムアウト
+        }, 20000);
     });
 }
 
