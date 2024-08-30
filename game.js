@@ -1,4 +1,4 @@
-import { setupConnection, handleReceivedData, sendToAll, initNetwork } from './network.js';
+import { setupConnection, handleReceivedData, sendToAll } from './network.js';
 import { updateUI } from './ui.js';
 import { handleAction, vote, handleVote, calculateResults } from './actions.js';
 
@@ -107,12 +107,4 @@ function shuffleArray(array) {
     return array;
 }
 
-initNetwork(
-    gameState,
-    currentPlayer,
-    isHost,
-    connections,
-    { startGame, nextPhase, handleAction, vote, handleVote, resetGame, updateUI }
-);
-
-export { gameState, currentPlayer, isHost, connections, peer };
+export { gameState, currentPlayer, isHost, connections, peer, startGame, nextPhase, resetGame };
