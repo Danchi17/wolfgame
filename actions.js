@@ -1,5 +1,5 @@
 import { gameState, currentPlayer, updateGameState } from './game.js';
-import { sendToPlayer } from './network.js';
+import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
 
 export function performAction(role, target) {
@@ -30,7 +30,11 @@ export function performAction(role, target) {
         }
     }));
 
-    sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
+    if (role === '怪盗') {
+        sendToAll({ type: 'gameState', state: gameState });
+    } else {
+        sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
+    }
 
     return result;
 }
@@ -57,6 +61,11 @@ function handleThiefAction(target) {
                 ...prevState.assignedRoles,
                 [currentPlayer.id]: targetRole,
                 [target]: thiefRole
+            },
+            roleChanges: {
+                ...prevState.roleChanges,
+                [currentPlayer.id]: { from: thiefRole, to: targetRole },
+                [target]: { from: targetRole, to: thiefRole }
             }
         }));
 
@@ -91,7 +100,7 @@ export function vote(targetId) {
             [currentPlayer.id]: targetId
         }
     }));
-    sendToPlayer(currentPlayer.id, { type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
     document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
 }
 
@@ -124,6 +133,6 @@ export function calculateResults() {
         phase: "結果",
         result: result
     }));
-    sendToPlayer(currentPlayer.id, { type: 'gameState', state: gameState });
+    sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
