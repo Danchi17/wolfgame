@@ -32,9 +32,27 @@ export let isHost = false;
 
 const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "チップ掛け", "結果"];
 
-// ... (既存のinitializePeer, setupUI関数などは変更なし)
+export function initializePeer() {
+    return new Promise((resolve, reject) => {
+        import('https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js').then(() => {
+            peer = new Peer();
+            peer.on('open', (id) => {
+                console.log('My peer ID is: ' + id);
+                setupConnectionListener();
+                resolve(id);
+            });
+            peer.on('error', (error) => {
+                console.error('PeerJS error:', error);
+                reject(error);
+            });
+        }).catch(error => {
+            console.error('Failed to load PeerJS:', error);
+            reject(error);
+        });
+    });
+}
 
-function createGame() {
+export function createGame() {
     const playerName = document.getElementById('playerName').value;
     if (playerName && peer && peer.id) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "", points: 10 };
@@ -54,7 +72,7 @@ function createGame() {
     }
 }
 
-function joinGame() {
+export function joinGame() {
     const gameId = document.getElementById('gameId').value;
     const playerName = document.getElementById('playerName').value;
     if (gameId && playerName && peer && peer.id) {
@@ -164,3 +182,32 @@ function shuffleArray(array) {
 }
 
 export { peer };
+
+// UI更新のためのイベントリスナーを設定
+document.addEventListener('DOMContentLoaded', () => {
+    const createGameButton = document.getElementById('createGameButton');
+    const joinGameButton = document.getElementById('joinGameButton');
+    const startGameButton = document.getElementById('startGame');
+    const nextPhaseButton = document.getElementById('nextPhase');
+    const resetGameButton = document.getElementById('resetGame');
+
+    if (createGameButton) createGameButton.addEventListener('click', createGame);
+    if (joinGameButton) joinGameButton.addEventListener('click', joinGame);
+    if (startGameButton) startGameButton.addEventListener('click', startGame);
+    if (nextPhaseButton) nextPhaseButton.addEventListener('click', nextPhase);
+    if (resetGameButton) resetGameButton.addEventListener('click', resetGame);
+
+    // 初期化時にUIを更新
+    updateUI();
+});
+
+// ゲーム開始時にPeerJSを初期化
+window.onload = async () => {
+    try {
+        await initializePeer();
+        console.log('PeerJS initialized successfully');
+    } catch (error) {
+        console.error('Failed to initialize PeerJS:', error);
+        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。');
+    }
+};
