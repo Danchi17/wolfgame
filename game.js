@@ -34,21 +34,33 @@ const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "�
 
 export function initializePeer() {
     return new Promise((resolve, reject) => {
-        import('https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.3.2/peerjs.min.js').then(() => {
-            peer = new Peer();
-            peer.on('open', (id) => {
-                console.log('My peer ID is: ' + id);
-                setupConnectionListener();
-                resolve(id);
-            });
-            peer.on('error', (error) => {
-                console.error('PeerJS error:', error);
+        if (typeof Peer === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
+            script.onload = () => {
+                createPeer(resolve, reject);
+            };
+            script.onerror = (error) => {
+                console.error('Failed to load PeerJS:', error);
                 reject(error);
-            });
-        }).catch(error => {
-            console.error('Failed to load PeerJS:', error);
-            reject(error);
-        });
+            };
+            document.head.appendChild(script);
+        } else {
+            createPeer(resolve, reject);
+        }
+    });
+}
+
+function createPeer(resolve, reject) {
+    peer = new Peer();
+    peer.on('open', (id) => {
+        console.log('My peer ID is: ' + id);
+        setupConnectionListener();
+        resolve(id);
+    });
+    peer.on('error', (error) => {
+        console.error('PeerJS error:', error);
+        reject(error);
     });
 }
 
@@ -181,8 +193,6 @@ function shuffleArray(array) {
     return array;
 }
 
-export { peer };
-
 // UI更新のためのイベントリスナーを設定
 document.addEventListener('DOMContentLoaded', () => {
     const createGameButton = document.getElementById('createGameButton');
@@ -211,3 +221,5 @@ window.onload = async () => {
         alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。');
     }
 };
+
+export { peer };
