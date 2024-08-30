@@ -75,6 +75,16 @@ export function sendToAll(data) {
     });
 }
 
+export function sendToPlayer(playerId, data) {
+    console.log(`Sending to player ${playerId}:`, data);
+    const connection = connections.find(conn => conn.peer === playerId);
+    if (connection && connection.open) {
+        connection.send(data);
+    } else {
+        console.warn(`Attempted to send data to a closed or non-existent connection for player ${playerId}`);
+    }
+}
+
 export function setupConnectionListener() {
     peer.on('connection', (conn) => {
         console.log('New connection received');
