@@ -12,9 +12,9 @@ export function updateUI() {
     }
 
     console.log("Updating UI. Current game phase:", gameState.phase);
-    console.log("Current game state:", gameState);
+    console.log("Current game state:", JSON.stringify(gameState, null, 2));
     console.log("Is host:", isHost);
-    console.log("Current player:", currentPlayer);
+    console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
 
     if (gameState.phase === "待機中") {
         setupArea.style.display = 'block';
