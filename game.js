@@ -19,10 +19,11 @@ const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "�
 
 function initializePeer() {
     return new Promise((resolve, reject) => {
-        peer = new Peer(null, {
-            host: 'peerjs-server.herokuapp.com',
-            secure: true,
-            port: 443,
+        peer = new Peer({
+            config: {'iceServers': [
+                { url: 'stun:stun.l.google.com:19302' },
+                { url: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+            ]},
             debug: 2
         });
 
