@@ -76,8 +76,12 @@ function createGame() {
         console.log("Game created. Current game state:", gameState);
         console.log("Is host:", isHost);
         sendToAll({ type: 'gameState', state: gameState });
-        window.updateUI(); // グローバル関数として呼び出す
+        updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
+        
+        // デバッグ用: 自動的にゲームを開始
+        console.log("Debug: Automatically starting the game");
+        startGame();
     } else {
         alert('プレイヤー名を入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
     }
@@ -112,10 +116,15 @@ export function updateGameState(updater) {
 }
 
 function startGame() {
-    if (gameState.players.length < 3) {
-        alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
-        return;
-    }
+    console.log("startGame function called");
+    console.log("Current number of players:", gameState.players.length);
+    
+    // デバッグ用: プレイヤー数チェックを一時的に無効化
+    // if (gameState.players.length < 3) {
+    //     alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
+    //     return;
+    // }
+    
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
@@ -139,6 +148,8 @@ function startGame() {
     }));
     currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
     currentPlayer.originalRole = currentPlayer.role;
+    console.log("Game started. New game state:", gameState);
+    console.log("Current player's new role:", currentPlayer.role);
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
