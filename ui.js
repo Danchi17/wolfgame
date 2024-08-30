@@ -33,7 +33,7 @@ export function updateUI() {
             const playerDiv = document.createElement('div');
             playerDiv.className = 'player';
             let roleToShow = '?';
-            if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
+            if (player.id === currentPlayer.id) {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
             } else if (gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
