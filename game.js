@@ -76,7 +76,7 @@ function createGame() {
         console.log("Game created. Current game state:", gameState);
         console.log("Is host:", isHost);
         sendToAll({ type: 'gameState', state: gameState });
-        updateUI();
+        window.updateUI(); // グローバル関数として呼び出す
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
     } else {
         alert('プレイヤー名を入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
