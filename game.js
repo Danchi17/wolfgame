@@ -15,7 +15,7 @@ let gameState = {
 export let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
 export let isHost = false;
 
-const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "議論", "投票", "結果"];
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
 function initializePeer() {
     return new Promise((resolve, reject) => {
@@ -183,6 +183,61 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+export function performAction(action, target) {
+    let result = '';
+    switch (action) {
+        case '占い師':
+            if (target === 'graveyard') {
+                result = `墓地の役職: ${gameState.graveyard.join(', ')}`;
+            } else {
+                const targetRole = gameState.assignedRoles[target];
+                const targetPlayer = gameState.players.find(p => p.id === target);
+                result = `${targetPlayer.name}の役職: ${targetRole}`;
+            }
+            break;
+        case '人狼':
+            const otherWerewolves = gameState.players.filter(p => 
+                p.id !== currentPlayer.id && gameState.assignedRoles[p.id] === '人狼'
+            );
+            result = otherWerewolves.length > 0 ? 
+                `他の人狼: ${otherWerewolves.map(p => p.name).join(', ')}` : 
+                '他の人狼はいません。';
+            break;
+        case '怪盗':
+            if (target) {
+                const thiefRole = gameState.assignedRoles[currentPlayer.id];
+                const targetRole = gameState.assignedRoles[target];
+                const targetPlayer = gameState.players.find(p => p.id === target);
+                
+                updateGameState(prevState => ({
+                    ...prevState,
+                    assignedRoles: {
+                        ...prevState.assignedRoles,
+                        [currentPlayer.id]: targetRole,
+                        [target]: thiefRole
+                    }
+                }));
+                
+                currentPlayer.role = targetRole;
+                result = `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
+            } else {
+                result = '役職の交換をしませんでした。';
+            }
+            break;
+    }
+    
+    updateGameState(prevState => ({
+        ...prevState,
+        actions: {
+            ...prevState.actions,
+            [currentPlayer.id]: { action, target, result }
+        }
+    }));
+    
+    sendToAll({ type: 'action', playerId: currentPlayer.id, action, target });
+    return result;
 }
 
 export { gameState, peer, startGame, nextPhase, resetGame };
