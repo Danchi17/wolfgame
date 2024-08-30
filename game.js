@@ -204,8 +204,8 @@ export function applyResults() {
         ...prevState,
         players: prevState.players.map(player => {
             const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
-            if (role.team === losingTeam) {
-                return {...player, points: player.points - role.cost};
+            if (role && role.team === losingTeam) {
+                return {...player, points: Math.max(0, player.points - role.cost)};
             }
             return player;
         })
@@ -223,6 +223,11 @@ export function applyResults() {
                 ...prevState.assignedRoles,
                 [outlaw.id]: prevState.assignedRoles[leftNeighbor.id],
                 [leftNeighbor.id]: '無法者'
+            },
+            roleChanges: {
+                ...prevState.roleChanges,
+                [outlaw.id]: { from: '無法者', to: prevState.assignedRoles[leftNeighbor.id] },
+                [leftNeighbor.id]: { from: prevState.assignedRoles[leftNeighbor.id], to: '無法者' }
             }
         }));
     }
