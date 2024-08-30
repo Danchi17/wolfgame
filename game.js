@@ -71,7 +71,8 @@ function createGame() {
         isHost = true;
         gameState = {
             ...gameState,
-            players: [...gameState.players, currentPlayer]
+            players: [currentPlayer],
+            phase: "待機中"
         };
         console.log("Game created. Current game state:", gameState);
         console.log("Is host:", isHost);
