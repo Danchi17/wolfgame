@@ -31,12 +31,13 @@ function createGame() {
     const playerName = document.getElementById('playerName').value;
     if (playerName) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+        isHost = true;
         updateGameState(prevState => ({
             ...prevState,
             players: [...prevState.players, currentPlayer]
         }));
-        isHost = true;
         console.log("Game created. Current game state:", gameState);
+        console.log("Is host:", isHost);
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
@@ -48,6 +49,7 @@ function joinGame() {
     const playerName = document.getElementById('playerName').value;
     if (gameId && playerName) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+        isHost = false;
         const conn = peer.connect(gameId);
         setupConnection(conn);
         sendToAll({ type: 'playerJoined', player: currentPlayer });
@@ -66,6 +68,7 @@ export function updateGameState(updater) {
         gameState = updater;
     }
     console.log("Game state updated:", gameState);
+    updateUI();
     return gameState;
 }
 
