@@ -1,6 +1,6 @@
 import { updateGameState, currentPlayer, isHost, peer } from './game.js';
 import { updateUI, showActionResult } from './ui.js';
-import { handleAction, handleVote } from './actions.js';
+import { handleAction, handleVote, calculateResults } from './actions.js';
 
 let connections = [];
 
@@ -57,6 +57,9 @@ export function handleReceivedData(data) {
         case 'vote':
             handleVote(data.voterId, data.targetId);
             break;
+        case 'bet':
+            handleBet(data.betterId, data.amount, data.guessedRole);
+            break;
         case 'resetGame':
             // Handle reset game
             break;
@@ -90,4 +93,18 @@ export function setupConnectionListener() {
         console.log('New connection received');
         setupConnection(conn);
     });
+}
+
+function handleBet(betterId, amount, guessedRole) {
+    updateGameState(prevState => ({
+        ...prevState,
+        chips: {
+            ...prevState.chips,
+            [betterId]: { amount, guessedRole }
+        }
+    }));
+
+    if (Object.keys(gameState.chips).length === gameState.players.length) {
+        calculateResults();
+    }
 }
