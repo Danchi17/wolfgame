@@ -78,10 +78,6 @@ function createGame() {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
-        
-        // デバッグ用: 自動的にゲームを開始
-        console.log("Debug: Automatically starting the game");
-        startGame();
     } else {
         alert('プレイヤー名を入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
     }
@@ -119,35 +115,33 @@ function startGame() {
     console.log("startGame function called");
     console.log("Current number of players:", gameState.players.length);
     
-    // デバッグ用: プレイヤー数チェックを一時的に無効化
-    // if (gameState.players.length < 3) {
-    //     alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
-    //     return;
-    // }
+    if (gameState.players.length < 3) {
+        alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
+        return;
+    }
     
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
     const graveyardRoles = shuffledRoles.slice(gameState.players.length);
 
+    const newAssignedRoles = {};
+    gameState.players.forEach((player, index) => {
+        newAssignedRoles[player.id] = playerRoles[index];
+    });
+
     updateGameState(prevState => ({
         ...prevState,
-        players: prevState.players.map((player, index) => ({
-            ...player,
-            role: playerRoles[index],
-            originalRole: playerRoles[index]
-        })),
-        assignedRoles: prevState.players.reduce((acc, player, index) => {
-            acc[player.id] = playerRoles[index];
-            return acc;
-        }, {}),
+        assignedRoles: newAssignedRoles,
         graveyard: graveyardRoles,
         phase: '役職確認',
         actions: {},
         votes: {}
     }));
-    currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
+
+    currentPlayer.role = newAssignedRoles[currentPlayer.id];
     currentPlayer.originalRole = currentPlayer.role;
+
     console.log("Game started. New game state:", gameState);
     console.log("Current player's new role:", currentPlayer.role);
     sendToAll({ type: 'gameState', state: gameState });
@@ -167,16 +161,15 @@ function nextPhase() {
 }
 
 function resetGame() {
-    updateGameState({
-        players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
+    updateGameState(prevState => ({
+        ...prevState,
         phase: "待機中",
-        roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
         assignedRoles: {},
         graveyard: [],
         actions: {},
         votes: {},
         result: ""
-    });
+    }));
     currentPlayer.role = "";
     currentPlayer.originalRole = "";
     sendToAll({ type: 'gameState', state: gameState });
