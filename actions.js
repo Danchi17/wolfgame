@@ -1,11 +1,66 @@
-// actions.js の先頭に以下の行を追加
-export { handleAction, handleVote, calculateResults };
-
-// 既存の handleAction 関数の定義
-export function handleAction(action, playerId) {
 import { gameState, currentPlayer, updateGameState } from './game.js';
 import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
+
+export function handleAction(action, playerId) {
+    // この関数の実装はまだ提供されていません
+    console.log('Action handled:', action, 'for player:', playerId);
+}
+
+export function handleVote(voterId, targetId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        votes: {
+            ...prevState.votes,
+            [voterId]: targetId
+        }
+    }));
+    if (Object.keys(gameState.votes).length === gameState.players.length) {
+        calculateResults();
+    }
+}
+
+export function calculateResults() {
+    const voteCount = {};
+    for (const targetId of Object.values(gameState.votes)) {
+        voteCount[targetId] = (voteCount[targetId] || 0) + 1;
+    }
+    const maxVotes = Math.max(...Object.values(voteCount));
+    const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
+
+    let result = "";
+    let winningTeam = "";
+
+    // 特殊勝利条件のチェック
+    if (checkSpecialVictoryConditions(executedPlayers)) {
+        return;
+    }
+
+    // 通常の勝利条件
+    const werewolfExecuted = executedPlayers.some(id => 
+        ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[id])
+    );
+
+    if (werewolfExecuted) {
+        result = "人狼が処刑されました。市民陣営の勝利！";
+        winningTeam = "市民";
+    } else {
+        result = "人狼は生き残りました。人狼陣営の勝利！";
+        winningTeam = "人狼";
+    }
+
+    // チップ掛けの結果を処理
+    handleBettingResults(winningTeam);
+
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "結果",
+        result: result
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
 
 export function performAction(role, target) {
     if (gameState.actions[currentPlayer.id]) {
@@ -129,7 +184,6 @@ export function vote(targetId) {
         }
     }));
     sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
-    document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
 }
 
 export function placeBet(amount, guessedRole) {
@@ -141,62 +195,6 @@ export function placeBet(amount, guessedRole) {
         }
     }));
     sendToAll({ type: 'bet', betterId: currentPlayer.id, amount: amount, guessedRole: guessedRole });
-    document.getElementById('actionArea').innerHTML = '<p>チップを賭けました。</p>';
-}
-
-export function handleVote(voterId, targetId) {
-    updateGameState(prevState => ({
-        ...prevState,
-        votes: {
-            ...prevState.votes,
-            [voterId]: targetId
-        }
-    }));
-    if (Object.keys(gameState.votes).length === gameState.players.length) {
-        calculateResults();
-    }
-}
-
-export function calculateResults() {
-    const voteCount = {};
-    for (const targetId of Object.values(gameState.votes)) {
-        voteCount[targetId] = (voteCount[targetId] || 0) + 1;
-    }
-    const maxVotes = Math.max(...Object.values(voteCount));
-    const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
-
-    let result = "";
-    let winningTeam = "";
-
-    // 特殊勝利条件のチェック
-    if (checkSpecialVictoryConditions(executedPlayers)) {
-        return;
-    }
-
-    // 通常の勝利条件
-    const werewolfExecuted = executedPlayers.some(id => 
-        ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[id])
-    );
-
-    if (werewolfExecuted) {
-        result = "人狼が処刑されました。市民陣営の勝利！";
-        winningTeam = "市民";
-    } else {
-        result = "人狼は生き残りました。人狼陣営の勝利！";
-        winningTeam = "人狼";
-    }
-
-    // チップ掛けの結果を処理
-    handleBettingResults(winningTeam);
-
-    updateGameState(prevState => ({
-        ...prevState,
-        phase: "結果",
-        result: result
-    }));
-
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
 }
 
 function checkSpecialVictoryConditions(executedPlayers) {
@@ -301,7 +299,7 @@ function handleBettingResults(winningTeam) {
 
 export function applyResults() {
     const losingTeam = gameState.result.includes('市民陣営の勝利') ? '人狼' : '市民';
-    
+
     updateGameState(prevState => ({
         ...prevState,
         players: prevState.players.map(player => {
@@ -318,7 +316,7 @@ export function applyResults() {
     if (outlaw) {
         const leftNeighborIndex = (gameState.players.indexOf(outlaw) - 1 + gameState.players.length) % gameState.players.length;
         const leftNeighbor = gameState.players[leftNeighborIndex];
-        
+
         updateGameState(prevState => ({
             ...prevState,
             assignedRoles: {
@@ -347,5 +345,4 @@ function endGame() {
     }));
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
-}
 }
