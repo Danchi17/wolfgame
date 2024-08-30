@@ -1,5 +1,4 @@
-import { gameState, currentPlayer, isHost } from './game.js';
-import { performAction, vote } from './actions.js';
+import { gameState, currentPlayer, isHost, performAction } from './game.js';
 
 export function updateUI() {
     console.log('updateUI called');
@@ -16,7 +15,6 @@ export function updateUI() {
     console.log("Is host:", isHost);
     console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
 
-    // ゲームが作成されたらすぐにゲームエリアを表示
     if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
         gameArea.style.display = 'block';
@@ -86,35 +84,29 @@ function updateActionArea() {
         actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
     } else if (gameState.phase === "役職確認") {
         actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-    } else if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
-        switch (currentPlayer.originalRole) {
-            case '占い師':
-                actionArea.innerHTML = `
-                    <p>誰を占いますか？</p>
-                    ${gameState.players.map(player => 
-                        player.id !== currentPlayer.id ? 
-                        `<button onclick="window.performAction('占い師', '${player.id}')">占う: ${player.name}</button>` : 
-                        ''
-                    ).join('')}
-                    <button onclick="window.performAction('占い師', 'graveyard')">墓地を占う</button>
-                `;
-                break;
-            case '怪盗':
-                actionArea.innerHTML = `
-                    <p>誰と役職を交換しますか？</p>
-                    ${gameState.players.map(player => 
-                        player.id !== currentPlayer.id ? 
-                        `<button onclick="window.performAction('怪盗', '${player.id}')">交換: ${player.name}</button>` : 
-                        ''
-                    ).join('')}
-                    <button onclick="window.performAction('怪盗', null)">交換しない</button>
-                `;
-                break;
-            case '人狼':
-                actionArea.innerHTML = `<button onclick="window.performAction('人狼', null)">他の人狼を確認</button>`;
-                break;
-        }
-    } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
+    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師") {
+        actionArea.innerHTML = `
+            <p>誰を占いますか？</p>
+            ${gameState.players.map(player => 
+                player.id !== currentPlayer.id ? 
+                `<button onclick="window.executeAction('占い師', '${player.id}')">占う: ${player.name}</button>` : 
+                ''
+            ).join('')}
+            <button onclick="window.executeAction('占い師', 'graveyard')">墓地を占う</button>
+        `;
+    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼") {
+        actionArea.innerHTML = `<button onclick="window.executeAction('人狼', null)">他の人狼を確認</button>`;
+    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗") {
+        actionArea.innerHTML = `
+            <p>誰と役職を交換しますか？</p>
+            ${gameState.players.map(player => 
+                player.id !== currentPlayer.id ? 
+                `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>` : 
+                ''
+            ).join('')}
+            <button onclick="window.executeAction('怪盗', null)">交換しない</button>
+        `;
+  } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰に投票しますか？</p>
             ${gameState.players.map(player => 
@@ -123,6 +115,10 @@ function updateActionArea() {
                 ''
             ).join('')}
         `;
+    } else if (gameState.phase === "結果") {
+        actionArea.innerHTML = `<p>ゲーム結果: ${gameState.result}</p>`;
+    } else {
+        actionArea.innerHTML = `<p>現在のフェーズ: ${gameState.phase}</p>`;
     }
 }
 
@@ -135,5 +131,23 @@ export function showActionResult(result) {
 
 // グローバルスコープで関数を利用可能にする
 window.updateUI = updateUI;
-window.performAction = performAction;
+window.executeAction = executeAction;
 window.vote = vote;
+
+function executeAction(action, target) {
+    const result = performAction(action, target);
+    showActionResult(result);
+    updateUI();
+}
+
+function vote(targetId) {
+    // 投票処理をここに実装
+    // 例: gameState.votes[currentPlayer.id] = targetId;
+    // sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+    updateUI();
+}
+
+// 初期UIの更新
+document.addEventListener('DOMContentLoaded', () => {
+    updateUI();
+});
