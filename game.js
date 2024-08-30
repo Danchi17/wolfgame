@@ -1,7 +1,7 @@
 import { setupConnection, sendToAll } from './network.js';
 import { updateUI } from './ui.js';
 
-const peer = new Peer();
+let peer;
 let gameState = {
     players: [],
     phase: "待機中",
@@ -17,15 +17,47 @@ export let isHost = false;
 
 const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "議論", "投票", "結果"];
 
-peer.on('open', id => {
-    console.log('My peer ID is: ' + id);
+// Peer.jsの初期化を関数化
+function initializePeer() {
+    return new Promise((resolve, reject) => {
+        peer = new Peer({
+            host: 'yourpeerserver.com', // PeerServerのホスト名
+            port: 443, // HTTPSの場合は443
+            path: '/peerjs', // PeerServerのパス
+            secure: true // HTTPSの場合はtrue
+        });
+
+        peer.on('open', id => {
+            console.log('My peer ID is: ' + id);
+            resolve(id);
+        });
+
+        peer.on('error', error => {
+            console.error('Peer connection error:', error);
+            reject(error);
+        });
+    });
+}
+
+// ページロード時にPeer.jsを初期化
+window.addEventListener('load', async () => {
+    try {
+        await initializePeer();
+        // Peer.jsの初期化が成功したら、UIの準備を行う
+        setupUI();
+    } catch (error) {
+        console.error('Failed to initialize Peer.js:', error);
+        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。');
+    }
 });
 
-document.getElementById('createGame').addEventListener('click', createGame);
-document.getElementById('joinGame').addEventListener('click', joinGame);
-document.getElementById('startGame').addEventListener('click', startGame);
-document.getElementById('nextPhase').addEventListener('click', nextPhase);
-document.getElementById('resetGame').addEventListener('click', resetGame);
+function setupUI() {
+    document.getElementById('createGame').addEventListener('click', createGame);
+    document.getElementById('joinGame').addEventListener('click', joinGame);
+    document.getElementById('startGame').addEventListener('click', startGame);
+    document.getElementById('nextPhase').addEventListener('click', nextPhase);
+    document.getElementById('resetGame').addEventListener('click', resetGame);
+}
 
 function createGame() {
     const playerName = document.getElementById('playerName').value;
@@ -52,8 +84,10 @@ function joinGame() {
         isHost = false;
         const conn = peer.connect(gameId);
         setupConnection(conn);
-        sendToAll({ type: 'playerJoined', player: currentPlayer });
-        updateUI();
+        conn.on('open', () => {
+            sendToAll({ type: 'playerJoined', player: currentPlayer });
+            updateUI();
+        });
     }
 }
 
@@ -81,7 +115,7 @@ function startGame() {
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
     const graveyardRoles = shuffledRoles.slice(gameState.players.length);
-    
+
     updateGameState(prevState => ({
         ...prevState,
         players: prevState.players.map((player, index) => ({
