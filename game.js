@@ -1,9 +1,7 @@
-import { setupConnection, handleReceivedData, sendToAll } from './network.js';
+import { setupConnection, sendToAll } from './network.js';
 import { updateUI } from './ui.js';
-import { handleAction, vote, handleVote, calculateResults } from './actions.js';
 
 const peer = new Peer();
-let connections = [];
 let gameState = {
     players: [],
     phase: "待機中",
@@ -14,8 +12,8 @@ let gameState = {
     votes: {},
     result: ""
 };
-let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
-let isHost = false;
+export let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
+export let isHost = false;
 
 const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
@@ -55,20 +53,36 @@ peer.on('connection', conn => {
     setupConnection(conn);
 });
 
+export function updateGameState(updater) {
+    if (typeof updater === 'function') {
+        gameState = updater(gameState);
+    } else {
+        gameState = updater;
+    }
+    return gameState;
+}
+
 function startGame() {
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
-    gameState.players.forEach((player, index) => {
-        gameState.assignedRoles[player.id] = shuffledRoles[index];
-        if (player.id === currentPlayer.id) {
-            currentPlayer.role = shuffledRoles[index];
-            currentPlayer.originalRole = shuffledRoles[index];
-        }
-    });
-    gameState.graveyard = shuffledRoles.slice(4);
-    gameState.phase = '役職確認';
-    gameState.actions = {};
-    gameState.votes = {};
+    updateGameState(prevState => ({
+        ...prevState,
+        players: prevState.players.map((player, index) => ({
+            ...player,
+            role: shuffledRoles[index],
+            originalRole: shuffledRoles[index]
+        })),
+        assignedRoles: prevState.players.reduce((acc, player, index) => {
+            acc[player.id] = shuffledRoles[index];
+            return acc;
+        }, {}),
+        graveyard: shuffledRoles.slice(4),
+        phase: '役職確認',
+        actions: {},
+        votes: {}
+    }));
+    currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
+    currentPlayer.originalRole = currentPlayer.role;
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
@@ -76,14 +90,17 @@ function startGame() {
 function nextPhase() {
     const currentIndex = phases.indexOf(gameState.phase);
     if (currentIndex < phases.length - 1) {
-        gameState.phase = phases[currentIndex + 1];
+        updateGameState(prevState => ({
+            ...prevState,
+            phase: phases[currentIndex + 1]
+        }));
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
     }
 }
 
 function resetGame() {
-    gameState = {
+    updateGameState({
         players: gameState.players.map(p => ({ ...p, role: "", originalRole: "" })),
         phase: "待機中",
         roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
@@ -92,7 +109,7 @@ function resetGame() {
         actions: {},
         votes: {},
         result: ""
-    };
+    });
     currentPlayer.role = "";
     currentPlayer.originalRole = "";
     sendToAll({ type: 'gameState', state: gameState });
@@ -107,4 +124,4 @@ function shuffleArray(array) {
     return array;
 }
 
-export { gameState, currentPlayer, isHost, connections, peer, startGame, nextPhase, resetGame, sendToAll };
+export { gameState, peer, startGame, nextPhase, resetGame };
