@@ -1,4 +1,4 @@
-import { updateGameState, currentPlayer, isHost } from './game.js';
+import { updateGameState, currentPlayer, isHost, peer } from './game.js';
 import { updateUI } from './ui.js';
 import { handleAction, handleVote } from './actions.js';
 
@@ -7,20 +7,24 @@ let connections = [];
 export function setupConnection(conn) {
     connections.push(conn);
     conn.on('open', () => {
+        console.log('Connection opened');
         conn.on('data', data => {
+            console.log('Received data:', data);
             handleReceivedData(data);
         });
-        sendToAll({ type: 'playerJoined', player: currentPlayer });
+    });
+    conn.on('error', (error) => {
+        console.error('Connection error:', error);
     });
 }
 
 export function handleReceivedData(data) {
-    console.log('Received data:', data);
+    console.log('Handling received data:', data);
     switch (data.type) {
         case 'playerJoined':
+            console.log('Player joined:', data.player);
             updateGameState(prevState => {
                 if (!prevState.players.some(p => p.id === data.player.id)) {
-                    console.log('Player joined:', data.player);
                     return {
                         ...prevState,
                         players: [...prevState.players, data.player]
@@ -33,6 +37,7 @@ export function handleReceivedData(data) {
             }
             break;
         case 'gameState':
+            console.log('Received game state:', data.state);
             updateGameState(data.state);
             break;
         case 'startGame':
@@ -61,5 +66,18 @@ export function handleReceivedData(data) {
 
 export function sendToAll(data) {
     console.log('Sending to all:', data);
-    connections.forEach(conn => conn.send(data));
+    connections.forEach(conn => {
+        if (conn.open) {
+            conn.send(data);
+        } else {
+            console.warn('Attempted to send data to a closed connection');
+        }
+    });
+}
+
+export function setupConnectionListener() {
+    peer.on('connection', (conn) => {
+        console.log('New connection received');
+        setupConnection(conn);
+    });
 }
