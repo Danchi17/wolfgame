@@ -2,10 +2,10 @@ import { gameState, currentPlayer, isHost } from './game.js';
 import { performAction, vote } from './actions.js';
 
 export function updateUI() {
-
     console.log('updateUI called');
-console.log('setupArea:', document.getElementById('setupArea'));
-console.log('gameArea:', document.getElementById('gameArea'));console.log("Updating UI. Current game phase:", gameState.phase);
+    console.log('setupArea:', document.getElementById('setupArea'));
+    console.log('gameArea:', document.getElementById('gameArea'));
+    console.log("Updating UI. Current game phase:", gameState.phase);
     console.log("Current game state:", gameState);
     console.log("Is host:", isHost);
     console.log("Current player:", currentPlayer);
@@ -106,5 +106,6 @@ export function showActionResult(result) {
 }
 
 // グローバルスコープで関数を利用可能にする
+window.updateUI = updateUI;
 window.performAction = performAction;
 window.vote = vote;
