@@ -21,10 +21,7 @@ const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "�
 function initializePeer() {
     return new Promise((resolve, reject) => {
         peer = new Peer({
-            host: 'yourpeerserver.com', // PeerServerのホスト名
-            port: 443, // HTTPSの場合は443
-            path: '/peerjs', // PeerServerのパス
-            secure: true // HTTPSの場合はtrue
+            // PeerServerの設定を削除し、デフォルトの無料サーバーを使用
         });
 
         peer.on('open', id => {
@@ -61,7 +58,7 @@ function setupUI() {
 
 function createGame() {
     const playerName = document.getElementById('playerName').value;
-    if (playerName) {
+    if (playerName && peer && peer.id) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         isHost = true;
         updateGameState(prevState => ({
@@ -73,13 +70,15 @@ function createGame() {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
+    } else {
+        alert('プレイヤー名を入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
     }
 }
 
 function joinGame() {
     const gameId = document.getElementById('gameId').value;
     const playerName = document.getElementById('playerName').value;
-    if (gameId && playerName) {
+    if (gameId && playerName && peer && peer.id) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         isHost = false;
         const conn = peer.connect(gameId);
@@ -88,12 +87,15 @@ function joinGame() {
             sendToAll({ type: 'playerJoined', player: currentPlayer });
             updateUI();
         });
+    } else {
+        alert('プレイヤー名とゲームIDを入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
     }
 }
 
-peer.on('connection', conn => {
-    setupConnection(conn);
-});
+// この行を削除
+// peer.on('connection', conn => {
+//     setupConnection(conn);
+// });
 
 export function updateGameState(updater) {
     if (typeof updater === 'function') {
