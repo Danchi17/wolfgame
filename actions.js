@@ -3,7 +3,25 @@ import { sendToAll } from './network.js';
 import { updateUI } from './ui.js';
 
 export function performAction(role, target) {
+    if (gameState.actions[currentPlayer.id]) {
+        return '既にアクションを実行しています。';
+    }
+
     const action = { role, target };
+    let result = '';
+
+    switch (role) {
+        case '占い師':
+            result = handleSeerAction(target);
+            break;
+        case '怪盗':
+            result = handleThiefAction(target);
+            break;
+        case '人狼':
+            result = handleWerewolfAction();
+            break;
+    }
+
     updateGameState(prevState => ({
         ...prevState,
         actions: {
@@ -11,52 +29,55 @@ export function performAction(role, target) {
             [currentPlayer.id]: action
         }
     }));
+
     sendToAll({ type: 'action', action, playerId: currentPlayer.id });
     document.getElementById('actionArea').innerHTML = '<p>アクションを実行しました。</p>';
+    return result;
+}
+
+function handleSeerAction(target) {
+    if (target === 'graveyard') {
+        return `墓地の役職: ${gameState.graveyard.join(', ')}`;
+    } else {
+        const targetRole = gameState.assignedRoles[target];
+        const targetPlayer = gameState.players.find(p => p.id === target);
+        return `${targetPlayer.name}の役職: ${targetRole}`;
+    }
+}
+
+function handleThiefAction(target) {
+    if (target) {
+        const thiefRole = gameState.assignedRoles[currentPlayer.id];
+        const targetRole = gameState.assignedRoles[target];
+        const targetPlayer = gameState.players.find(p => p.id === target);
+
+        updateGameState(prevState => ({
+            ...prevState,
+            assignedRoles: {
+                ...prevState.assignedRoles,
+                [currentPlayer.id]: targetRole,
+                [target]: thiefRole
+            }
+        }));
+
+        currentPlayer.role = targetRole;
+        return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
+    } else {
+        return '役職の交換をしませんでした。';
+    }
+}
+
+function handleWerewolfAction() {
+    const otherWerewolf = gameState.players.find(p => 
+        p.id !== currentPlayer.id && gameState.assignedRoles[p.id] === '人狼'
+    );
+    return otherWerewolf ? 
+        `他の人狼は ${otherWerewolf.name} です。` : 
+        'あなたは唯一の人狼です。';
 }
 
 export function handleAction(action, playerId) {
-    let result = '';
-    const player = gameState.players.find(p => p.id === playerId);
-    switch (action.role) {
-        case '占い師':
-            if (action.target === 'graveyard') {
-                result = `墓地の役職: ${gameState.graveyard.join(', ')}`;
-            } else {
-                const targetRole = gameState.assignedRoles[action.target];
-                const targetPlayer = gameState.players.find(p => p.id === action.target);
-                result = `${targetPlayer.name}の役職: ${targetRole}`;
-            }
-            break;
-        case '怪盗':
-            if (action.target) {
-                const thiefRole = gameState.assignedRoles[playerId];
-                const targetRole = gameState.assignedRoles[action.target];
-                updateGameState(prevState => ({
-                    ...prevState,
-                    assignedRoles: {
-                        ...prevState.assignedRoles,
-                        [playerId]: targetRole,
-                        [action.target]: thiefRole
-                    }
-                }));
-                if (playerId === currentPlayer.id) {
-                    currentPlayer.role = targetRole;
-                }
-                result = `あなたの新しい役職: ${targetRole}`;
-            } else {
-                result = '役職を交換しませんでした。';
-            }
-            break;
-        case '人狼':
-            const otherWerewolf = gameState.players.find(p => 
-                p.id !== playerId && gameState.assignedRoles[p.id] === '人狼'
-            );
-            result = otherWerewolf ? 
-                `他の人狼は ${otherWerewolf.name} です。` : 
-                'あなたは唯一の人狼です。';
-            break;
-    }
+    const result = performAction(action.role, action.target);
     sendToAll({ type: 'actionResult', result, playerId });
 }
 
