@@ -1,3 +1,4 @@
+export { handleAction, handleVote, calculateResults };
 import { gameState, currentPlayer, updateGameState } from './game.js';
 import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
