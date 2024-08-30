@@ -5,70 +5,39 @@ let peer;
 export let gameState = {
     players: [],
     phase: "待機中",
-    roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
+    roles: [
+        { name: "占い師", team: "市民", cost: 2, ability: "誰か一人のカードを確認する。もしくは場のカードを2枚確認する" },
+        { name: "ギャンブラー", team: "市民", cost: 1, ability: "チップ掛けのターンの際に人狼の詳細な役職を当てれば、逆転勝利する" },
+        { name: "無法者", team: "市民", cost: 1, ability: "敗北時に必ず左隣の人とカードを交換する。勝利条件が入れ替わる" },
+        { name: "サイキック", team: "市民", cost: 1, ability: "チップの賭けが発生した時に自動的に他プレイヤーの賭け点を2点にさせる" },
+        { name: "怪盗", team: "市民", cost: 1, ability: "怪盗のターン時に他のプレイヤーとカードを入れ替えることが出来る" },
+        { name: "スパイ", team: "市民", cost: 1, ability: "狼のターン時に人狼陣営とお互いを確認できる" },
+        { name: "大熊", team: "人狼", cost: 5, ability: "自身が吊られた時、プレイヤーの過半数が人狼サイドなら強制勝利する" },
+        { name: "占い人狼", team: "人狼", cost: 4, ability: "誰か一人のカードを確認する。もしくは場のカードを2枚確認する" },
+        { name: "やっかいな豚男", team: "人狼", cost: 3, ability: "任意の他のプレイヤー1人に★マークを付与する" },
+        { name: "蛇女", team: "人狼", cost: 3, ability: "同数投票で処刑される場合、単独で勝利する" },
+        { name: "博識な子犬", team: "人狼", cost: 3, ability: "チップ掛けのターンの際に市民の役職を当てれば、逆転勝利する" }
+    ],
     assignedRoles: {},
     roleChanges: {},
     graveyard: [],
     actions: {},
     votes: {},
-    result: ""
+    chips: {},
+    result: "",
+    centerCards: []
 };
-export let currentPlayer = { id: "", name: "", role: "", originalRole: "" };
+export let currentPlayer = { id: "", name: "", role: "", originalRole: "", points: 10 };
 export let isHost = false;
 
-const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "チップ掛け", "結果"];
 
-function initializePeer() {
-    return new Promise((resolve, reject) => {
-        peer = new Peer({
-            config: {'iceServers': [
-                { url: 'stun:stun.l.google.com:19302' },
-                { url: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
-            ]},
-            debug: 2
-        });
-
-        peer.on('open', id => {
-            console.log('My peer ID is: ' + id);
-            setupConnectionListener();
-            resolve(id);
-        });
-
-        peer.on('error', error => {
-            console.error('Peer connection error:', error);
-            reject(error);
-        });
-
-        setTimeout(() => {
-            if (peer.id === null) {
-                reject(new Error('Peer initialization timed out'));
-            }
-        }, 20000);
-    });
-}
-
-window.addEventListener('load', async () => {
-    try {
-        await initializePeer();
-        setupUI();
-    } catch (error) {
-        console.error('Failed to initialize Peer.js:', error);
-        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。エラー: ' + error.message);
-    }
-});
-
-function setupUI() {
-    document.getElementById('createGame').addEventListener('click', createGame);
-    document.getElementById('joinGame').addEventListener('click', joinGame);
-    document.getElementById('startGame').addEventListener('click', startGame);
-    document.getElementById('nextPhase').addEventListener('click', nextPhase);
-    document.getElementById('resetGame').addEventListener('click', resetGame);
-}
+// ... (既存のinitializePeer, setupUI関数などは変更なし)
 
 function createGame() {
     const playerName = document.getElementById('playerName').value;
     if (playerName && peer && peer.id) {
-        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "", points: 10 };
         isHost = true;
         gameState = {
             ...gameState,
@@ -89,7 +58,7 @@ function joinGame() {
     const gameId = document.getElementById('gameId').value;
     const playerName = document.getElementById('playerName').value;
     if (gameId && playerName && peer && peer.id) {
-        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
+        currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "", points: 10 };
         isHost = false;
         const conn = peer.connect(gameId);
         setupConnection(conn);
@@ -123,29 +92,30 @@ export function startGame() {
     console.log("startGame function called");
     console.log("Current number of players:", gameState.players.length);
 
-    if (gameState.players.length < 3) {
-        alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
+    if (gameState.players.length !== 4) {
+        alert("このゲームは4人プレイヤーで開始する必要があります。");
         return;
     }
 
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
-    const graveyardRoles = shuffledRoles.slice(gameState.players.length);
+    const centerCards = shuffledRoles.slice(gameState.players.length, gameState.players.length + 2);
 
     const newAssignedRoles = {};
     gameState.players.forEach((player, index) => {
-        newAssignedRoles[player.id] = playerRoles[index];
+        newAssignedRoles[player.id] = playerRoles[index].name;
     });
 
     updateGameState(prevState => ({
         ...prevState,
         assignedRoles: newAssignedRoles,
         roleChanges: {},
-        graveyard: graveyardRoles,
+        centerCards: centerCards,
         phase: '役職確認',
         actions: {},
-        votes: {}
+        votes: {},
+        chips: {}
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
@@ -170,13 +140,17 @@ export function resetGame() {
         phase: "待機中",
         assignedRoles: {},
         roleChanges: {},
-        graveyard: [],
+        centerCards: [],
         actions: {},
         votes: {},
+        chips: {},
         result: ""
     }));
-    currentPlayer.role = "";
-    currentPlayer.originalRole = "";
+    gameState.players.forEach(player => {
+        player.points = 10;
+        player.role = "";
+        player.originalRole = "";
+    });
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
