@@ -16,14 +16,15 @@ export function updateUI() {
     console.log("Is host:", isHost);
     console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
 
-    if (gameState.phase === "待機中") {
-        setupArea.style.display = 'block';
-        gameArea.style.display = 'none';
-        console.log("Displaying setup area");
-    } else {
+    // ゲームが作成されたらすぐにゲームエリアを表示
+    if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
         gameArea.style.display = 'block';
         console.log("Displaying game area");
+    } else {
+        setupArea.style.display = 'block';
+        gameArea.style.display = 'none';
+        console.log("Displaying setup area");
     }
 
     const playerList = document.getElementById('playerList');
@@ -81,7 +82,9 @@ function updateActionArea() {
 
     actionArea.innerHTML = '';
 
-    if (gameState.phase === "役職確認") {
+    if (gameState.phase === "待機中") {
+        actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
+    } else if (gameState.phase === "役職確認") {
         actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
     } else if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
         switch (currentPlayer.originalRole) {
