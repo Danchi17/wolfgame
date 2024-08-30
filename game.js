@@ -2,7 +2,7 @@ import { setupConnection, sendToAll, setupConnectionListener } from './network.j
 import { updateUI } from './ui.js';
 
 let peer;
-let gameState = {
+export let gameState = {
     players: [],
     phase: "待機中",
     roles: ["村人", "村人", "占い師", "怪盗", "人狼", "人狼"],
@@ -112,7 +112,7 @@ export function updateGameState(updater) {
     return gameState;
 }
 
-function startGame() {
+export function startGame() {
     console.log("startGame function called");
     console.log("Current number of players:", gameState.players.length);
 
@@ -149,7 +149,7 @@ function startGame() {
     updateUI();
 }
 
-function nextPhase() {
+export function nextPhase() {
     const currentIndex = phases.indexOf(gameState.phase);
     if (currentIndex < phases.length - 1) {
         updateGameState(prevState => ({
@@ -161,7 +161,7 @@ function nextPhase() {
     }
 }
 
-function resetGame() {
+export function resetGame() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "待機中",
@@ -185,4 +185,4 @@ function shuffleArray(array) {
     return array;
 }
 
-export { gameState, peer, startGame, nextPhase, resetGame };
+export { peer };
