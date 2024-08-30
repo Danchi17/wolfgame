@@ -1,5 +1,5 @@
 import { updateGameState, currentPlayer, isHost, peer } from './game.js';
-import { updateUI } from './ui.js';
+import { updateUI, showActionResult } from './ui.js';
 import { handleAction, handleVote } from './actions.js';
 
 let connections = [];
