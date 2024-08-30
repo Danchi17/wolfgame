@@ -15,6 +15,12 @@ export function updateUI() {
     console.log("Is host:", isHost);
     console.log("Current player:", JSON.stringify(currentPlayer, null, 2));
 
+    // Update currentPlayer's role if it's not set
+    if (currentPlayer.role === "" && gameState.assignedRoles[currentPlayer.id]) {
+        currentPlayer.role = gameState.assignedRoles[currentPlayer.id];
+        currentPlayer.originalRole = currentPlayer.role;
+    }
+
     if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
         gameArea.style.display = 'block';
@@ -33,7 +39,7 @@ export function updateUI() {
             playerDiv.className = 'player';
             let roleToShow = '?';
             if (player.id === currentPlayer.id) {
-                roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
+                roleToShow = currentPlayer.role || '未割り当て';
             } else if (gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
             }
@@ -106,7 +112,7 @@ function updateActionArea() {
             ).join('')}
             <button onclick="window.executeAction('怪盗', null)">交換しない</button>
         `;
-  } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
+    } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰に投票しますか？</p>
             ${gameState.players.map(player => 
