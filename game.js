@@ -235,10 +235,10 @@ export function applyResults() {
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 
-    // ゲーム終了条件のチェック
-    if (gameState.players.some(player => player.points <= 0)) {
+    // 5秒後にゲーム終了処理を行う
+    setTimeout(() => {
         endGame();
-    }
+    }, 5000);
 }
 
 export function usePigmanAbility(targetPlayerId) {
