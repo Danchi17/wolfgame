@@ -1,101 +1,62 @@
-import { gameState, currentPlayer, updateGameState } from './game.js';
-import { sendToAll } from './network.js';
-import { updateUI } from './ui.js';
+import { gameState, currentPlayer, isHost } from './game.js';
+import { performAction, vote } from './actions.js';
 
-export function performAction(role, target) {
-    const action = { role, target };
-    updateGameState(prevState => ({
-        ...prevState,
-        actions: {
-            ...prevState.actions,
-            [currentPlayer.id]: action
-        }
-    }));
-    sendToAll({ type: 'action', action, playerId: currentPlayer.id });
-    document.getElementById('actionArea').innerHTML = '<p>アクションを実行しました。</p>';
+export function updateUI() {
+    // ... (既存のコード) ...
+
+    updateActionArea();
 }
 
-export function handleAction(action, playerId) {
-    let result = '';
-    const player = gameState.players.find(p => p.id === playerId);
-    switch (action.role) {
-        case 'seer':
-            if (action.target === 'graveyard') {
-                result = `墓地の役職: ${gameState.graveyard[0]}`;
-            } else {
-                const targetRole = gameState.assignedRoles[action.target];
-                const targetPlayer = gameState.players.find(p => p.id === action.target);
-                result = `${targetPlayer.name}の役職: ${targetRole}`;
-            }
-            break;
-        case 'thief':
-            if (action.target) {
-                const thiefRole = gameState.assignedRoles[playerId];
-                const targetRole = gameState.assignedRoles[action.target];
-                updateGameState(prevState => ({
-                    ...prevState,
-                    assignedRoles: {
-                        ...prevState.assignedRoles,
-                        [playerId]: targetRole,
-                        [action.target]: thiefRole
-                    }
-                }));
-                if (playerId === currentPlayer.id) {
-                    currentPlayer.role = targetRole;
-                }
-                result = `あなたの新しい役職: ${targetRole}`;
-            } else {
-                result = '役職を交換しませんでした。';
-            }
-            break;
-        case 'werewolf':
-            result = '人狼の確認を行いました。';
-            break;
-    }
-    sendToAll({ type: 'actionResult', result, playerId });
-}
+function updateActionArea() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML = '';
 
-export function vote(targetId) {
-    updateGameState(prevState => ({
-        ...prevState,
-        votes: {
-            ...prevState.votes,
-            [currentPlayer.id]: targetId
+    if (gameState.phase === "役職確認") {
+        actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
+    } else if (gameState.phase === currentPlayer.originalRole && !gameState.actions[currentPlayer.id]) {
+        switch (currentPlayer.originalRole) {
+            case '占い師':
+                actionArea.innerHTML = `
+                    <p>誰を占いますか？</p>
+                    ${gameState.players.map(player => 
+                        player.id !== currentPlayer.id ? 
+                        `<button onclick="window.performAction('占い師', '${player.id}')">占う: ${player.name}</button>` : 
+                        ''
+                    ).join('')}
+                    <button onclick="window.performAction('占い師', 'graveyard')">墓地を占う</button>
+                `;
+                break;
+            case '怪盗':
+                actionArea.innerHTML = `
+                    <p>誰と役職を交換しますか？</p>
+                    ${gameState.players.map(player => 
+                        player.id !== currentPlayer.id ? 
+                        `<button onclick="window.performAction('怪盗', '${player.id}')">交換: ${player.name}</button>` : 
+                        ''
+                    ).join('')}
+                    <button onclick="window.performAction('怪盗', null)">交換しない</button>
+                `;
+                break;
+            case '人狼':
+                actionArea.innerHTML = `<button onclick="window.performAction('人狼', null)">他の人狼を確認</button>`;
+                break;
         }
-    }));
-    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
-    document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
-}
-
-export function handleVote(voterId, targetId) {
-    updateGameState(prevState => ({
-        ...prevState,
-        votes: {
-            ...prevState.votes,
-            [voterId]: targetId
-        }
-    }));
-    if (Object.keys(gameState.votes).length === gameState.players.length) {
-        calculateResults();
+    } else if (gameState.phase === "投票" && !gameState.votes[currentPlayer.id]) {
+        actionArea.innerHTML = `
+            <p>誰に投票しますか？</p>
+            ${gameState.players.map(player => 
+                player.id !== currentPlayer.id ? 
+                `<button onclick="window.vote('${player.id}')">投票: ${player.name}</button>` : 
+                ''
+            ).join('')}
+        `;
     }
 }
 
-export function calculateResults() {
-    const voteCount = {};
-    for (const targetId of Object.values(gameState.votes)) {
-        voteCount[targetId] = (voteCount[targetId] || 0) + 1;
-    }
-    const maxVotes = Math.max(...Object.values(voteCount));
-    const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
-
-    const werewolfExecuted = executedPlayers.some(id => gameState.assignedRoles[id] === '人狼');
-    const result = werewolfExecuted ? "村人陣営の勝利！" : "人狼陣営の勝利！";
-
-    updateGameState(prevState => ({
-        ...prevState,
-        phase: "結果",
-        result: result
-    }));
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
+export function showActionResult(result) {
+    document.getElementById('actionResult').textContent = result;
 }
+
+// グローバルスコープで関数を利用可能にする
+window.performAction = performAction;
+window.vote = vote;
