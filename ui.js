@@ -2,8 +2,21 @@ import { gameState, currentPlayer, isHost } from './game.js';
 import { performAction, vote } from './actions.js';
 
 export function updateUI() {
-    document.getElementById('setupArea').style.display = gameState.phase === "待機中" ? 'block' : 'none';
-    document.getElementById('gameArea').style.display = gameState.phase !== "待機中" ? 'block' : 'none';
+    console.log("Updating UI. Current game phase:", gameState.phase);
+    console.log("Current game state:", gameState);
+
+    const setupArea = document.getElementById('setupArea');
+    const gameArea = document.getElementById('gameArea');
+
+    if (gameState.phase === "待機中") {
+        setupArea.style.display = 'block';
+        gameArea.style.display = 'none';
+        console.log("Displaying setup area");
+    } else {
+        setupArea.style.display = 'none';
+        gameArea.style.display = 'block';
+        console.log("Displaying game area");
+    }
 
     const playerList = document.getElementById('playerList');
     playerList.innerHTML = '';
@@ -24,7 +37,11 @@ export function updateUI() {
     if (gameState.phase === "結果") {
         document.getElementById('gameInfo').textContent += ` - ${gameState.result}`;
     }
-    document.getElementById('startGame').style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
+
+    const startGameButton = document.getElementById('startGame');
+    startGameButton.style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
+    console.log("Start game button display:", startGameButton.style.display);
+
     document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
     document.getElementById('resetGame').style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
 
