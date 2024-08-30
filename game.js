@@ -1,4 +1,4 @@
-import { setupConnection, sendToAll } from './network.js';
+import { setupConnection, sendToAll, setupConnectionListener } from './network.js';
 import { updateUI } from './ui.js';
 
 let peer;
@@ -17,15 +17,13 @@ export let isHost = false;
 
 const phases = ["待機中", "役職確認", "占い師", "怪盗", "人狼", "議論", "投票", "結果"];
 
-// Peer.jsの初期化を関数化
 function initializePeer() {
     return new Promise((resolve, reject) => {
-        peer = new Peer({
-            // PeerServerの設定を削除し、デフォルトの無料サーバーを使用
-        });
+        peer = new Peer();
 
         peer.on('open', id => {
             console.log('My peer ID is: ' + id);
+            setupConnectionListener();
             resolve(id);
         });
 
@@ -36,11 +34,9 @@ function initializePeer() {
     });
 }
 
-// ページロード時にPeer.jsを初期化
 window.addEventListener('load', async () => {
     try {
         await initializePeer();
-        // Peer.jsの初期化が成功したら、UIの準備を行う
         setupUI();
     } catch (error) {
         console.error('Failed to initialize Peer.js:', error);
@@ -91,11 +87,6 @@ function joinGame() {
         alert('プレイヤー名とゲームIDを入力してください。また、ネットワーク接続が初期化されていることを確認してください。');
     }
 }
-
-// この行を削除
-// peer.on('connection', conn => {
-//     setupConnection(conn);
-// });
 
 export function updateGameState(updater) {
     if (typeof updater === 'function') {
