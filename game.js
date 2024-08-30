@@ -186,10 +186,6 @@ function shuffleArray(array) {
 }
 
 export function performAction(action, target) {
-    if (gameState.actions[currentPlayer.id]) {
-        return "あなたはすでにアクションを実行しています。";
-    }
-
     let result = '';
     switch (action) {
         case '占い師':
