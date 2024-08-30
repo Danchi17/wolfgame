@@ -107,4 +107,4 @@ function shuffleArray(array) {
     return array;
 }
 
-export { gameState, currentPlayer, isHost, connections, peer, startGame, nextPhase, resetGame };
+export { gameState, currentPlayer, isHost, connections, peer, startGame, nextPhase, resetGame, sendToAll };
