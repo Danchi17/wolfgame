@@ -1,5 +1,5 @@
 import { gameState, currentPlayer, updateGameState } from './game.js';
-import { sendToAll } from './network.js';
+import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
 
 export function performAction(role, target) {
@@ -31,7 +31,8 @@ export function performAction(role, target) {
     }));
 
     sendToAll({ type: 'action', action, playerId: currentPlayer.id });
-    document.getElementById('actionArea').innerHTML = '<p>アクションを実行しました。</p>';
+    sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
+
     return result;
 }
 
@@ -68,17 +69,18 @@ function handleThiefAction(target) {
 }
 
 function handleWerewolfAction() {
-    const otherWerewolf = gameState.players.find(p => 
+    const otherWerewolves = gameState.players.filter(p => 
         p.id !== currentPlayer.id && gameState.assignedRoles[p.id] === '人狼'
     );
-    return otherWerewolf ? 
-        `他の人狼は ${otherWerewolf.name} です。` : 
+    return otherWerewolves.length > 0 ? 
+        `他の人狼: ${otherWerewolves.map(p => p.name).join(', ')}` : 
         'あなたは唯一の人狼です。';
 }
 
 export function handleAction(action, playerId) {
+    const player = gameState.players.find(p => p.id === playerId);
     const result = performAction(action.role, action.target);
-    sendToAll({ type: 'actionResult', result, playerId });
+    sendToPlayer(playerId, { type: 'actionResult', result, playerId });
 }
 
 export function vote(targetId) {
