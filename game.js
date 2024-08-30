@@ -166,29 +166,6 @@ export function nextPhase() {
     }
 }
 
-export function resetGame() {
-    updateGameState(prevState => ({
-        ...prevState,
-        phase: "待機中",
-        assignedRoles: {},
-        roleChanges: {},
-        centerCards: [],
-        actions: {},
-        votes: {},
-        chips: {},
-        result: "",
-        pigmanMark: null,
-        pigmanMarkTimeout: null
-    }));
-    gameState.players.forEach(player => {
-        player.points = 10;
-        player.role = "";
-        player.originalRole = "";
-    });
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
-}
-
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -205,7 +182,7 @@ export function applyResults() {
         players: prevState.players.map(player => {
             const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
             if (role && role.team === losingTeam) {
-                return {...player, points: Math.max(0, player.points - role.cost)};
+                return {...player, points: player.points - role.cost};
             }
             return player;
         })
@@ -235,10 +212,71 @@ export function applyResults() {
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 
-    // 5秒後にゲーム終了処理を行う
-    setTimeout(() => {
-        endGame();
-    }, 5000);
+    // ゲーム終了条件のチェック
+    if (checkGameEnd()) {
+        finalizeGame();
+    } else {
+        // 新しいゲームラウンドを開始
+        startNewRound();
+    }
+}
+
+function checkGameEnd() {
+    return gameState.players.some(player => player.points <= 0);
+}
+
+function finalizeGame() {
+    const winner = gameState.players.reduce((prev, current) => (prev.points > current.points) ? prev : current);
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "ゲーム終了",
+        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+function startNewRound() {
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "待機中",
+        assignedRoles: {},
+        roleChanges: {},
+        centerCards: [],
+        actions: {},
+        votes: {},
+        chips: {},
+        result: "",
+        pigmanMark: null,
+        pigmanMarkTimeout: null
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+export function resetGame() {
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "待機中",
+        assignedRoles: {},
+        roleChanges: {},
+        centerCards: [],
+        actions: {},
+        votes: {},
+        chips: {},
+        result: "",
+        pigmanMark: null,
+        pigmanMarkTimeout: null
+    }));
+    gameState.players.forEach(player => {
+        player.points = 10;
+        player.role = "";
+        player.originalRole = "";
+    });
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
 }
 
 export function usePigmanAbility(targetPlayerId) {
@@ -266,24 +304,6 @@ export function usePigmanAbility(targetPlayerId) {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
     }, 60000);
-}
-
-function endGame() {
-    const winner = gameState.players.reduce((prev, current) => (prev.points > current.points) ? prev : current);
-    updateGameState(prevState => ({
-        ...prevState,
-        phase: "ゲーム終了",
-        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`
-    }));
-
-    // 全プレイヤーの持ち点を10点に戻す
-    updateGameState(prevState => ({
-        ...prevState,
-        players: prevState.players.map(player => ({...player, points: 10}))
-    }));
-
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
 }
 
 // UI更新のためのイベントリスナーを設定
