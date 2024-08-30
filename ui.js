@@ -5,6 +5,7 @@ export function updateUI() {
     console.log("Updating UI. Current game phase:", gameState.phase);
     console.log("Current game state:", gameState);
     console.log("Is host:", isHost);
+    console.log("Current player:", currentPlayer);
 
     const setupArea = document.getElementById('setupArea');
     const gameArea = document.getElementById('gameArea');
