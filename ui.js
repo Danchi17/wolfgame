@@ -2,7 +2,31 @@ import { gameState, currentPlayer, isHost } from './game.js';
 import { performAction, vote } from './actions.js';
 
 export function updateUI() {
-    // ... (既存のコード) ...
+    document.getElementById('setupArea').style.display = gameState.phase === "待機中" ? 'block' : 'none';
+    document.getElementById('gameArea').style.display = gameState.phase !== "待機中" ? 'block' : 'none';
+
+    const playerList = document.getElementById('playerList');
+    playerList.innerHTML = '';
+    gameState.players.forEach(player => {
+        const playerDiv = document.createElement('div');
+        playerDiv.className = 'player';
+        let roleToShow = '?';
+        if (gameState.phase === "役職確認" || player.id === currentPlayer.id) {
+            roleToShow = gameState.assignedRoles[player.id];
+        } else if (gameState.phase === "結果") {
+            roleToShow = gameState.assignedRoles[player.id];
+        }
+        playerDiv.textContent = `${player.name}: ${roleToShow}`;
+        playerList.appendChild(playerDiv);
+    });
+
+    document.getElementById('gameInfo').textContent = `ゲームフェーズ: ${gameState.phase}`;
+    if (gameState.phase === "結果") {
+        document.getElementById('gameInfo').textContent += ` - ${gameState.result}`;
+    }
+    document.getElementById('startGame').style.display = (isHost && gameState.players.length >= 3 && gameState.phase === "待機中") ? 'inline' : 'none';
+    document.getElementById('nextPhase').style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
+    document.getElementById('resetGame').style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
 
     updateActionArea();
 }
