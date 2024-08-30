@@ -31,8 +31,12 @@ function createGame() {
     const playerName = document.getElementById('playerName').value;
     if (playerName) {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
-        gameState.players.push(currentPlayer);
+        updateGameState(prevState => ({
+            ...prevState,
+            players: [...prevState.players, currentPlayer]
+        }));
         isHost = true;
+        console.log("Game created. Current game state:", gameState);
         updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
     }
