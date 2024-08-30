@@ -37,6 +37,7 @@ function createGame() {
         }));
         isHost = true;
         console.log("Game created. Current game state:", gameState);
+        sendToAll({ type: 'gameState', state: gameState });
         updateUI();
         alert(`ゲームID: ${peer.id} を他のプレイヤーに共有してください。`);
     }
@@ -49,6 +50,7 @@ function joinGame() {
         currentPlayer = { id: peer.id, name: playerName, role: "", originalRole: "" };
         const conn = peer.connect(gameId);
         setupConnection(conn);
+        sendToAll({ type: 'playerJoined', player: currentPlayer });
         updateUI();
     }
 }
@@ -63,10 +65,15 @@ export function updateGameState(updater) {
     } else {
         gameState = updater;
     }
+    console.log("Game state updated:", gameState);
     return gameState;
 }
 
 function startGame() {
+    if (gameState.players.length < 3) {
+        alert("ゲームを開始するには最低3人のプレイヤーが必要です。");
+        return;
+    }
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
