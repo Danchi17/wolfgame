@@ -1,5 +1,5 @@
 import { gameState, currentPlayer, updateGameState } from './game.js';
-import { sendToAll, sendToPlayer } from './network.js';
+import { sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
 
 export function performAction(role, target) {
@@ -30,7 +30,6 @@ export function performAction(role, target) {
         }
     }));
 
-    sendToAll({ type: 'action', action, playerId: currentPlayer.id });
     sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
 
     return result;
@@ -62,6 +61,7 @@ function handleThiefAction(target) {
         }));
 
         currentPlayer.role = targetRole;
+        currentPlayer.originalRole = "怪盗";
         return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
     } else {
         return '役職の交換をしませんでした。';
@@ -91,7 +91,7 @@ export function vote(targetId) {
             [currentPlayer.id]: targetId
         }
     }));
-    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+    sendToPlayer(currentPlayer.id, { type: 'vote', voterId: currentPlayer.id, targetId: targetId });
     document.getElementById('actionArea').innerHTML = '<p>投票しました。</p>';
 }
 
@@ -124,6 +124,6 @@ export function calculateResults() {
         phase: "結果",
         result: result
     }));
-    sendToAll({ type: 'gameState', state: gameState });
+    sendToPlayer(currentPlayer.id, { type: 'gameState', state: gameState });
     updateUI();
 }
