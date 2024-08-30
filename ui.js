@@ -38,15 +38,18 @@ export function updateUI() {
             let roleToShow = '?';
             if (player.id === currentPlayer.id) {
                 if (phases.indexOf(gameState.phase) <= phases.indexOf("役職確認") || gameState.phase === "結果") {
-                    roleToShow = currentPlayer.role || '未割り当て';
-                    if (currentPlayer.originalRole === "怪盗" && currentPlayer.originalRole !== currentPlayer.role) {
-                        roleToShow += ` (元: 怪盗)`;
+                    roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
+                    if (gameState.roleChanges[player.id]) {
+                        roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
                     }
                 } else {
                     roleToShow = '役職確認済み';
                 }
             } else if (gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
+                if (gameState.roleChanges[player.id]) {
+                    roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
+                }
             }
             playerDiv.textContent = `${player.name}: ${roleToShow}`;
             playerList.appendChild(playerDiv);
@@ -91,8 +94,8 @@ function updateActionArea() {
     if (gameState.phase === "待機中") {
         actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
     } else if (gameState.phase === "役職確認") {
-        actionArea.innerHTML = `<p>あなたの役職は ${currentPlayer.role} です。</p>`;
-    } else if (gameState.phase === "占い師" && currentPlayer.role === "占い師" && !gameState.actions[currentPlayer.id]) {
+        actionArea.innerHTML = `<p>あなたの役職は ${gameState.assignedRoles[currentPlayer.id]} です。</p>`;
+    } else if (gameState.phase === "占い師" && gameState.assignedRoles[currentPlayer.id] === "占い師" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰を占いますか？</p>
             ${gameState.players.map(player => 
@@ -102,9 +105,9 @@ function updateActionArea() {
             ).join('')}
             <button onclick="window.executeAction('占い師', 'graveyard')">墓地を占う</button>
         `;
-    } else if (gameState.phase === "人狼" && currentPlayer.role === "人狼" && !gameState.actions[currentPlayer.id]) {
+    } else if (gameState.phase === "人狼" && gameState.assignedRoles[currentPlayer.id] === "人狼" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `<button onclick="window.executeAction('人狼', null)">他の人狼を確認</button>`;
-    } else if (gameState.phase === "怪盗" && currentPlayer.role === "怪盗" && !gameState.actions[currentPlayer.id]) {
+    } else if (gameState.phase === "怪盗" && gameState.assignedRoles[currentPlayer.id] === "怪盗" && !gameState.actions[currentPlayer.id]) {
         actionArea.innerHTML = `
             <p>誰と役職を交換しますか？</p>
             ${gameState.players.map(player => 
@@ -124,9 +127,9 @@ function updateActionArea() {
             ).join('')}
         `;
     } else if (gameState.phase === "結果") {
-        let finalRole = currentPlayer.role;
-        if (currentPlayer.originalRole === "怪盗" && currentPlayer.originalRole !== currentPlayer.role) {
-            finalRole += ` (元: 怪盗)`;
+        let finalRole = gameState.assignedRoles[currentPlayer.id];
+        if (gameState.roleChanges[currentPlayer.id]) {
+            finalRole += ` (元: ${gameState.roleChanges[currentPlayer.id].from})`;
         }
         actionArea.innerHTML = `
             <p>ゲーム結果: ${gameState.result}</p>
