@@ -1,3 +1,7 @@
+import { gameState, currentPlayer, isHost, connections, startGame, nextPhase, resetGame } from './game.js';
+import { updateUI } from './ui.js';
+import { handleAction, handleVote } from './actions.js';
+
 export function setupConnection(conn) {
     connections.push(conn);
     conn.on('open', () => {
@@ -53,15 +57,4 @@ export function handleReceivedData(data) {
 export function sendToAll(data) {
     console.log('Sending to all:', data);
     connections.forEach(conn => conn.send(data));
-}
-
-let gameState, currentPlayer, isHost, connections;
-let startGame, nextPhase, handleAction, showActionResult, handleVote, resetGame, updateUI;
-
-export function initNetwork(state, player, host, conns, functions) {
-    gameState = state;
-    currentPlayer = player;
-    isHost = host;
-    connections = conns;
-    ({ startGame, nextPhase, handleAction, showActionResult, handleVote, resetGame, updateUI } = functions);
 }
