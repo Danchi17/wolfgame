@@ -185,8 +185,7 @@ export function applyResults() {
     console.log("Applying results...");
     const losingTeam = gameState.winningTeam === "市民" ? "人狼" : 
                        gameState.winningTeam === "人狼" ? "市民" : 
-                       gameState.winningTeam === "蛇女" ? "蛇女以外" : 
-                       gameState.winningTeam === "全員" ? "なし" : "なし";
+                       gameState.winningTeam === "蛇女" ? "蛇女以外" : "なし";
     console.log("Losing team:", losingTeam);
 
     let updatedPlayers = gameState.players.map(player => {
@@ -331,7 +330,7 @@ export function resetGame() {
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
         roundNumber: 1,
-       players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
+        players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
     }));
     
     currentPlayer = { ...currentPlayer, points: 10, role: "", originalRole: "" };
@@ -365,102 +364,6 @@ export function usePigmanAbility(targetPlayerId) {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
     }, 60000);
-}
-
-export function checkSpecialVictoryConditions(executedPlayers) {
-    // 大熊の特殊勝利条件
-    const bearPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '大熊');
-    if (bearPlayer && executedPlayers.includes(bearPlayer.id)) {
-        const werewolfCount = gameState.players.filter(p => 
-            ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[p.id])
-        ).length;
-        if (werewolfCount > gameState.players.length / 2) {
-            updateGameState(prevState => ({
-                ...prevState,
-                result: "大熊の特殊勝利条件達成！人狼陣営の勝利！",
-                winningTeam: "人狼"
-            }));
-            return true;
-        }
-    }
-
-    // 蛇女の特殊勝利条件
-    const snakeWomanPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '蛇女');
-    if (snakeWomanPlayer && executedPlayers.length > 1 && executedPlayers.includes(snakeWomanPlayer.id)) {
-        updateGameState(prevState => ({
-            ...prevState,
-            result: "蛇女の特殊勝利条件達成！蛇女の単独勝利！",
-            winningTeam: "蛇女"
-        }));
-        return true;
-    }
-
-    // 全員が右隣に投票した場合の特殊勝利条件
-    const allVotedRight = gameState.players.every((player, index) => {
-        const rightNeighborIndex = (index + 1) % gameState.players.length;
-        return gameState.votes[player.id] === gameState.players[rightNeighborIndex].id;
-    });
-    if (allVotedRight) {
-        updateGameState(prevState => ({
-            ...prevState,
-            result: "全員が右隣に投票しました。特殊勝利条件達成！",
-            winningTeam: "全員"
-        }));
-        return true;
-    }
-
-    return false;
-}
-
-function handleBettingResults(winningTeam) {
-    for (const [playerId, bet] of Object.entries(gameState.chips)) {
-        const player = gameState.players.find(p => p.id === playerId);
-        const playerRole = gameState.assignedRoles[playerId];
-
-        if (playerRole === 'ギャンブラー' && winningTeam === '人狼') {
-            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
-                }));
-                return;
-            } else {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
-                }));
-            }
-        } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
-            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
-                }));
-                return;
-            } else {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
-                }));
-            }
-        }
-    }
-
-    // サイキックの能力を適用
-    const psychic = gameState.players.find(p => gameState.assignedRoles[p.id] === 'サイキック');
-    if (psychic && Object.keys(gameState.chips).length > 0) {
-        updateGameState(prevState => ({
-            ...prevState,
-            players: prevState.players.map(p => {
-                if (p.id !== psychic.id && gameState.chips[p.id]) {
-                    return {...p, points: p.points - 2};
-                }
-                return p;
-            })
-        }));
-    }
 }
 
 // UI更新のためのイベントリスナーを設定
