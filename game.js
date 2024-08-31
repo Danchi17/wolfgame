@@ -1,6 +1,5 @@
 import { setupConnection, sendToAll, setupConnectionListener } from './network.js';
 import { updateUI } from './ui.js';
-import { calculateResults } from './actions.js';
 
 let peer;
 export let gameState = {
@@ -169,11 +168,6 @@ export function nextPhase() {
         }));
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
-
-        // 投票フェーズの後に結果を計算
-        if (phases[currentIndex + 1] === "結果") {
-            calculateResults();
-        }
     }
 }
 
