@@ -65,15 +65,14 @@ export function calculateResults() {
     applyResults();
 }
 
-export function performAction(role, target) {
+export function performAction(action, target) {
     if (gameState.actions[currentPlayer.id]) {
         return '既にアクションを実行しています。';
     }
 
-    const action = { role, target };
     let result = '';
 
-    switch (role) {
+    switch (action) {
         case '占い師':
         case '占い人狼':
             result = handleSeerAction(target);
@@ -83,17 +82,11 @@ export function performAction(role, target) {
             break;
         case '人狼':
         case '大熊':
-            result = handleWerewolfAction();
-            break;
         case 'やっかいな豚男':
-            result = handleTroublesomePigmanAction(target);
-            break;
-        case 'スパイ':
-            result = handleSpyAction();
-            break;
-        case 'ギャンブラー':
+        case '蛇女':
         case '博識な子犬':
-            result = 'チップ掛けのターンでアクションを実行できます。';
+        case 'スパイ':
+            result = handleWerewolfAction(action);
             break;
         default:
             result = '特別なアクションはありません。';
@@ -103,79 +96,95 @@ export function performAction(role, target) {
         ...prevState,
         actions: {
             ...prevState.actions,
-            [currentPlayer.id]: action
+            [currentPlayer.id]: { action, target }
         }
     }));
 
-    sendToPlayer(currentPlayer.id, { type: 'actionResult', result, playerId: currentPlayer.id });
-
+    sendToAll({ type: 'action', playerId: currentPlayer.id, action, target });
     return result;
 }
 
 function handleSeerAction(target) {
     if (target === 'graveyard') {
-        return `墓地の役職: ${gameState.centerCards.map(card => card.name).join(', ')}`;
+        const graveyardRoles = gameState.centerCards.map(card => card.name);
+        return `墓地の役職: ${graveyardRoles.join(', ')}`;
     } else {
         const targetRole = gameState.assignedRoles[target];
         const targetPlayer = gameState.players.find(p => p.id === target);
-        return `${targetPlayer.name}の役職: ${targetRole}`;
+        if (targetPlayer) {
+            return `${targetPlayer.name}の役職: ${targetRole}`;
+        } else {
+            return 'プレイヤーが見つかりません。';
+        }
     }
 }
 
 function handleThiefAction(target) {
-    if (target) {
-        const thiefRole = gameState.assignedRoles[currentPlayer.id];
-        const targetRole = gameState.assignedRoles[target];
-        const targetPlayer = gameState.players.find(p => p.id === target);
+    if (!target) return '役職の交換をしませんでした。';
 
-        updateGameState(prevState => ({
-            ...prevState,
-            assignedRoles: {
-                ...prevState.assignedRoles,
-                [currentPlayer.id]: targetRole,
-                [target]: thiefRole
-            },
-            roleChanges: {
-                ...prevState.roleChanges,
-                [currentPlayer.id]: { from: thiefRole, to: targetRole },
-                [target]: { from: targetRole, to: thiefRole }
-            }
-        }));
+    const thiefRole = gameState.assignedRoles[currentPlayer.id];
+    const targetRole = gameState.assignedRoles[target];
+    const targetPlayer = gameState.players.find(p => p.id === target);
 
-        currentPlayer.role = targetRole;
-        currentPlayer.originalRole = "怪盗";
-        return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
-    } else {
-        return '役職の交換をしませんでした。';
+    if (!targetPlayer) {
+        return 'プレイヤーが見つかりません。';
     }
+
+    updateGameState(prevState => ({
+        ...prevState,
+        assignedRoles: {
+            ...prevState.assignedRoles,
+            [currentPlayer.id]: targetRole,
+            [target]: thiefRole
+        },
+        roleChanges: {
+            ...prevState.roleChanges,
+            [currentPlayer.id]: { from: thiefRole, to: targetRole },
+            [target]: { from: targetRole, to: thiefRole }
+        }
+    }));
+
+    return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
 }
 
-function handleWerewolfAction() {
-    const otherWerewolves = gameState.players.filter(p => 
+function handleWerewolfAction(playerRole) {
+    const werewolfTeam = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬'];
+    let otherWerewolves = gameState.players.filter(p => 
         p.id !== currentPlayer.id && 
-        (gameState.assignedRoles[p.id] === '人狼' || gameState.assignedRoles[p.id] === '大熊' || gameState.assignedRoles[p.id] === '占い人狼')
+        werewolfTeam.includes(gameState.assignedRoles[p.id])
     );
-    return otherWerewolves.length > 0 ? 
-        `他の人狼: ${otherWerewolves.map(p => p.name).join(', ')}` : 
-        'あなたは唯一の人狼です。';
+
+    // スパイの場合、人狼陣営を確認できる
+    if (playerRole === 'スパイ') {
+        otherWerewolves = gameState.players.filter(p => 
+            p.id !== currentPlayer.id && 
+            werewolfTeam.includes(gameState.assignedRoles[p.id])
+        );
+    }
+
+    // 占い人狼は他の人狼を確認できない
+    if (playerRole === '占い人狼') {
+        return 'あなたは占い人狼です。他の人狼を確認することはできません。';
+    }
+
+    if (otherWerewolves.length > 0) {
+        return `他の人狼陣営: ${otherWerewolves.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
+    } else {
+        return 'あなたは唯一の人狼陣営のプレイヤーです。';
+    }
 }
 
 function handleTroublesomePigmanAction(target) {
     const targetPlayer = gameState.players.find(p => p.id === target);
+    if (!targetPlayer) {
+        return 'プレイヤーが見つかりません。';
+    }
     updateGameState(prevState => ({
         ...prevState,
-        troublesomePigmanMark: target
+        pigmanMark: target,
+        pigmanMarkTimeout: Date.now() + 60000 // 1分後
     }));
     return `${targetPlayer.name}に★マークを付与しました。`;
-}
-
-function handleSpyAction() {
-    const werewolves = gameState.players.filter(p => 
-        gameState.assignedRoles[p.id] === '人狼' || 
-        gameState.assignedRoles[p.id] === '大熊' || 
-        gameState.assignedRoles[p.id] === '占い人狼'
-    );
-    return `人狼陣営のプレイヤー: ${werewolves.map(p => p.name).join(', ')}`;
 }
 
 export function vote(targetId) {
@@ -202,7 +211,8 @@ export function placeBet(amount, guessedRole) {
 
 function checkSpecialVictoryConditions(executedPlayers) {
     // 大熊の特殊勝利条件
-    if (executedPlayers.includes(gameState.players.find(p => gameState.assignedRoles[p.id] === '大熊')?.id)) {
+    const bearPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '大熊');
+    if (bearPlayer && executedPlayers.includes(bearPlayer.id)) {
         const werewolfCount = gameState.players.filter(p => 
             ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[p.id])
         ).length;
@@ -219,7 +229,8 @@ function checkSpecialVictoryConditions(executedPlayers) {
     }
 
     // 蛇女の特殊勝利条件
-    if (executedPlayers.length > 1 && executedPlayers.includes(gameState.players.find(p => gameState.assignedRoles[p.id] === '蛇女')?.id)) {
+    const snakeWomanPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '蛇女');
+    if (snakeWomanPlayer && executedPlayers.length > 1 && executedPlayers.includes(snakeWomanPlayer.id)) {
         updateGameState(prevState => ({
             ...prevState,
             phase: "結果",
