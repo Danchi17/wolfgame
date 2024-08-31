@@ -30,23 +30,24 @@ export function calculateResults() {
 
     let result = "";
     let winningTeam = "";
+    let specialVictory = false;
 
     // 特殊勝利条件のチェック
     if (checkSpecialVictoryConditions(executedPlayers)) {
-        return;
-    }
-
-    // 通常の勝利条件
-    const werewolfExecuted = executedPlayers.some(id => 
-        ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[id])
-    );
-
-    if (werewolfExecuted) {
-        result = "人狼が処刑されました。市民陣営の勝利！";
-        winningTeam = "市民";
+        specialVictory = true;
     } else {
-        result = "人狼は生き残りました。人狼陣営の勝利！";
-        winningTeam = "人狼";
+        // 通常の勝利条件
+        const werewolfExecuted = executedPlayers.some(id => 
+            ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[id])
+        );
+
+        if (werewolfExecuted) {
+            result = "人狼が処刑されました。市民陣営の勝利！";
+            winningTeam = "市民";
+        } else {
+            result = "人狼は生き残りました。人狼陣営の勝利！";
+            winningTeam = "人狼";
+        }
     }
 
     // チップ掛けの結果を処理
@@ -55,7 +56,10 @@ export function calculateResults() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "結果",
-        result: result
+        result: result,
+        specialVictory: specialVictory,
+        winningTeam: winningTeam,
+        executedPlayers: executedPlayers
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
@@ -227,11 +231,9 @@ function checkSpecialVictoryConditions(executedPlayers) {
         if (werewolfCount > gameState.players.length / 2) {
             updateGameState(prevState => ({
                 ...prevState,
-                phase: "結果",
-                result: "大熊の特殊勝利条件達成！人狼陣営の勝利！"
+                result: "大熊の特殊勝利条件達成！人狼陣営の勝利！",
+                winningTeam: "人狼"
             }));
-            sendToAll({ type: 'gameState', state: gameState });
-            updateUI();
             return true;
         }
     }
@@ -241,11 +243,9 @@ function checkSpecialVictoryConditions(executedPlayers) {
     if (snakeWomanPlayer && executedPlayers.length > 1 && executedPlayers.includes(snakeWomanPlayer.id)) {
         updateGameState(prevState => ({
             ...prevState,
-            phase: "結果",
-            result: "蛇女の特殊勝利条件達成！蛇女の単独勝利！"
+            result: "蛇女の特殊勝利条件達成！蛇女の単独勝利！",
+            winningTeam: "蛇女"
         }));
-        sendToAll({ type: 'gameState', state: gameState });
-        updateUI();
         return true;
     }
 
@@ -257,11 +257,9 @@ function checkSpecialVictoryConditions(executedPlayers) {
     if (allVotedRight) {
         updateGameState(prevState => ({
             ...prevState,
-            phase: "結果",
-            result: "全員が右隣に投票しました。特殊勝利条件達成！"
+            result: "全員が右隣に投票しました。特殊勝利条件達成！",
+            winningTeam: "全員"
         }));
-        sendToAll({ type: 'gameState', state: gameState });
-        updateUI();
         return true;
     }
 
