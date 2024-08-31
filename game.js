@@ -214,6 +214,12 @@ export function applyResults() {
         }));
     }
 
+    // 現在のプレイヤーの点数を更新
+    const updatedPlayer = gameState.players.find(p => p.id === currentPlayer.id);
+    if (updatedPlayer) {
+        currentPlayer.points = updatedPlayer.points;
+    }
+
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 
