@@ -242,7 +242,7 @@ export function applyResults() {
     }
 }
 
-function waitForNextRound() {
+export function waitForNextRound() {
     const nextRoundButton = document.createElement('button');
     nextRoundButton.textContent = '次のラウンドへ';
     nextRoundButton.onclick = () => {
@@ -255,11 +255,11 @@ function waitForNextRound() {
     document.getElementById('actionArea').appendChild(nextRoundButton);
 }
 
-function checkGameEnd() {
+export function checkGameEnd() {
     return gameState.players.some(player => player.points <= 0);
 }
 
-function finalizeGame() {
+export function finalizeGame() {
     const winner = gameState.players.reduce((prev, current) => (prev.points > current.points) ? prev : current);
     updateGameState(prevState => ({
         ...prevState,
@@ -342,17 +342,18 @@ export function usePigmanAbility(targetPlayerId) {
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
+    update
+    UI();
 
     // 1分後に★マークを消す
     setTimeout(() => {
         updateGameState(prevState => ({
-           ...prevState,
-        pigmanMark: null,
-        pigmanMarkTimeout: null
-    }));
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
+            ...prevState,
+            pigmanMark: null,
+            pigmanMarkTimeout: null
+        }));
+        sendToAll({ type: 'gameState', state: gameState });
+        updateUI();
     }, 60000);
 }
 
