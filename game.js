@@ -180,22 +180,30 @@ function shuffleArray(array) {
 }
 
 export function applyResults() {
+    console.log("Applying results...");
     const losingTeam = gameState.result.includes('市民陣営の勝利') ? '人狼' : '市民';
+    console.log("Losing team:", losingTeam);
+
+    let updatedPlayers = gameState.players.map(player => {
+        const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
+        if (role && role.team === losingTeam) {
+            console.log(`Reducing points for ${player.name} (${role.name}) by ${role.cost}`);
+            return {...player, points: player.points - role.cost};
+        }
+        return player;
+    });
+
+    console.log("Updated players:", updatedPlayers);
 
     updateGameState(prevState => ({
         ...prevState,
-        players: prevState.players.map(player => {
-            const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
-            if (role && role.team === losingTeam) {
-                return {...player, points: player.points - role.cost};
-            }
-            return player;
-        })
+        players: updatedPlayers
     }));
 
     // 無法者の能力を適用
     const outlaw = gameState.players.find(p => gameState.assignedRoles[p.id] === '無法者');
     if (outlaw) {
+        console.log("Applying outlaw ability...");
         const leftNeighborIndex = (gameState.players.indexOf(outlaw) - 1 + gameState.players.length) % gameState.players.length;
         const leftNeighbor = gameState.players[leftNeighborIndex];
 
@@ -217,11 +225,14 @@ export function applyResults() {
     // 現在のプレイヤーの点数を更新
     const updatedPlayer = gameState.players.find(p => p.id === currentPlayer.id);
     if (updatedPlayer) {
+        console.log(`Updating current player points: ${currentPlayer.points} -> ${updatedPlayer.points}`);
         currentPlayer.points = updatedPlayer.points;
     }
 
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
+
+    console.log("Final game state after applying results:", gameState);
 
     // ゲーム終了条件のチェック
     if (checkGameEnd()) {
@@ -333,6 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初期化時にUIを更新
     updateUI();
 });
+
 
 // ゲーム開始時にPeerJSを初期化
 window.onload = async () => {
