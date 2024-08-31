@@ -147,7 +147,7 @@ function handleThiefAction(target) {
         }
     }));
 
-    return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
+    return `役職を交換しました。あなたの新しい役職: ${targetRole}`;
 }
 
 function handleWerewolfAction(playerRole) {
@@ -269,13 +269,13 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
                 }));
                 return;
             } else {
                 updateGameState(prevState => ({
                     ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
                 }));
             }
         } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
@@ -283,13 +283,13 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
                 }));
                 return;
             } else {
                 updateGameState(prevState => ({
                     ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
                 }));
             }
         }
