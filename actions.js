@@ -156,15 +156,8 @@ function handleWerewolfAction(playerRole) {
 
     let visiblePlayers;
 
-    if (playerRole === 'スパイ') {
-        // スパイは占い人狼以外の人狼陣営（他のスパイを含む）を見ることができる
-        visiblePlayers = gameState.players.filter(p => 
-            p.id !== currentPlayer.id && 
-            visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
-            gameState.assignedRoles[p.id] !== '占い人狼'
-        );
-    } else if (werewolfTeam.includes(playerRole)) {
-        // 人狼陣営は占い人狼以外の人狼陣営とスパイを見ることができる
+    if (playerRole === 'スパイ' || werewolfTeam.includes(playerRole)) {
+        // スパイと人狼陣営は占い人狼以外の人狼陣営（スパイを含む）を見ることができる
         visiblePlayers = gameState.players.filter(p => 
             p.id !== currentPlayer.id && 
             visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
@@ -180,7 +173,7 @@ function handleWerewolfAction(playerRole) {
     }
 
     if (visiblePlayers.length > 0) {
-        return `人狼陣営のプレイヤー: ${visiblePlayers.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
+        return `人狼陣営のプレイヤー: ${visiblePlayers.map(p => p.name).join(', ')}`;
     } else {
         return 'あなたは唯一の人狼陣営のプレイヤーです。（占い人狼がいる可能性があります）';
     }
