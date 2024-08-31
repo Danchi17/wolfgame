@@ -116,6 +116,11 @@ export function updateGameState(updater) {
             currentPlayer.originalRole = currentPlayer.role;
         }
     }
+    // 現在のプレイヤーの点数を更新
+    const updatedPlayer = gameState.players.find(p => p.id === currentPlayer.id);
+    if (updatedPlayer) {
+        currentPlayer.points = updatedPlayer.points;
+    }
     updateUI();
     return gameState;
 }
@@ -268,13 +273,12 @@ export function resetGame() {
         chips: {},
         result: "",
         pigmanMark: null,
-        pigmanMarkTimeout: null
+        pigmanMarkTimeout: null,
+        players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
     }));
-    gameState.players.forEach(player => {
-        player.points = 10;
-        player.role = "";
-        player.originalRole = "";
-    });
+    
+    currentPlayer = { ...currentPlayer, points: 10, role: "", originalRole: "" };
+    
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 }
