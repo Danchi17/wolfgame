@@ -27,7 +27,8 @@ export let gameState = {
     result: "",
     centerCards: [],
     pigmanMark: null,
-    pigmanMarkTimeout: null
+    pigmanMarkTimeout: null,
+    waitingForNextRound: false
 };
 export let currentPlayer = { id: "", name: "", role: "", originalRole: "", points: 10 };
 export let isHost = false;
@@ -116,7 +117,6 @@ export function updateGameState(updater) {
             currentPlayer.originalRole = currentPlayer.role;
         }
     }
-    // 現在のプレイヤーの点数を更新
     const updatedPlayer = gameState.players.find(p => p.id === currentPlayer.id);
     if (updatedPlayer) {
         currentPlayer.points = updatedPlayer.points;
@@ -197,7 +197,8 @@ export function applyResults() {
 
     updateGameState(prevState => ({
         ...prevState,
-        players: updatedPlayers
+        players: updatedPlayers,
+        waitingForNextRound: true
     }));
 
     // 無法者の能力を適用
@@ -234,13 +235,22 @@ export function applyResults() {
 
     console.log("Final game state after applying results:", gameState);
 
-    // ゲーム終了条件のチェック
-    if (checkGameEnd()) {
-        finalizeGame();
-    } else {
-        // 新しいゲームラウンドを開始
-        startNewRound();
+    if (isHost) {
+        waitForNextRound();
     }
+}
+
+function waitForNextRound() {
+    const nextRoundButton = document.createElement('button');
+    nextRoundButton.textContent = '次のラウンドへ';
+    nextRoundButton.onclick = () => {
+        if (checkGameEnd()) {
+            finalizeGame();
+        } else {
+            startNewRound();
+        }
+    };
+    document.getElementById('actionArea').appendChild(nextRoundButton);
 }
 
 function checkGameEnd() {
@@ -252,7 +262,8 @@ function finalizeGame() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "ゲーム終了",
-        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`
+        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`,
+        waitingForNextRound: false
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
@@ -271,7 +282,8 @@ function startNewRound() {
         chips: {},
         result: "",
         pigmanMark: null,
-        pigmanMarkTimeout: null
+        pigmanMarkTimeout: null,
+        waitingForNextRound: false
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
@@ -291,6 +303,7 @@ export function resetGame() {
         result: "",
         pigmanMark: null,
         pigmanMarkTimeout: null,
+        waitingForNextRound: false,
         players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
     }));
     
@@ -344,6 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 初期化時にUIを更新
     updateUI();
 });
+
 // ゲーム開始時にPeerJSを初期化
 window.onload = async () => {
     try {
