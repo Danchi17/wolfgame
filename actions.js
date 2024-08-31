@@ -61,7 +61,6 @@ export function calculateResults() {
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
 
-    // Add this line to call applyResults
     applyResults();
 }
 
@@ -149,17 +148,26 @@ function handleThiefAction(target) {
 
 function handleWerewolfAction(playerRole) {
     const werewolfTeam = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬'];
-    let otherWerewolves = gameState.players.filter(p => 
-        p.id !== currentPlayer.id && 
-        werewolfTeam.includes(gameState.assignedRoles[p.id])
-    );
+    const visibleWerewolfTeam = [...werewolfTeam, 'スパイ'];
 
-    // スパイの場合、人狼陣営を確認できる
+    let visiblePlayers;
+
     if (playerRole === 'スパイ') {
-        otherWerewolves = gameState.players.filter(p => 
+        // スパイは占い人狼以外の人狼陣営（他のスパイを含む）を見ることができる
+        visiblePlayers = gameState.players.filter(p => 
             p.id !== currentPlayer.id && 
-            werewolfTeam.includes(gameState.assignedRoles[p.id])
+            visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
+            gameState.assignedRoles[p.id] !== '占い人狼'
         );
+    } else if (werewolfTeam.includes(playerRole)) {
+        // 人狼陣営は占い人狼以外の人狼陣営とスパイを見ることができる
+        visiblePlayers = gameState.players.filter(p => 
+            p.id !== currentPlayer.id && 
+            visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
+            gameState.assignedRoles[p.id] !== '占い人狼'
+        );
+    } else {
+        return '人狼陣営ではありません。';
     }
 
     // 占い人狼は他の人狼を確認できない
@@ -167,10 +175,10 @@ function handleWerewolfAction(playerRole) {
         return 'あなたは占い人狼です。他の人狼を確認することはできません。';
     }
 
-    if (otherWerewolves.length > 0) {
-        return `他の人狼陣営: ${otherWerewolves.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
+    if (visiblePlayers.length > 0) {
+        return `人狼陣営のプレイヤー: ${visiblePlayers.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
     } else {
-        return 'あなたは唯一の人狼陣営のプレイヤーです。';
+        return 'あなたは唯一の人狼陣営のプレイヤーです。（占い人狼がいる可能性があります）';
     }
 }
 
