@@ -97,6 +97,25 @@ function updateActionArea() {
 
     actionArea.innerHTML = '';
 
+    if (gameState.waitingForNextRound) {
+        actionArea.innerHTML = '<p>結果を確認してください。</p>';
+        if (isHost) {
+            const nextRoundButton = document.createElement('button');
+            nextRoundButton.textContent = '次のラウンドへ';
+            nextRoundButton.onclick = () => {
+                if (gameState.players.some(player => player.points <= 0)) {
+                    resetGame();
+                } else {
+                    startNewRound();
+                }
+            };
+            actionArea.appendChild(nextRoundButton);
+        } else {
+            actionArea.innerHTML += '<p>ホストが次のラウンドを開始するのを待っています。</p>';
+        }
+        return;
+    }
+
     switch (gameState.phase) {
         case "待機中":
             actionArea.innerHTML = `<p>他のプレイヤーの参加を待っています。現在のプレイヤー数: ${gameState.players.length}</p>`;
