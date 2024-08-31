@@ -126,13 +126,7 @@ function updateActionArea() {
         case "占い師":
         case "人狼":
         case "怪盗":
-            if (gameState.assignedRoles[currentPlayer.id] === gameState.phase || 
-                (gameState.phase === "人狼" && ["大熊", "占い人狼"].includes(gameState.assignedRoles[currentPlayer.id])) ||
-                (gameState.phase === "占い師" && gameState.assignedRoles[currentPlayer.id] === "占い人狼")) {
-                createActionButtons();
-            } else {
-                actionArea.innerHTML = `<p>他のプレイヤーの行動を待っています。</p>`;
-            }
+            createActionButtons();
             break;
         case "議論":
             actionArea.innerHTML = `<p>議論の時間です。他のプレイヤーと話し合ってください。</p>`;
@@ -166,26 +160,36 @@ function createActionButtons() {
         <p>${gameState.phase}のアクションを選択してください：</p>
     `;
 
+    const playerRole = gameState.assignedRoles[currentPlayer.id];
+    const werewolfRoles = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬'];
+
     switch (gameState.phase) {
         case "占い師":
-        case "占い人狼":
-            gameState.players.forEach(player => {
-                if (player.id !== currentPlayer.id) {
-                    actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.phase}', '${player.id}')">占う: ${player.name}</button>`;
-                }
-            });
-            actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.phase}', 'graveyard')">墓地を占う</button>`;
-            break;
-        case "怪盗":
-            gameState.players.forEach(player => {
-                if (player.id !== currentPlayer.id) {
-                    actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>`;
-                }
-            });
-            actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', null)">交換しない</button>`;
+            if (playerRole === '占い師' || playerRole === '占い人狼') {
+                gameState.players.forEach(player => {
+                    if (player.id !== currentPlayer.id) {
+                        actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', '${player.id}')">占う: ${player.name}</button>`;
+                    }
+                });
+                actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
+            }
             break;
         case "人狼":
-            actionArea.innerHTML += `<button onclick="window.executeAction('${gameState.assignedRoles[currentPlayer.id]}', null)">他の人狼を確認</button>`;
+            if (werewolfRoles.includes(playerRole) && playerRole !== '占い人狼') {
+                actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', null)">他の人狼を確認</button>`;
+            } else if (playerRole === 'スパイ') {
+                actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', null)">人狼陣営を確認</button>`;
+            }
+            break;
+        case "怪盗":
+            if (playerRole === '怪盗') {
+                gameState.players.forEach(player => {
+                    if (player.id !== currentPlayer.id) {
+                        actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>`;
+                    }
+                });
+                actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', null)">交換しない</button>`;
+            }
             break;
     }
 }
