@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextPhaseButton = document.getElementById('nextPhase');
     const resetGameButton = document.getElementById('resetGame');
 
-    if (createif (createGameButton) createGameButton.addEventListener('click', createGame);
+    if (createGameButton) createGameButton.addEventListener('click', createGame);
     if (joinGameButton) joinGameButton.addEventListener('click', joinGame);
     if (startGameButton) startGameButton.addEventListener('click', startGame);
     if (nextPhaseButton) nextPhaseButton.addEventListener('click', nextPhase);
