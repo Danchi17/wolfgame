@@ -28,7 +28,8 @@ export let gameState = {
     centerCards: [],
     pigmanMark: null,
     pigmanMarkTimeout: null,
-    waitingForNextRound: false
+    waitingForNextRound: false,
+    roundNumber: 1
 };
 export let currentPlayer = { id: "", name: "", role: "", originalRole: "", points: 10 };
 export let isHost = false;
@@ -152,7 +153,8 @@ export function startGame() {
         phase: '役職確認',
         actions: {},
         votes: {},
-        chips: {}
+        chips: {},
+        roundNumber: prevState.roundNumber + 1
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
@@ -284,7 +286,8 @@ export function startNewRound() {
         result: "",
         pigmanMark: null,
         pigmanMarkTimeout: null,
-        waitingForNextRound: false
+        waitingForNextRound: false,
+        roundNumber: prevState.roundNumber + 1
     }));
 
     // プレイヤーの役職をリセット
@@ -316,6 +319,7 @@ export function resetGame() {
         pigmanMark: null,
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
+        roundNumber: 1,
         players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
     }));
     
@@ -343,12 +347,12 @@ export function usePigmanAbility(targetPlayerId) {
     // 1分後に★マークを消す
     setTimeout(() => {
         updateGameState(prevState => ({
-            ...prevState,
-            pigmanMark: null,
-            pigmanMarkTimeout: null
-        }));
-        sendToAll({ type: 'gameState', state: gameState });
-        updateUI();
+           ...prevState,
+        pigmanMark: null,
+        pigmanMarkTimeout: null
+    }));
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
     }, 60000);
 }
 
