@@ -192,12 +192,12 @@ export function applyResults() {
         const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
         if (role) {
             if (losingTeam === "なし") {
-                // 全員が右隣に投票した場合、全員のポイントが減少
-                return {...player, points: player.points - 1};
+                // 全員が右隣に投票した場合、誰も持ち点を減らさない
+                return player;
             } else if (losingTeam === "蛇女以外") {
                 // 蛇女の勝利の場合、蛇女以外の全員のポイントが減少
                 return gameState.assignedRoles[player.id] === "蛇女" ? player : {...player, points: player.points - role.cost};
-            } else if (role.team === losingTeam || (losingTeam === "人狼" && role.name === "スパイ")) {
+            } else if (role.team === losingTeam) {
                 console.log(`Reducing points for ${player.name} (${role.name}) by ${role.cost}`);
                 return {...player, points: player.points - role.cost};
             }
@@ -215,7 +215,7 @@ export function applyResults() {
 
     // 無法者の能力を適用
     const outlaw = gameState.players.find(p => gameState.assignedRoles[p.id] === '無法者');
-    if (outlaw) {
+    if (outlaw && losingTeam === "市民") {
         console.log("Applying outlaw ability...");
         const leftNeighborIndex = (gameState.players.indexOf(outlaw) - 1 + gameState.players.length) % gameState.players.length;
         const leftNeighbor = gameState.players[leftNeighborIndex];
