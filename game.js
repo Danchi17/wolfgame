@@ -271,6 +271,7 @@ function finalizeGame() {
 }
 
 export function startNewRound() {
+    console.log("Starting new round...");
     updateGameState(prevState => ({
         ...prevState,
         phase: "待機中",
@@ -286,8 +287,19 @@ export function startNewRound() {
         waitingForNextRound: false
     }));
 
+    // プレイヤーの役職をリセット
+    currentPlayer.role = "";
+    currentPlayer.originalRole = "";
+
+    console.log("New round state:", gameState);
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
+
+    // ホストの場合、自動的に新しいゲームを開始
+    if (isHost) {
+        console.log("Host is starting a new game...");
+        setTimeout(() => startGame(), 1000); // 1秒後に新しいゲームを開始
+    }
 }
 
 export function resetGame() {
@@ -338,35 +350,3 @@ export function usePigmanAbility(targetPlayerId) {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
     }, 60000);
-}
-
-// UI更新のためのイベントリスナーを設定
-document.addEventListener('DOMContentLoaded', () => {
-    const createGameButton = document.getElementById('createGameButton');
-    const joinGameButton = document.getElementById('joinGameButton');
-    const startGameButton = document.getElementById('startGame');
-    const nextPhaseButton = document.getElementById('nextPhase');
-    const resetGameButton = document.getElementById('resetGame');
-
-    if (createGameButton) createGameButton.addEventListener('click', createGame);
-    if (joinGameButton) joinGameButton.addEventListener('click', joinGame);
-    if (startGameButton) startGameButton.addEventListener('click', startGame);
-    if (nextPhaseButton) nextPhaseButton.addEventListener('click', nextPhase);
-    if (resetGameButton) resetGameButton.addEventListener('click', resetGame);
-
-    // 初期化時にUIを更新
-    updateUI();
-});
-
-// ゲーム開始時にPeerJSを初期化
-window.onload = async () => {
-    try {
-        await initializePeer();
-        console.log('PeerJS initialized successfully');
-    } catch (error) {
-        console.error('Failed to initialize PeerJS:', error);
-        alert('ネットワーク接続の初期化に失敗しました。ページをリロードしてください。');
-    }
-};
-
-export { peer };
