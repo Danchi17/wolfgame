@@ -1,9 +1,9 @@
 import { gameState, currentPlayer, updateGameState } from './game.js';
 import { sendToAll, sendToPlayer } from './network.js';
 import { updateUI } from './ui.js';
+import { applyResults } from './game.js';
 
 export function handleAction(action, playerId) {
-    // この関数の実装はまだ提供されていません
     console.log('Action handled:', action, 'for player:', playerId);
 }
 
@@ -60,6 +60,9 @@ export function calculateResults() {
 
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
+
+    // Add this line to call applyResults
+    applyResults();
 }
 
 export function performAction(role, target) {
@@ -295,54 +298,4 @@ function handleBettingResults(winningTeam) {
             })
         }));
     }
-}
-
-export function applyResults() {
-    const losingTeam = gameState.result.includes('市民陣営の勝利') ? '人狼' : '市民';
-
-    updateGameState(prevState => ({
-        ...prevState,
-        players: prevState.players.map(player => {
-            const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
-            if (role.team === losingTeam) {
-                return {...player, points: player.points - role.cost};
-            }
-            return player;
-        })
-    }));
-
-    // 無法者の能力を適用
-    const outlaw = gameState.players.find(p => gameState.assignedRoles[p.id] === '無法者');
-    if (outlaw) {
-        const leftNeighborIndex = (gameState.players.indexOf(outlaw) - 1 + gameState.players.length) % gameState.players.length;
-        const leftNeighbor = gameState.players[leftNeighborIndex];
-
-        updateGameState(prevState => ({
-            ...prevState,
-            assignedRoles: {
-                ...prevState.assignedRoles,
-                [outlaw.id]: prevState.assignedRoles[leftNeighbor.id],
-                [leftNeighbor.id]: '無法者'
-            }
-        }));
-    }
-
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
-
-    // ゲーム終了条件のチェック
-    if (gameState.players.some(player => player.points <= 0)) {
-        endGame();
-    }
-}
-
-function endGame() {
-    const winner = gameState.players.reduce((prev, current) => (prev.points > current.points) ? prev : current);
-    updateGameState(prevState => ({
-        ...prevState,
-        phase: "ゲーム終了",
-        result: `ゲーム終了！勝者: ${winner.name} (${winner.points}ポイント)`
-    }));
-    sendToAll({ type: 'gameState', state: gameState });
-    updateUI();
 }
