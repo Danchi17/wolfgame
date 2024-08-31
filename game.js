@@ -138,7 +138,7 @@ export function startGame() {
     const allRoles = [...gameState.roles];
     const shuffledRoles = shuffleArray(allRoles);
     const playerRoles = shuffledRoles.slice(0, gameState.players.length);
-    const centerCards = shuffledRoles.slice(gameState.players.length, gameState.players.length + 2);
+    const centerCards = shuffledRoles.slice(gameState.players.length, gameState.players.length + 3);
 
     const newAssignedRoles = {};
     gameState.players.forEach((player, index) => {
