@@ -331,7 +331,7 @@ export function resetGame() {
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
         roundNumber: 1,
-        players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
+       players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
     }));
     
     currentPlayer = { ...currentPlayer, points: 10, role: "", originalRole: "" };
@@ -422,13 +422,13 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
                 }));
                 return;
             } else {
                 updateGameState(prevState => ({
                     ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
                 }));
             }
         } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
@@ -436,13 +436,13 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + 1} : p)
                 }));
                 return;
             } else {
                 updateGameState(prevState => ({
                     ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - 2} : p)
                 }));
             }
         }
