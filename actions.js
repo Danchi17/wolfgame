@@ -109,7 +109,7 @@ export function performAction(action, target) {
 
 function handleSeerAction(target) {
     if (target === 'graveyard') {
-        const graveyardRoles = gameState.centerCards.map(card => card.name);
+        const graveyardRoles = gameState.centerCards.slice(0, 2).map(card => card.name);
         return `墓地の役職: ${graveyardRoles.join(', ')}`;
     } else {
         const targetRole = gameState.assignedRoles[target];
@@ -151,31 +151,24 @@ function handleThiefAction(target) {
 }
 
 function handleWerewolfAction(playerRole) {
-    const werewolfTeam = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬'];
+    const werewolfTeam = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬', '占い人狼'];
     const visibleWerewolfTeam = [...werewolfTeam, 'スパイ'];
 
     let visiblePlayers;
 
     if (playerRole === 'スパイ' || werewolfTeam.includes(playerRole)) {
-        // スパイと人狼陣営は占い人狼以外の人狼陣営（スパイを含む）を見ることができる
         visiblePlayers = gameState.players.filter(p => 
             p.id !== currentPlayer.id && 
-            visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
-            gameState.assignedRoles[p.id] !== '占い人狼'
+            visibleWerewolfTeam.includes(gameState.assignedRoles[p.id])
         );
     } else {
         return '人狼陣営ではありません。';
     }
 
-    // 占い人狼は他の人狼を確認できない
-    if (playerRole === '占い人狼') {
-        return 'あなたは占い人狼です。他の人狼を確認することはできません。';
-    }
-
     if (visiblePlayers.length > 0) {
-        return `人狼陣営のプレイヤー: ${visiblePlayers.map(p => p.name).join(', ')}`;
+        return `人狼陣営のプレイヤー: ${visiblePlayers.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
     } else {
-        return 'あなたは唯一の人狼陣営のプレイヤーです。（占い人狼がいる可能性があります）';
+        return 'あなたは唯一の人狼陣営のプレイヤーです。';
     }
 }
 
@@ -269,6 +262,7 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
+                    winningTeam: "ギャンブラー",
                     players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
                 }));
                 return;
@@ -283,6 +277,7 @@ function handleBettingResults(winningTeam) {
                 updateGameState(prevState => ({
                     ...prevState,
                     result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
+                    winningTeam: "博識な子犬",
                     players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
                 }));
                 return;
