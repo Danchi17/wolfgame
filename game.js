@@ -270,7 +270,7 @@ function finalizeGame() {
     updateUI();
 }
 
-function startNewRound() {
+export function startNewRound() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "待機中",
