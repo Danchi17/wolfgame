@@ -342,8 +342,7 @@ export function usePigmanAbility(targetPlayerId) {
     }));
 
     sendToAll({ type: 'gameState', state: gameState });
-    update
-    UI();
+    updateUI();
 
     // 1分後に★マークを消す
     setTimeout(() => {
