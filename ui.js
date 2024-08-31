@@ -46,7 +46,7 @@ function updatePlayerList() {
             let roleToShow = '?';
             if (player.id === currentPlayer.id || gameState.phase === "結果") {
                 roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
-                if (gameState.roleChanges[player.id]) {
+                if (gameState.phase === "結果" && gameState.roleChanges[player.id]) {
                     roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
                 }
             } else if (phases.indexOf(gameState.phase) > phases.indexOf("役職確認")) {
@@ -218,9 +218,31 @@ function createVoteButtons() {
 function createBetButtons() {
     const actionArea = document.getElementById('actionArea');
     actionArea.innerHTML = `
-        <p>チップを賭けますか？（現在の持ち点：${currentPlayer.points}）</p>
-        <input type="number" id="betAmount" min="0" max="${currentPlayer.points}" value="0">
-        <input type="text" id="guessedRole" placeholder="推測する役職">
+        <p>チップを賭けますか？（固定で1点賭けとなります）</p>
+    `;
+
+    const playerRole = gameState.assignedRoles[currentPlayer.id];
+    const selectRole = document.createElement('select');
+    selectRole.id = 'guessedRole';
+
+    if (playerRole === 'ギャンブラー') {
+        gameState.roles.filter(role => role.team === '人狼').forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.name;
+            option.textContent = role.name;
+            selectRole.appendChild(option);
+        });
+    } else if (playerRole === '博識な子犬') {
+        gameState.roles.filter(role => role.team === '市民').forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.name;
+            option.textContent = role.name;
+            selectRole.appendChild(option);
+        });
+    }
+
+    actionArea.appendChild(selectRole);
+    actionArea.innerHTML += `
         <button onclick="window.placeBet()">賭ける</button>
         <button onclick="window.skipBet()">賭けない</button>
     `;
@@ -269,9 +291,8 @@ window.vote = function(targetId) {
 };
 
 window.placeBet = function() {
-    const amount = parseInt(document.getElementById('betAmount').value);
     const guessedRole = document.getElementById('guessedRole').value;
-    placeBet(amount, guessedRole);
+    placeBet(1, guessedRole);
     updateUI();
 };
 
