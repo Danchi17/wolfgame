@@ -346,14 +346,117 @@ export function usePigmanAbility(targetPlayerId) {
 
     // 1分後に★マークを消す
     setTimeout(() => {
-        updateGameState(prevState => ({
-            ...prevState,
-            pigmanMark: null,
-            pigmanMarkTimeout: null
-        }));
-        sendToAll({ type: 'gameState', state: gameState });
-        updateUI();
+        updateGame
+        State(prevState => ({
+        ...prevState,
+        pigmanMark: null,
+        pigmanMarkTimeout: null
+    }));
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
     }, 60000);
+}
+
+export function performAction(action, target) {
+    if (gameState.actions[currentPlayer.id]) {
+        return '既にアクションを実行しています。';
+    }
+
+    const playerRole = gameState.assignedRoles[currentPlayer.id];
+    let result = '';
+
+    switch (action) {
+        case '占い師':
+        case '占い人狼':
+            result = handleSeerAction(target);
+            break;
+        case '怪盗':
+            result = handleThiefAction(target);
+            break;
+        case '人狼':
+        case '大熊':
+        case 'やっかいな豚男':
+        case '蛇女':
+        case '博識な子犬':
+        case 'スパイ':
+            result = handleWerewolfAction(playerRole);
+            break;
+        default:
+            result = '特別なアクションはありません。';
+    }
+
+    updateGameState(prevState => ({
+        ...prevState,
+        actions: {
+            ...prevState.actions,
+            [currentPlayer.id]: { action, target }
+        }
+    }));
+
+    sendToAll({ type: 'action', playerId: currentPlayer.id, action, target });
+    return result;
+}
+
+function handleSeerAction(target) {
+    if (target === 'graveyard') {
+        const graveyardRoles = gameState.centerCards.map(card => card.name);
+        return `墓地の役職: ${graveyardRoles.join(', ')}`;
+    } else {
+        const targetRole = gameState.assignedRoles[target];
+        const targetPlayer = gameState.players.find(p => p.id === target);
+        return `${targetPlayer.name}の役職: ${targetRole}`;
+    }
+}
+
+function handleThiefAction(target) {
+    if (!target) return '役職の交換をしませんでした。';
+
+    const thiefRole = gameState.assignedRoles[currentPlayer.id];
+    const targetRole = gameState.assignedRoles[target];
+    const targetPlayer = gameState.players.find(p => p.id === target);
+
+    updateGameState(prevState => ({
+        ...prevState,
+        assignedRoles: {
+            ...prevState.assignedRoles,
+            [currentPlayer.id]: targetRole,
+            [target]: thiefRole
+        },
+        roleChanges: {
+            ...prevState.roleChanges,
+            [currentPlayer.id]: { from: thiefRole, to: targetRole },
+            [target]: { from: targetRole, to: thiefRole }
+        }
+    }));
+
+    return `${targetPlayer.name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
+}
+
+function handleWerewolfAction(playerRole) {
+    const werewolfTeam = ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬'];
+    let otherWerewolves = gameState.players.filter(p => 
+        p.id !== currentPlayer.id && 
+        werewolfTeam.includes(gameState.assignedRoles[p.id])
+    );
+
+    // スパイの場合、人狼陣営を確認できる
+    if (playerRole === 'スパイ') {
+        otherWerewolves = gameState.players.filter(p => 
+            p.id !== currentPlayer.id && 
+            werewolfTeam.includes(gameState.assignedRoles[p.id])
+        );
+    }
+
+    // 占い人狼は他の人狼を確認できない
+    if (playerRole === '占い人狼') {
+        return 'あなたは占い人狼です。他の人狼を確認することはできません。';
+    }
+
+    if (otherWerewolves.length > 0) {
+        return `他の人狼陣営: ${otherWerewolves.map(p => `${p.name} (${gameState.assignedRoles[p.id]})`).join(', ')}`;
+    } else {
+        return 'あなたは唯一の人狼陣営のプレイヤーです。';
+    }
 }
 
 // UI更新のためのイベントリスナーを設定
