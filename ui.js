@@ -1,4 +1,4 @@
-import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame, usePigmanAbility } from './game.js';
+import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame, usePigmanAbility, startNewRound, checkGameEnd, finalizeGame } from './game.js';
 import { sendToAll } from './network.js';
 import { performAction, vote, placeBet } from './actions.js';
 
@@ -103,8 +103,8 @@ function updateActionArea() {
             const nextRoundButton = document.createElement('button');
             nextRoundButton.textContent = '次のラウンドへ';
             nextRoundButton.onclick = () => {
-                if (gameState.players.some(player => player.points <= 0)) {
-                    resetGame();
+                if (checkGameEnd()) {
+                    finalizeGame();
                 } else {
                     startNewRound();
                 }
