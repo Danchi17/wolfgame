@@ -2,6 +2,11 @@ import { gameState, currentPlayer, updateGameState, roles } from './game.js';
 import { sendToAll } from './network.js';
 import { updateUI } from './ui.js';
 
+export function handleAction(action, playerId) {
+    console.log('Action handled:', action, 'for player:', playerId);
+    // 具体的なアクション処理のロジックをここに実装
+}
+
 export function performAction(action, target) {
     if (gameState.actions[currentPlayer.id]) {
         return '既にアクションを実行しています。';
@@ -152,16 +157,14 @@ function handleWerewolfAction(playerRole) {
     }
 }
 
-export function vote(targetId) {
+export function handleVote(voterId, targetId) {
     updateGameState(prevState => ({
         ...prevState,
         votes: {
             ...prevState.votes,
-            [currentPlayer.id]: targetId
+            [voterId]: targetId
         }
     }));
-    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
-
     if (Object.keys(gameState.votes).length === gameState.players.length) {
         calculateResults();
     }
