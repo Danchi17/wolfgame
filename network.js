@@ -60,6 +60,15 @@ export function handleReceivedData(data) {
         case 'bet':
             handleBet(data.betterId, data.amount, data.guessedRole);
             break;
+        case 'pigmanAbility':
+            handlePigmanAbility(data.playerId, data.targetId);
+            break;
+        case 'gamblerAction':
+            handleGamblerAction(data.playerId, data.target);
+            break;
+        case 'knowledgeablePuppyGuess':
+            handleKnowledgeablePuppyGuess(data.playerId, data.guessedRole);
+            break;
         case 'resetGame':
             // Handle reset game
             break;
@@ -107,4 +116,49 @@ function handleBet(betterId, amount, guessedRole) {
     if (Object.keys(gameState.chips).length === gameState.players.length) {
         calculateResults();
     }
+}
+
+function handlePigmanAbility(playerId, targetId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        pigmanMark: targetId,
+        pigmanMarkTimeout: Date.now() + 60000 // 1分後
+    }));
+    updateUI();
+}
+
+function handleGamblerAction(playerId, target) {
+    const playerRole = gameState.assignedRoles[playerId];
+    const graveyardRole = gameState.centerCards[target === 'graveyard1' ? 0 : 1];
+
+    updateGameState(prevState => ({
+        ...prevState,
+        assignedRoles: {
+            ...prevState.assignedRoles,
+            [playerId]: graveyardRole.name
+        },
+        centerCards: [
+            ...prevState.centerCards.slice(0, target === 'graveyard1' ? 0 : 1),
+            { name: playerRole },
+            ...prevState.centerCards.slice(target === 'graveyard1' ? 1 : 2)
+        ],
+        roleChanges: {
+            ...prevState.roleChanges,
+            [playerId]: { from: playerRole, to: graveyardRole.name }
+        }
+    }));
+    updateUI();
+}
+
+function handleKnowledgeablePuppyGuess(playerId, guessedRole) {
+    const actualRole = gameState.assignedRoles[gameState.votes[playerId]];
+    if (guessedRole === actualRole) {
+        updateGameState(prevState => ({
+            ...prevState,
+            result: `博識な子犬が市民の役職を正しく推測しました。人狼陣営の勝利！`,
+            winningTeam: "人狼"
+        }));
+        calculateResults();
+    }
+    updateUI();
 }
