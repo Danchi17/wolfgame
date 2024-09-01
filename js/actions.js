@@ -116,7 +116,8 @@ function handleWerewolfAction(playerRole) {
             visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
             gameState.assignedRoles[p.id] !== '占い人狼'
         );
-    } else {return '人狼陣営ではありません。';
+    } else {
+        return '人狼陣営ではありません。';
     }
 
     if (playerRole === '占い人狼') {
@@ -202,7 +203,8 @@ function calculateResults() {
 
     updateGameState(prevState => ({
         ...prevState,
-        players: gameState.players
+        players: gameState.players,
+        waitingForNextRound: true
     }));
 
     sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
@@ -305,4 +307,23 @@ export function reportSpy(reportedPlayerId) {
         updateUI();
         return "スパイの通報に失敗しました。1ポイント失います。";
     }
+}
+
+export function startNewRound() {
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "待機中",
+        assignedRoles: {},
+        roleChanges: {},
+        centerCards: [],
+        actions: {},
+        votes: {},
+        result: "",
+        pigmanMark: null,
+        pigmanMarkTimeout: null,
+        waitingForNextRound: false,
+        roundNumber: prevState.roundNumber + 1
+    }));
+    sendToAll({ type: 'newRound', state: gameState });
+    updateUI();
 }
