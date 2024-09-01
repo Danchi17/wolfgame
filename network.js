@@ -57,17 +57,17 @@ export function handleReceivedData(data) {
         case 'vote':
             handleVote(data.voterId, data.targetId);
             break;
-        case 'bet':
-            handleBet(data.betterId, data.amount, data.guessedRole);
-            break;
         case 'pigmanAbility':
             handlePigmanAbility(data.playerId, data.targetId);
             break;
         case 'gamblerAction':
-            handleGamblerAction(data.playerId, data.target);
+            handleGamblerAction(data.playerId, data.cardIndex);
             break;
         case 'knowledgeablePuppyGuess':
-            handleKnowledgeablePuppyGuess(data.playerId, data.guessedRole);
+            handleKnowledgeablePuppyGuess(data.playerId, data.guessedRole, data.targetPlayerId);
+            break;
+        case 'spyAbility':
+            handleSpyAbility(data.playerId);
             break;
         case 'resetGame':
             // Handle reset game
@@ -104,20 +104,6 @@ export function setupConnectionListener() {
     });
 }
 
-function handleBet(betterId, amount, guessedRole) {
-    updateGameState(prevState => ({
-        ...prevState,
-        chips: {
-            ...prevState.chips,
-            [betterId]: { amount, guessedRole }
-        }
-    }));
-
-    if (Object.keys(gameState.chips).length === gameState.players.length) {
-        calculateResults();
-    }
-}
-
 function handlePigmanAbility(playerId, targetId) {
     updateGameState(prevState => ({
         ...prevState,
@@ -127,9 +113,9 @@ function handlePigmanAbility(playerId, targetId) {
     updateUI();
 }
 
-function handleGamblerAction(playerId, target) {
+function handleGamblerAction(playerId, cardIndex) {
     const playerRole = gameState.assignedRoles[playerId];
-    const graveyardRole = gameState.centerCards[target === 'graveyard1' ? 0 : 1];
+    const graveyardRole = gameState.centerCards[cardIndex];
 
     updateGameState(prevState => ({
         ...prevState,
@@ -138,9 +124,9 @@ function handleGamblerAction(playerId, target) {
             [playerId]: graveyardRole.name
         },
         centerCards: [
-            ...prevState.centerCards.slice(0, target === 'graveyard1' ? 0 : 1),
+            ...prevState.centerCards.slice(0, cardIndex),
             { name: playerRole },
-            ...prevState.centerCards.slice(target === 'graveyard1' ? 1 : 2)
+            ...prevState.centerCards.slice(cardIndex + 1)
         ],
         roleChanges: {
             ...prevState.roleChanges,
@@ -150,9 +136,9 @@ function handleGamblerAction(playerId, target) {
     updateUI();
 }
 
-function handleKnowledgeablePuppyGuess(playerId, guessedRole) {
-    const actualRole = gameState.assignedRoles[gameState.votes[playerId]];
-    if (guessedRole === actualRole) {
+function handleKnowledgeablePuppyGuess(playerId, guessedRole, targetPlayerId) {
+    const actualRole = gameState.assignedRoles[targetPlayerId];
+    if (guessedRole === actualRole && gameState.roles.find(r => r.name === actualRole).team === '市民') {
         updateGameState(prevState => ({
             ...prevState,
             result: `博識な子犬が市民の役職を正しく推測しました。人狼陣営の勝利！`,
@@ -160,5 +146,15 @@ function handleKnowledgeablePuppyGuess(playerId, guessedRole) {
         }));
         calculateResults();
     }
+    updateUI();
+}
+
+function handleSpyAbility(playerId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        result: "スパイが発覚しました。市民陣営の敗北！",
+        winningTeam: "人狼"
+    }));
+    calculateResults();
     updateUI();
 }
