@@ -118,13 +118,11 @@ export function handlePlayerDisconnect(playerId) {
     updateUI();
 }
 
-// エラーハンドリング関数
-function handleNetworkError(error) {
+export function handleNetworkError(error) {
     console.error('Network error:', error);
     // エラーメッセージをユーザーに表示するなどの処理をここに追加
 }
 
-// 接続状態の監視
 export function monitorConnections() {
     setInterval(() => {
         connections.forEach(conn => {
@@ -135,27 +133,23 @@ export function monitorConnections() {
     }, 5000); // 5秒ごとにチェック
 }
 
-// ゲーム開始時の同期
 export function synchronizeGameStart() {
     if (isHost) {
         sendToAll({ type: 'gameStart', state: gameState });
     }
 }
 
-// ゲーム状態の定期的な同期
 export function syncGameState() {
     if (isHost) {
         sendToAll({ type: 'syncGameState', state: gameState });
     }
 }
 
-// 接続の再確立
 export function reestablishConnection(gameId) {
     disconnectAll();
     reconnect(gameId);
 }
 
-// デバッグ用：現在の接続状況をログ出力
 export function logConnectionStatus() {
     console.log('Current connections:', connections.map(conn => ({
         peerId: conn.peer,
@@ -163,19 +157,8 @@ export function logConnectionStatus() {
     })));
 }
 
-// 初期化関数
 export function initializeNetworking() {
     setupConnectionListener();
     monitorConnections();
     // その他の必要な初期化処理
 }
-
-// エクスポートする関数をまとめて宣言
-export {
-    handleNetworkError,
-    synchronizeGameStart,
-    syncGameState,
-    reestablishConnection,
-    logConnectionStatus,
-    initializeNetworking
-};
