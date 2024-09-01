@@ -90,3 +90,92 @@ export function setupConnectionListener() {
         setupConnection(conn);
     });
 }
+
+export function disconnectAll() {
+    connections.forEach(conn => {
+        if (conn.open) {
+            conn.close();
+        }
+    });
+    connections = [];
+}
+
+export function reconnect(gameId) {
+    disconnectAll();
+    const conn = peer.connect(gameId);
+    setupConnection(conn);
+    conn.on('open', () => {
+        sendToAll({ type: 'playerReconnected', player: currentPlayer });
+    });
+}
+
+export function handlePlayerDisconnect(playerId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        players: prevState.players.filter(p => p.id !== playerId)
+    }));
+    sendToAll({ type: 'playerDisconnected', playerId: playerId });
+    updateUI();
+}
+
+// エラーハンドリング関数
+function handleNetworkError(error) {
+    console.error('Network error:', error);
+    // エラーメッセージをユーザーに表示するなどの処理をここに追加
+}
+
+// 接続状態の監視
+export function monitorConnections() {
+    setInterval(() => {
+        connections.forEach(conn => {
+            if (!conn.open) {
+                handlePlayerDisconnect(conn.peer);
+            }
+        });
+    }, 5000); // 5秒ごとにチェック
+}
+
+// ゲーム開始時の同期
+export function synchronizeGameStart() {
+    if (isHost) {
+        sendToAll({ type: 'gameStart', state: gameState });
+    }
+}
+
+// ゲーム状態の定期的な同期
+export function syncGameState() {
+    if (isHost) {
+        sendToAll({ type: 'syncGameState', state: gameState });
+    }
+}
+
+// 接続の再確立
+export function reestablishConnection(gameId) {
+    disconnectAll();
+    reconnect(gameId);
+}
+
+// デバッグ用：現在の接続状況をログ出力
+export function logConnectionStatus() {
+    console.log('Current connections:', connections.map(conn => ({
+        peerId: conn.peer,
+        isOpen: conn.open
+    })));
+}
+
+// 初期化関数
+export function initializeNetworking() {
+    setupConnectionListener();
+    monitorConnections();
+    // その他の必要な初期化処理
+}
+
+// エクスポートする関数をまとめて宣言
+export {
+    handleNetworkError,
+    synchronizeGameStart,
+    syncGameState,
+    reestablishConnection,
+    logConnectionStatus,
+    initializeNetworking
+};
