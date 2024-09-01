@@ -1,7 +1,6 @@
-import { gameState, currentPlayer, updateGameState } from './game.js';
+import { gameState, currentPlayer, updateGameState, roles } from './game.js';
 import { sendToAll } from './network.js';
 import { updateUI } from './ui.js';
-import { roles } from './roles.js';
 
 export function performAction(action, target) {
     if (gameState.actions[currentPlayer.id]) {
