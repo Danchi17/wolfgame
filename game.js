@@ -6,26 +6,26 @@ export let gameState = {
     players: [],
     phase: "待機中",
     roles: [
-        { name: "占い師", team: "市民", cost: 2, ability: "誰か一人のカードを確認する。もしくは場のカードを2枚確認する" },
-        { name: "ギャンブラー", team: "市民", cost: 1, ability: "チップ掛けのターンの際に人狼の詳細な役職を当てれば、逆転勝利する" },
-        { name: "無法者", team: "市民", cost: 1, ability: "敗北時に必ず左隣の人とカードを交換する。勝利条件が入れ替わる" },
-        { name: "サイキック", team: "市民", cost: 1, ability: "チップの賭けが発生した時に自動的に他プレイヤーの賭け点を2点にさせる" },
-        { name: "怪盗", team: "市民", cost: 1, ability: "怪盗のターン時に他のプレイヤーとカードを入れ替えることが出来る" },
-        { name: "スパイ", team: "市民", cost: 1, ability: "狼のターン時に人狼陣営とお互いを確認できる" },
-        { name: "大熊", team: "人狼", cost: 5, ability: "自身が吊られた時、プレイヤーの過半数が人狼サイドなら強制勝利する" },
-        { name: "占い人狼", team: "人狼", cost: 4, ability: "誰か一人のカードを確認する。もしくは場のカードを2枚確認する" },
-        { name: "やっかいな豚男", team: "人狼", cost: 3, ability: "任意の他のプレイヤー1人に★マークを付与する" },
-        { name: "蛇女", team: "人狼", cost: 3, ability: "同数投票で処刑される場合、単独で勝利する" },
-        { name: "博識な子犬", team: "人狼", cost: 3, ability: "チップ掛けのターンの際に市民の役職を当てれば、逆転勝利する" }
+        { name: "占い師", team: "市民", cost: 3, ability: "誰か一人の役職を確認する。もしくは場札の2枚の役職を確認する" },
+        { name: "占星術師", team: "市民", cost: 2, ability: "場札を含め、6枚の場にある役職の内、人狼陣営が何個あるか数が分かる。" },
+        { name: "ギャンブラー", team: "市民", cost: 1, ability: "日中のターン中にギャンブルボタンを押すと場札の役職のどちらか1つと入れ替えることが出来る。" },
+        { name: "無法者", team: "市民", cost: 1, ability: "投票完了後、敗北していた時にランダムに他の人と役職を交換する。勝利条件が入れ替わる" },
+        { name: "村長", team: "市民", cost: 3, ability: "他のプレイヤーと違い、投票数が2票となる。" },
+        { name: "怪盗", team: "市民", cost: 1, ability: "怪盗のターン時に他のプレイヤーと役職を入れ替えることが出来る" },
+        { name: "大熊", team: "人狼", cost: 5, ability: "自身が吊られた時、プレイヤーの過半数が人狼サイドなら強制勝利する(スパイは人狼陣営に含まない)" },
+        { name: "占い人狼", team: "人狼", cost: 4, ability: "誰か一人のカードを確認する。もしくは場のカードを2枚確認する。狼のターン時に他の人狼と仲間同士であることを確認できない" },
+        { name: "やっかいな豚男", team: "人狼", cost: 3, ability: "任意の他のプレイヤー1人に★マークを付与する。★マークは1分間で消滅する。" },
+        { name: "蛇女", team: "人狼", cost: 3, ability: "同数投票で処刑される場合、単独で特殊勝利する。他の人狼陣営のプレイヤーは敗北とする。" },
+        { name: "博識な子犬", team: "人狼", cost: 3, ability: "日中のターンに市民陣営の特定の役職を当てることが出来れば、人狼陣営の勝利となる。" },
+        { name: "スパイ", team: "市民", cost: 2, ability: "狼のターン時に人狼陣営とお互いを確認できる。スパイ通報ボタンが設置され、バレると市民陣営が強制敗北となる。" }
     ],
     assignedRoles: {},
     roleChanges: {},
-    graveyard: [],
+    centerCards: [],
     actions: {},
     votes: {},
     chips: {},
     result: "",
-    centerCards: [],
     pigmanMark: null,
     pigmanMarkTimeout: null,
     waitingForNextRound: false,
@@ -185,17 +185,16 @@ export function applyResults() {
     console.log("Applying results...");
     const losingTeam = gameState.winningTeam === "市民" ? "人狼" : 
                        gameState.winningTeam === "人狼" ? "市民" : 
-                       gameState.winningTeam === "蛇女" ? "蛇女以外" : "なし";
+                       gameState.winningTeam === "蛇女" ? "蛇女以外" : 
+                       gameState.winningTeam === "全員" ? "なし" : "なし";
     console.log("Losing team:", losingTeam);
 
     let updatedPlayers = gameState.players.map(player => {
         const role = gameState.roles.find(r => r.name === gameState.assignedRoles[player.id]);
         if (role) {
             if (losingTeam === "なし") {
-                // 全員が右隣に投票した場合、誰も持ち点を減らさない
                 return player;
             } else if (losingTeam === "蛇女以外") {
-                // 蛇女の勝利の場合、蛇女以外の全員のポイントが減少
                 return gameState.assignedRoles[player.id] === "蛇女" ? player : {...player, points: player.points - role.cost};
             } else if (role.team === losingTeam) {
                 console.log(`Reducing points for ${player.name} (${role.name}) by ${role.cost}`);
@@ -303,7 +302,6 @@ export function startNewRound() {
     // プレイヤーの役職をリセット
     currentPlayer.role = "";
     currentPlayer.originalRole = "";
-
     console.log("New round state:", gameState);
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
@@ -364,6 +362,88 @@ export function usePigmanAbility(targetPlayerId) {
         sendToAll({ type: 'gameState', state: gameState });
         updateUI();
     }, 60000);
+}
+
+export function checkSpecialVictoryConditions(executedPlayers) {
+    // 大熊の特殊勝利条件
+    const bearPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '大熊');
+    if (bearPlayer && executedPlayers.includes(bearPlayer.id)) {
+        const werewolfCount = gameState.players.filter(p => 
+            ['人狼', '大熊', '占い人狼', 'やっかいな豚男', '蛇女', '博識な子犬'].includes(gameState.assignedRoles[p.id])
+        ).length;
+        if (werewolfCount > gameState.players.length / 2) {
+            updateGameState(prevState => ({
+                ...prevState,
+                result: "大熊の特殊勝利条件達成！人狼陣営の勝利！",
+                winningTeam: "人狼"
+            }));
+            return true;
+        }
+    }
+
+    // 蛇女の特殊勝利条件
+    const snakeWomanPlayer = gameState.players.find(p => gameState.assignedRoles[p.id] === '蛇女');
+    if (snakeWomanPlayer && executedPlayers.length > 1 && executedPlayers.includes(snakeWomanPlayer.id)) {
+        updateGameState(prevState => ({
+            ...prevState,
+            result: "蛇女の特殊勝利条件達成！蛇女の単独勝利！",
+            winningTeam: "蛇女"
+        }));
+        return true;
+    }
+
+    // 全員が右隣に投票した場合の特殊勝利条件
+    const allVotedRight = gameState.players.every((player, index) => {
+        const rightNeighborIndex = (index + 1) % gameState.players.length;
+        return gameState.votes[player.id] === gameState.players[rightNeighborIndex].id;
+    });
+    if (allVotedRight) {
+        updateGameState(prevState => ({
+            ...prevState,
+            result: "全員が右隣に投票しました。特殊勝利条件達成！",
+            winningTeam: "全員"
+        }));
+        return true;
+    }
+
+    return false;
+}
+
+function handleBettingResults(winningTeam) {
+    for (const [playerId, bet] of Object.entries(gameState.chips)) {
+        const player = gameState.players.find(p => p.id === playerId);
+        const playerRole = gameState.assignedRoles[playerId];
+
+        if (playerRole === 'ギャンブラー' && winningTeam === '人狼') {
+            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                }));
+                return;
+            } else {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                }));
+            }
+        } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
+            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
+                }));
+                return;
+            } else {
+                updateGameState(prevState => ({
+                    ...prevState,
+                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
+                }));
+            }
+        }
+    }
 }
 
 // UI更新のためのイベントリスナーを設定
