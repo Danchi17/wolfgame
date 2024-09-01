@@ -6,7 +6,7 @@ export let gameState = {
     players: [],
     phase: "待機中",
     roles: [
-        { name: "占い師", team: "市民", cost: 3, ability: "誰か一人の役職を確認する。もしくは場札の2枚の役職を確認する" },
+        { name: "占い師", team: "市民", cost: 3, ability: "占い師のターン、誰か一人の役職を確認する。もしくは場札の2枚の役職を確認する" },
         { name: "占星術師", team: "市民", cost: 2, ability: "場札を含め、6枚の場にある役職の内、人狼陣営が何個あるか数が分かる。" },
         { name: "ギャンブラー", team: "市民", cost: 1, ability: "日中のターン中にギャンブルボタンを押すと場札の役職のどちらか1つと入れ替えることが出来る。" },
         { name: "無法者", team: "市民", cost: 1, ability: "投票完了後、敗北していた時にランダムに他の人と役職を交換する。勝利条件が入れ替わる" },
@@ -24,7 +24,6 @@ export let gameState = {
     centerCards: [],
     actions: {},
     votes: {},
-    chips: {},
     result: "",
     pigmanMark: null,
     pigmanMarkTimeout: null,
@@ -34,7 +33,7 @@ export let gameState = {
 export let currentPlayer = { id: "", name: "", role: "", originalRole: "", points: 10 };
 export let isHost = false;
 
-const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "チップ掛け", "結果"];
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
 export function initializePeer() {
     return new Promise((resolve, reject) => {
@@ -153,7 +152,6 @@ export function startGame() {
         phase: '役職確認',
         actions: {},
         votes: {},
-        chips: {},
         roundNumber: prevState.roundNumber + 1
     }));
 
@@ -291,7 +289,6 @@ export function startNewRound() {
         centerCards: [],
         actions: {},
         votes: {},
-        chips: {},
         result: "",
         pigmanMark: null,
         pigmanMarkTimeout: null,
@@ -302,6 +299,7 @@ export function startNewRound() {
     // プレイヤーの役職をリセット
     currentPlayer.role = "";
     currentPlayer.originalRole = "";
+
     console.log("New round state:", gameState);
     sendToAll({ type: 'gameState', state: gameState });
     updateUI();
@@ -322,8 +320,8 @@ export function resetGame() {
         centerCards: [],
         actions: {},
         votes: {},
-        chips: {},
-        result: "",
+        result:
+            "",
         pigmanMark: null,
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
@@ -409,40 +407,52 @@ export function checkSpecialVictoryConditions(executedPlayers) {
     return false;
 }
 
-function handleBettingResults(winningTeam) {
-    for (const [playerId, bet] of Object.entries(gameState.chips)) {
-        const player = gameState.players.find(p => p.id === playerId);
-        const playerRole = gameState.assignedRoles[playerId];
+export function useGamblerAbility(cardIndex) {
+    if (gameState.assignedRoles[currentPlayer.id] !== 'ギャンブラー') {
+        alert('あなたはギャンブラーではありません。');
+        return;
+    }
 
-        if (playerRole === 'ギャンブラー' && winningTeam === '人狼') {
-            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    result: `${player.name}(ギャンブラー)が人狼の役職を当てました。ギャンブラーの逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
-                }));
-                return;
-            } else {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
-                }));
-            }
-        } else if (playerRole === '博識な子犬' && winningTeam === '市民') {
-            if (bet.guessedRole === gameState.assignedRoles[gameState.votes[playerId]]) {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    result: `${player.name}(博識な子犬)が市民の役職を当てました。博識な子犬の逆転勝利！`,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points + bet.amount} : p)
-                }));
-                return;
-            } else {
-                updateGameState(prevState => ({
-                    ...prevState,
-                    players: prevState.players.map(p => p.id === playerId ? {...p, points: p.points - bet.amount - 1} : p)
-                }));
-            }
+    const playerRole = gameState.assignedRoles[currentPlayer.id];
+    const graveyardRole = gameState.centerCards[cardIndex];
+
+    updateGameState(prevState => ({
+        ...prevState,
+        assignedRoles: {
+            ...prevState.assignedRoles,
+            [currentPlayer.id]: graveyardRole.name
+        },
+        centerCards: [
+            ...prevState.centerCards.slice(0, cardIndex),
+            { name: playerRole },
+            ...prevState.centerCards.slice(cardIndex + 1)
+        ],
+        roleChanges: {
+            ...prevState.roleChanges,
+            [currentPlayer.id]: { from: playerRole, to: graveyardRole.name }
         }
+    }));
+
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
+}
+
+export function useKnowledgeablePuppyAbility(guessedRole, targetPlayerId) {
+    if (gameState.assignedRoles[currentPlayer.id] !== '博識な子犬') {
+        alert('あなたは博識な子犬ではありません。');
+        return;
+    }
+
+    const targetRole = gameState.assignedRoles[targetPlayerId];
+    if (guessedRole === targetRole && gameState.roles.find(r => r.name === targetRole).team === '市民') {
+        updateGameState(prevState => ({
+            ...prevState,
+            result: "博識な子犬が市民の役職を正しく推測しました。人狼陣営の勝利！",
+            winningTeam: "人狼"
+        }));
+        applyResults();
+    } else {
+        alert('推測が外れました。または、推測した役職が市民陣営ではありませんでした。');
     }
 }
 
