@@ -17,13 +17,11 @@ export function performAction(action, target) {
     switch (action) {
         case '占い師':
         case '占い人狼':
+        case '占い師の弟子':
             result = handleSeerAction(target);
             break;
         case '占星術師':
             result = handleAstrologerAction();
-            break;
-        case 'ギャンブラー':
-            result = handleGamblerAction(target);
             break;
         case '怪盗':
             result = handleThiefAction(target);
@@ -78,30 +76,6 @@ function handleAstrologerAction() {
     return `場に存在する人狼陣営の役職の数: ${werewolfCount}`;
 }
 
-function handleGamblerAction(cardIndex) {
-    const playerRole = gameState.assignedRoles[currentPlayer.id];
-    const graveyardRole = gameState.centerCards[cardIndex].name;
-
-    updateGameState(prevState => ({
-        ...prevState,
-        assignedRoles: {
-            ...prevState.assignedRoles,
-            [currentPlayer.id]: graveyardRole
-        },
-        centerCards: [
-            ...prevState.centerCards.slice(0, cardIndex),
-            { name: playerRole },
-            ...prevState.centerCards.slice(cardIndex + 1)
-        ],
-        roleChanges: {
-            ...prevState.roleChanges,
-            [currentPlayer.id]: { from: playerRole, to: graveyardRole }
-        }
-    }));
-
-    return `あなたの新しい役職: ${graveyardRole}`;
-}
-
 function handleThiefAction(target) {
     if (!target) return '役職の交換をしませんでした。';
 
@@ -142,8 +116,7 @@ function handleWerewolfAction(playerRole) {
             visibleWerewolfTeam.includes(gameState.assignedRoles[p.id]) &&
             gameState.assignedRoles[p.id] !== '占い人狼'
         );
-    } else {
-        return '人狼陣営ではありません。';
+    } else {return '人狼陣営ではありません。';
     }
 
     if (playerRole === '占い人狼') {
@@ -220,6 +193,18 @@ function calculateResults() {
         }));
     }
 
+    // プレイヤーの持ち点を更新
+    gameState.players.forEach(player => {
+        if (gameState.winningTeam !== roles.find(r => r.name === gameState.assignedRoles[player.id]).team) {
+            player.points -= roles.find(r => r.name === gameState.assignedRoles[player.id]).cost;
+        }
+    });
+
+    updateGameState(prevState => ({
+        ...prevState,
+        players: gameState.players
+    }));
+
     sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
     updateUI();
 }
@@ -284,7 +269,7 @@ export function usePigmanAbility(targetId) {
 
 export function useKnowledgeablePuppyAbility(guessedRole, targetPlayerId) {
     const targetRole = gameState.assignedRoles[targetPlayerId];
-    const citizenRoles = ['占星術師', 'ギャンブラー', '無法者', '村長'];
+    const citizenRoles = ['占星術師', '占い師の弟子', '無法者', '村長'];
     if (guessedRole === targetRole && citizenRoles.includes(targetRole)) {
         updateGameState(prevState => ({
             ...prevState,
@@ -299,13 +284,25 @@ export function useKnowledgeablePuppyAbility(guessedRole, targetPlayerId) {
     }
 }
 
-export function useSpyAbility() {
-    updateGameState(prevState => ({
-        ...prevState,
-        result: "スパイが発覚しました。市民陣営の敗北！",
-        winningTeam: "人狼"
-    }));
-    sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
-    updateUI();
-    return "スパイが発覚しました。市民陣営の敗北です！";
+export function reportSpy(reportedPlayerId) {
+    const reportedRole = gameState.assignedRoles[reportedPlayerId];
+    if (reportedRole === 'スパイ') {
+        updateGameState(prevState => ({
+            ...prevState,
+            result: "スパイが発覚しました。市民陣営の敗北！",
+            winningTeam: "人狼"
+        }));
+        sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
+        updateUI();
+        return "スパイの通報に成功しました。市民陣営の敗北です！";
+    } else {
+        const reporter = gameState.players.find(p => p.id === currentPlayer.id);
+        reporter.points -= 1; // 誤った通報のペナルティ
+        updateGameState(prevState => ({
+            ...prevState,
+            players: prevState.players.map(p => p.id === currentPlayer.id ? reporter : p)
+        }));
+        updateUI();
+        return "スパイの通報に失敗しました。1ポイント失います。";
+    }
 }
