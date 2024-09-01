@@ -1,5 +1,5 @@
 import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } from './game.js';
-import { performAction, vote, usePigmanAbility, useKnowledgeablePuppyAbility, useSpyAbility } from './actions.js';
+import { performAction, vote, usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy } from './actions.js';
 
 const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
@@ -97,15 +97,10 @@ function updateActionArea() {
             if (gameState.assignedRoles[currentPlayer.id] === "やっかいな豚男") {
                 createPigmanActionButtons();
             }
-            if (gameState.assignedRoles[currentPlayer.id] === "ギャンブラー") {
-                createGamblerActionButtons();
-            }
             if (gameState.assignedRoles[currentPlayer.id] === "博識な子犬") {
                 createKnowledgeablePuppyActionButtons();
             }
-            if (gameState.assignedRoles[currentPlayer.id] === "スパイ") {
-                createSpyActionButton();
-            }
+            createSpyReportButtons();
             break;
         case "投票":
             if (!gameState.votes[currentPlayer.id]) {
@@ -131,12 +126,15 @@ function createActionButtons() {
     switch (playerRole) {
         case "占い師":
         case "占い人狼":
+        case "占い師の弟子":
             gameState.players.forEach(player => {
                 if (player.id !== currentPlayer.id) {
                     actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', '${player.id}')">占う: ${player.name}</button>`;
                 }
             });
-            actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
+            if (playerRole !== "占い師の弟子") {
+                actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
+            }
             break;
         case "怪盗":
             gameState.players.forEach(player => {
@@ -166,17 +164,9 @@ function createPigmanActionButtons() {
     });
 }
 
-function createGamblerActionButtons() {
-    const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML += `
-        <button onclick="window.executeAction('ギャンブラー', 0)">場札1と交換</button>
-        <button onclick="window.executeAction('ギャンブラー', 1)">場札2と交換</button>
-    `;
-}
-
 function createKnowledgeablePuppyActionButtons() {
     const actionArea = document.getElementById('actionArea');
-    const citizenRoles = ['占星術師', 'ギャンブラー', '無法者', '村長'];
+    const citizenRoles = ['占星術師', '占い師の弟子', '無法者', '村長'];
     actionArea.innerHTML += `<p>市民陣営の役職を推測してください：</p>`;
     gameState.players.forEach(player => {
         if (player.id !== currentPlayer.id) {
@@ -190,9 +180,14 @@ function createKnowledgeablePuppyActionButtons() {
     });
 }
 
-function createSpyActionButton() {
+function createSpyReportButtons() {
     const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML += `<button onclick="window.useSpyAbility()">スパイ能力を使用</button>`;
+    actionArea.innerHTML += `<p>スパイだと思うプレイヤーを通報：</p>`;
+    gameState.players.forEach(player => {
+        if (player.id !== currentPlayer.id) {
+            actionArea.innerHTML += `<button onclick="window.reportSpy('${player.id}')">通報: ${player.name}</button>`;
+        }
+    });
 }
 
 function createVoteButtons() {
@@ -259,8 +254,8 @@ window.guessPlayerRole = function(targetPlayerId) {
     updateUI();
 };
 
-window.useSpyAbility = function() {
-    const result = useSpyAbility();
+window.reportSpy = function(reportedPlayerId) {
+    const result = reportSpy(reportedPlayerId);
     showActionResult(result);
     updateUI();
 };
