@@ -10,7 +10,8 @@ export function updateUI() {
     if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
         gameArea.style.display = 'block';
-    } else {setupArea.style.display = 'block';
+    } else {
+        setupArea.style.display = 'block';
         gameArea.style.display = 'none';
     }
 
@@ -58,14 +59,16 @@ function updateButtons() {
     const resetGameButton = document.getElementById('resetGame');
     const newRoundButton = document.getElementById('newRound');
 
-    startGameButton.style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
-    nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
-    resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
-    newRoundButton.style.display = (isHost && gameState.waitingForNextRound) ? 'inline' : 'none';
+    if (startGameButton) startGameButton.style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
+    if (nextPhaseButton) nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
+    if (resetGameButton) resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
+    if (newRoundButton) newRoundButton.style.display = (isHost && gameState.waitingForNextRound) ? 'inline' : 'none';
 }
 
 function updateActionArea() {
     const actionArea = document.getElementById('actionArea');
+    if (!actionArea) return;
+
     actionArea.innerHTML = '';
 
     if (gameState.waitingForNextRound) {
