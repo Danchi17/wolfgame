@@ -3,63 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ワンナイト人狼ゲーム</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
-        }
-        #setupArea, #gameArea {
-            background-color: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 4px 2px;
-            cursor: pointer;
-        }
-        input[type="text"] {
-            padding: 12px 20px;
-            margin: 8px 0;
-            box-sizing: border-box;
-        }
-    </style>
+    <title>多能力一夜人狼</title>
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <h1>ワンナイト人狼ゲーム</h1>
-
-    <div id="setupArea">
-        <h2>ゲームセットアップ</h2>
-        <input type="text" id="playerName" placeholder="プレイヤー名を入力">
-        <button id="createGameButton">ゲームを作成</button>
-        <br><br>
-        <input type="text" id="gameId" placeholder="ゲームIDを入力">
-        <button id="joinGameButton">ゲームに参加</button>
+    <div id="app">
+        <h1>多能力一夜人狼</h1>
+        <div id="setupArea">
+            <h2>ゲームセットアップ</h2>
+            <input type="text" id="playerName" placeholder="プレイヤー名">
+            <button id="createGameButton">ゲームを作成</button>
+            <input type="text" id="gameId" placeholder="ゲームID">
+            <button id="joinGameButton">ゲームに参加</button>
+        </div>
+        <div id="gameArea" style="display:none;">
+            <div id="playerList"></div>
+            <div id="gameInfo"></div>
+            <div id="actionArea"></div>
+            <div id="actionResult"></div>
+            <div id="pigmanMarkCountdown"></div>
+            <button id="startGame">ゲーム開始</button>
+            <button id="nextPhase">次のフェーズへ</button>
+            <button id="resetGame">ゲームをリセット</button>
+        </div>
     </div>
-
-    <div id="gameArea" style="display:none;">
-        <h2>ゲーム画面</h2>
-        <div id="playerList"></div>
-        <div id="gameInfo"></div>
-        <div id="actionArea"></div>
-        <div id="actionResult"></div>
-        <div id="pigmanMarkCountdown"></div>
-        <button id="startGame">ゲーム開始</button>
-        <button id="nextPhase">次のフェーズへ</button>
-        <button id="resetGame">ゲームをリセット</button>
-    </div>
-
-    <script type="module" src="game.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
