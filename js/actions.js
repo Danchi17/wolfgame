@@ -157,6 +157,21 @@ function handleWerewolfAction(playerRole) {
     }
 }
 
+export function vote(targetId) {
+    updateGameState(prevState => ({
+        ...prevState,
+        votes: {
+            ...prevState.votes,
+            [currentPlayer.id]: targetId
+        }
+    }));
+    sendToAll({ type: 'vote', voterId: currentPlayer.id, targetId: targetId });
+
+    if (Object.keys(gameState.votes).length === gameState.players.length) {
+        calculateResults();
+    }
+}
+
 export function handleVote(voterId, targetId) {
     updateGameState(prevState => ({
         ...prevState,
