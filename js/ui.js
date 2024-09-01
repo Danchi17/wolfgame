@@ -1,5 +1,5 @@
 import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame } from './game.js';
-import { performAction, vote, usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy } from './actions.js';
+import { performAction, vote, usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy, startNewRound } from './actions.js';
 
 const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
@@ -10,8 +10,7 @@ export function updateUI() {
     if (gameState.players.length > 0) {
         setupArea.style.display = 'none';
         gameArea.style.display = 'block';
-    } else {
-        setupArea.style.display = 'block';
+    } else {setupArea.style.display = 'block';
         gameArea.style.display = 'none';
     }
 
@@ -57,10 +56,12 @@ function updateButtons() {
     const startGameButton = document.getElementById('startGame');
     const nextPhaseButton = document.getElementById('nextPhase');
     const resetGameButton = document.getElementById('resetGame');
+    const newRoundButton = document.getElementById('newRound');
 
     startGameButton.style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
     nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
     resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
+    newRoundButton.style.display = (isHost && gameState.waitingForNextRound) ? 'inline' : 'none';
 }
 
 function updateActionArea() {
@@ -96,6 +97,9 @@ function updateActionArea() {
             actionArea.innerHTML = `<p>議論の時間です。他のプレイヤーと話し合ってください。</p>`;
             if (gameState.assignedRoles[currentPlayer.id] === "やっかいな豚男") {
                 createPigmanActionButtons();
+            }
+            if (gameState.assignedRoles[currentPlayer.id] === "占星術師") {
+                createAstrologerActionButton();
             }
             if (gameState.assignedRoles[currentPlayer.id] === "博識な子犬") {
                 createKnowledgeablePuppyActionButtons();
@@ -162,6 +166,11 @@ function createPigmanActionButtons() {
             actionArea.innerHTML += `<button onclick="window.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
         }
     });
+}
+
+function createAstrologerActionButton() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML += `<button onclick="window.executeAction('占星術師', null)">人狼陣営の数を確認</button>`;
 }
 
 function createKnowledgeablePuppyActionButtons() {
@@ -257,6 +266,11 @@ window.guessPlayerRole = function(targetPlayerId) {
 window.reportSpy = function(reportedPlayerId) {
     const result = reportSpy(reportedPlayerId);
     showActionResult(result);
+    updateUI();
+};
+
+window.startNewRound = function() {
+    startNewRound();
     updateUI();
 };
 
