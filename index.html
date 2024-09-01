@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>多能力一夜人狼</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="icon" href="data:,">
 </head>
 <body>
     <div id="app">
         <h1>多能力一夜人狼</h1>
+
         <div id="setupArea">
             <h2>ゲームセットアップ</h2>
             <input type="text" id="playerName" placeholder="プレイヤー名">
@@ -17,6 +17,7 @@
             <input type="text" id="gameId" placeholder="ゲームID">
             <button id="joinGameButton">ゲームに参加</button>
         </div>
+
         <div id="gameArea" style="display:none;">
             <div id="playerList"></div>
             <div id="gameInfo"></div>
@@ -26,8 +27,10 @@
             <button id="startGame">ゲーム開始</button>
             <button id="nextPhase">次のフェーズへ</button>
             <button id="resetGame">ゲームをリセット</button>
+            <button id="newRound">次のラウンドへ</button>
         </div>
     </div>
+
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
