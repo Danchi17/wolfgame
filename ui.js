@@ -133,6 +133,12 @@ function updateActionArea() {
             if (gameState.assignedRoles[currentPlayer.id] === "やっかいな豚男") {
                 createPigmanActionButtons();
             }
+            if (gameState.assignedRoles[currentPlayer.id] === "ギャンブラー") {
+                createGamblerActionButtons();
+            }
+            if (gameState.assignedRoles[currentPlayer.id] === "博識な子犬") {
+                createKnowledgeablePuppyActionButtons();
+            }
             break;
         case "投票":
             if (!gameState.votes[currentPlayer.id]) {
@@ -200,6 +206,23 @@ function createPigmanActionButtons() {
         if (player.id !== currentPlayer.id) {
             actionArea.innerHTML += `<button onclick="window.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
         }
+    });
+}
+
+function createGamblerActionButtons() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML += `
+        <button onclick="window.executeAction('ギャンブラー', 'graveyard1')">場札1と交換</button>
+        <button onclick="window.executeAction('ギャンブラー', 'graveyard2')">場札2と交換</button>
+    `;
+}
+
+function createKnowledgeablePuppyActionButtons() {
+    const actionArea = document.getElementById('actionArea');
+    const citizenRoles = ['占い師', '占星術師', 'ギャンブラー', '無法者', '村長', '怪盗', 'スパイ'];
+    actionArea.innerHTML += `<p>市民陣営の役職を推測してください：</p>`;
+    citizenRoles.forEach(role => {
+        actionArea.innerHTML += `<button onclick="window.guessCitizenRole('${role}')">${role}</button>`;
     });
 }
 
@@ -282,6 +305,12 @@ window.skipBet = function() {
 
 window.usePigmanAbility = function(targetId) {
     usePigmanAbility(targetId);
+    updateUI();
+};
+
+window.guessCitizenRole = function(guessedRole) {
+    const result = performAction('博識な子犬', guessedRole);
+    showActionResult(result);
     updateUI();
 };
 
