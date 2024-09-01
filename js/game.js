@@ -1,6 +1,6 @@
 import { setupConnection, sendToAll, setupConnectionListener } from './network.js';
 import { updateUI } from './ui.js';
-import { roles } from './roles/roles.js';
+import { roles } from './roles.js';
 
 let peer;
 export let gameState = {
@@ -160,6 +160,29 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+export function resetGame() {
+    updateGameState(prevState => ({
+        ...prevState,
+        phase: "待機中",
+        assignedRoles: {},
+        roleChanges: {},
+        centerCards: [],
+        actions: {},
+        votes: {},
+        result: "",
+        pigmanMark: null,
+        pigmanMarkTimeout: null,
+        waitingForNextRound: false,
+        roundNumber: 1,
+        players: prevState.players.map(player => ({...player, points: 10, role: "", originalRole: ""}))
+    }));
+    
+    currentPlayer = { ...currentPlayer, points: 10, role: "", originalRole: "" };
+    
+    sendToAll({ type: 'gameState', state: gameState });
+    updateUI();
 }
 
 export { peer };
