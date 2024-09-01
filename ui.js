@@ -1,8 +1,8 @@
-import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame, usePigmanAbility, startNewRound, checkGameEnd, finalizeGame } from './game.js';
+import { gameState, currentPlayer, isHost, startGame, nextPhase, resetGame, usePigmanAbility, startNewRound, checkGameEnd, finalizeGame, useGamblerAbility, useKnowledgeablePuppyAbility } from './game.js';
 import { sendToAll } from './network.js';
-import { performAction, vote, placeBet } from './actions.js';
+import { performAction, vote, useSpyAbility } from './actions.js';
 
-const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "チップ掛け", "結果"];
+const phases = ["待機中", "役職確認", "占い師", "人狼", "怪盗", "議論", "投票", "結果"];
 
 export function updateUI() {
     console.log('updateUI called');
@@ -139,19 +139,15 @@ function updateActionArea() {
             if (gameState.assignedRoles[currentPlayer.id] === "博識な子犬") {
                 createKnowledgeablePuppyActionButtons();
             }
+            if (gameState.assignedRoles[currentPlayer.id] === "スパイ") {
+                createSpyActionButton();
+            }
             break;
         case "投票":
             if (!gameState.votes[currentPlayer.id]) {
                 createVoteButtons();
             } else {
                 actionArea.innerHTML = `<p>投票済みです。結果を待っています。</p>`;
-            }
-            break;
-        case "チップ掛け":
-            if (!gameState.chips[currentPlayer.id]) {
-                createBetButtons();
-            } else {
-                actionArea.innerHTML = `<p>チップを賭けました。結果を待っています。</p>`;
             }
             break;
         case "結果":
@@ -212,8 +208,8 @@ function createPigmanActionButtons() {
 function createGamblerActionButtons() {
     const actionArea = document.getElementById('actionArea');
     actionArea.innerHTML += `
-        <button onclick="window.executeAction('ギャンブラー', 'graveyard1')">場札1と交換</button>
-        <button onclick="window.executeAction('ギャンブラー', 'graveyard2')">場札2と交換</button>
+        <button onclick="window.useGamblerAbility(0)">場札1と交換</button>
+        <button onclick="window.useGamblerAbility(1)">場札2と交換</button>
     `;
 }
 
@@ -221,9 +217,21 @@ function createKnowledgeablePuppyActionButtons() {
     const actionArea = document.getElementById('actionArea');
     const citizenRoles = ['占い師', '占星術師', 'ギャンブラー', '無法者', '村長', '怪盗', 'スパイ'];
     actionArea.innerHTML += `<p>市民陣営の役職を推測してください：</p>`;
-    citizenRoles.forEach(role => {
-        actionArea.innerHTML += `<button onclick="window.guessCitizenRole('${role}')">${role}</button>`;
+    gameState.players.forEach(player => {
+        if (player.id !== currentPlayer.id) {
+            actionArea.innerHTML += `
+                <select id="guess-${player.id}">
+                    ${citizenRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
+                </select>
+                <button onclick="window.guessPlayerRole('${player.id}')">推測: ${player.name}</button><br>
+            `;
+        }
     });
+}
+
+function createSpyActionButton() {
+    const actionArea = document.getElementById('actionArea');
+    actionArea.innerHTML += `<button onclick="window.useSpyAbility()">スパイ能力を使用</button>`;
 }
 
 function createVoteButtons() {
@@ -236,17 +244,6 @@ function createVoteButtons() {
             actionArea.innerHTML += `<button onclick="window.vote('${player.id}')">投票: ${player.name}</button>`;
         }
     });
-}
-
-function createBetButtons() {
-    const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML = `
-        <p>チップを賭けますか？（現在の持ち点：${currentPlayer.points}）</p>
-        <input type="number" id="betAmount" min="0" max="${currentPlayer.points}" value="0">
-        <input type="text" id="guessedRole" placeholder="推測する役職">
-        <button onclick="window.placeBet()">賭ける</button>
-        <button onclick="window.skipBet()">賭けない</button>
-    `;
 }
 
 function displayResults() {
@@ -291,25 +288,26 @@ window.vote = function(targetId) {
     updateUI();
 };
 
-window.placeBet = function() {
-    const amount = parseInt(document.getElementById('betAmount').value);
-    const guessedRole = document.getElementById('guessedRole').value;
-    placeBet(amount, guessedRole);
-    updateUI();
-};
-
-window.skipBet = function() {
-    placeBet(0, null);
-    updateUI();
-};
-
 window.usePigmanAbility = function(targetId) {
     usePigmanAbility(targetId);
     updateUI();
 };
 
-window.guessCitizenRole = function(guessedRole) {
-    const result = performAction('博識な子犬', guessedRole);
+window.useGamblerAbility = function(cardIndex) {
+    const result = useGamblerAbility(cardIndex);
+    showActionResult(result);
+    updateUI();
+};
+
+window.guessPlayerRole = function(targetPlayerId) {
+    const guessedRole = document.getElementById(`guess-${targetPlayerId}`).value;
+    const result = useKnowledgeablePuppyAbility(guessedRole, targetPlayerId);
+    showActionResult(result);
+    updateUI();
+};
+
+window.useSpyAbility = function() {
+    const result = useSpyAbility();
     showActionResult(result);
     updateUI();
 };
