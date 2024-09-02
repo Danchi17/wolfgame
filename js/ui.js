@@ -1,18 +1,11 @@
-import { getGameState, updateGameState } from './game/gameState.js';
-import { startGame, nextPhase } from './game/gamePhases.js';
-import { performAction } from './actions/playerActions.js';
-import { castVote } from './actions/voteActions.js';
-import { joinGame } from './network.js';
-import { getPlayerRole } from './game/roleLogic.js';
-import { usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy } from './actions/specialActions.js';
-
-const { useState, useEffect } = React;
+// モジュールのインポートを削除し、グローバルスコープで関数を使用する前提で修正
+// React関連の変数をグローバルスコープから取得
 
 const EnhancedGameUI = () => {
-  const [state, setState] = useState(getGameState());
-  const [currentPhase, setCurrentPhase] = useState('待機中');
+  const [state, setState] = React.useState(() => getGameState());
+  const [currentPhase, setCurrentPhase] = React.useState('待機中');
   
-  useEffect(() => {
+  React.useEffect(() => {
     const updateState = () => setState(getGameState());
     // ゲーム状態が変更されたときにUIを更新するためのイベントリスナーをここに追加
     return () => {
@@ -38,35 +31,35 @@ const EnhancedGameUI = () => {
 
   const renderRoleImage = (role) => {
     return (
-      <img
-        src={`images/roles/${role}.jpg`}
-        alt={role}
-        className="role-image"
-        onError={(e) => {
+      React.createElement('img', {
+        src: `images/roles/${role}.jpg`,
+        alt: role,
+        className: "role-image",
+        onError: (e) => {
           e.target.onerror = null;
           e.target.src = 'images/roles/unknown.jpg';
-        }}
-      />
+        }
+      })
     );
   };
 
   const PlayerCard = ({ player }) => (
-    <div className="card player-card">
-      <div className="text-center">
-        {renderRoleImage(player.role || 'unknown')}
-        <p className="player-name">{player.name}</p>
-        <p className="player-role">役職: {state.phase === '役職確認' ? player.role : '???'}</p>
-        <p className="player-points">ポイント: {player.points}</p>
-      </div>
-    </div>
+    React.createElement('div', { className: "card player-card" },
+      React.createElement('div', { className: "text-center" },
+        renderRoleImage(player.role || 'unknown'),
+        React.createElement('p', { className: "player-name" }, player.name),
+        React.createElement('p', { className: "player-role" }, `役職: ${state.phase === '役職確認' ? player.role : '???'}`),
+        React.createElement('p', { className: "player-points" }, `ポイント: ${player.points}`)
+      )
+    )
   );
 
   const CenterCard = ({ cardNumber }) => (
-    <div className="card center-card">
-      <div className="text-center">
-        <p className="center-card-number">場札 {cardNumber}</p>
-      </div>
-    </div>
+    React.createElement('div', { className: "card center-card" },
+      React.createElement('div', { className: "text-center" },
+        React.createElement('p', { className: "center-card-number" }, `場札 ${cardNumber}`)
+      )
+    )
   );
 
   const handleAction = (action, target) => {
@@ -90,23 +83,25 @@ const EnhancedGameUI = () => {
       case '怪盗':
         return state.players.map(player => (
           player.id !== state.currentPlayerId && (
-            <button key={player.id} onClick={() => handleAction(currentPhase, player.id)}>
-              {player.name}に対してアクション
-            </button>
+            React.createElement('button', {
+              key: player.id,
+              onClick: () => handleAction(currentPhase, player.id)
+            }, `${player.name}に対してアクション`)
           )
         ));
       case '投票':
         return state.players.map(player => (
           player.id !== state.currentPlayerId && (
-            <button key={player.id} onClick={() => handleVote(player.id)}>
-              {player.name}に投票
-            </button>
+            React.createElement('button', {
+              key: player.id,
+              onClick: () => handleVote(player.id)
+            }, `${player.name}に投票`)
           )
         ));
       case '結果':
-        return <p>{state.result || '結果はまだ発表されていません。'}</p>;
+        return React.createElement('p', null, state.result || '結果はまだ発表されていません。');
       default:
-        return <p>現在のフェーズではアクションを実行できません。</p>;
+        return React.createElement('p', null, '現在のフェーズではアクションを実行できません。');
     }
   };
 
@@ -116,21 +111,19 @@ const EnhancedGameUI = () => {
 
     switch (currentPlayerRole.name) {
       case 'やっかいな豚男':
-        return (
-          <button onClick={() => {
+        return React.createElement('button', {
+          onClick: () => {
             const targetId = prompt('対象のプレイヤーIDを入力してください:');
             if (targetId) {
               const result = usePigmanAbility(state.currentPlayerId, targetId);
               alert(result);
               setState(getGameState());
             }
-          }}>
-            ★マークを付与
-          </button>
-        );
+          }
+        }, '★マークを付与');
       case '博識な子犬':
-        return (
-          <button onClick={() => {
+        return React.createElement('button', {
+          onClick: () => {
             const targetId = prompt('対象のプレイヤーIDを入力してください:');
             const guessedRole = prompt('推測する役職名を入力してください:');
             if (targetId && guessedRole) {
@@ -138,74 +131,66 @@ const EnhancedGameUI = () => {
               alert(result);
               setState(getGameState());
             }
-          }}>
-            役職を推測
-          </button>
-        );
+          }
+        }, '役職を推測');
       case 'スパイ':
-        return (
-          <button onClick={() => {
+        return React.createElement('button', {
+          onClick: () => {
             const suspectedSpyId = prompt('スパイだと疑うプレイヤーIDを入力してください:');
             if (suspectedSpyId) {
               const result = reportSpy(state.currentPlayerId, suspectedSpyId);
               alert(result);
               setState(getGameState());
             }
-          }}>
-            スパイを通報
-          </button>
-        );
+          }
+        }, 'スパイを通報');
       default:
         return null;
     }
   };
 
-  return (
-    <div className="game-container">
-      <h1 className="game-title">多能力一夜人狼</h1>
-      
-      <div className="phase-container">
-        {phases.map((phase, index) => (
-          <div key={phase} className={`phase-card ${currentPhase === phase ? 'current-phase' : ''}`}>
-            <h2>{phase}</h2>
-            <div className="phase-icon">{renderPhaseIcon(phase)}</div>
-            <button 
-              onClick={() => {
-                setCurrentPhase(phase);
-                nextPhase();
-                setState(getGameState());
-              }}
-              disabled={phases.indexOf(phase) > phases.indexOf(currentPhase)}
-              className="phase-button"
-            >
-              {currentPhase === phase ? '現在のフェーズ' : 'このフェーズへ'}
-            </button>
-          </div>
-        ))}
-      </div>
-      
-      <div className="players-container">
-        {state.players.map((player, index) => (
-          <PlayerCard key={player.id} player={player} />
-        ))}
-        <div className="center-cards">
-          <CenterCard cardNumber={1} />
-          <CenterCard cardNumber={2} />
-        </div>
-      </div>
-      
-      <div className="action-area">
-        <h2>アクションエリア</h2>
-        <p>現在のフェーズ: {currentPhase}</p>
-        {renderActionArea()}
-        {renderSpecialAbilities()}
-      </div>
-    </div>
+  return React.createElement('div', { className: "game-container" },
+    React.createElement('h1', { className: "game-title" }, '多能力一夜人狼'),
+    React.createElement('div', { className: "phase-container" },
+      phases.map((phase, index) => (
+        React.createElement('div', {
+          key: phase,
+          className: `phase-card ${currentPhase === phase ? 'current-phase' : ''}`
+        },
+          React.createElement('h2', null, phase),
+          React.createElement('div', { className: "phase-icon" }, renderPhaseIcon(phase)),
+          React.createElement('button', {
+            onClick: () => {
+              setCurrentPhase(phase);
+              nextPhase();
+              setState(getGameState());
+            },
+            disabled: phases.indexOf(phase) > phases.indexOf(currentPhase),
+            className: "phase-button"
+          }, currentPhase === phase ? '現在のフェーズ' : 'このフェーズへ')
+        )
+      ))
+    ),
+    React.createElement('div', { className: "players-container" },
+      state.players.map((player, index) => (
+        React.createElement(PlayerCard, { key: player.id, player: player })
+      )),
+      React.createElement('div', { className: "center-cards" },
+        React.createElement(CenterCard, { cardNumber: 1 }),
+        React.createElement(CenterCard, { cardNumber: 2 })
+      )
+    ),
+    React.createElement('div', { className: "action-area" },
+      React.createElement('h2', null, 'アクションエリア'),
+      React.createElement('p', null, `現在のフェーズ: ${currentPhase}`),
+      renderActionArea(),
+      renderSpecialAbilities()
+    )
   );
 };
 
 const renderUI = () => {
-  ReactDOM.render(<EnhancedGameUI />, document.getElementById('app'));
+  ReactDOM.render(React.createElement(EnhancedGameUI), document.getElementById('app'));
 };
 
 // UIの初期レンダリング
@@ -217,4 +202,5 @@ window.addEventListener('error', (event) => {
   alert('予期せぬエラーが発生しました。ページをリロードしてください。');
 });
 
-export { renderUI };
+// グローバルスコープに renderUI 関数を公開
+window.renderUI = renderUI;
