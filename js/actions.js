@@ -202,30 +202,34 @@ function calculateResults() {
             result = "人狼は生き残りました。人狼陣営の勝利！";
             winningTeam = "人狼";
         }
-
-        updateGameState(prevState => ({
-            ...prevState,
-            result: result,
-            winningTeam: winningTeam,
-            executedPlayers: executedPlayers,
-            voteResults: voteCount
-        }));
     }
 
     // プレイヤーの持ち点を更新
-    gameState.players.forEach(player => {
-        if (gameState.winningTeam !== roles.find(r => r.name === gameState.assignedRoles[player.id]).team) {
-            player.points -= roles.find(r => r.name === gameState.assignedRoles[player.id]).cost;
+    const updatedPlayers = gameState.players.map(player => {
+        const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
+        if (winningTeam !== playerRole.team) {
+            return { ...player, points: player.points - playerRole.cost };
         }
+        return player;
     });
 
     updateGameState(prevState => ({
         ...prevState,
-        players: gameState.players,
+        result: result,
+        winningTeam: winningTeam,
+        executedPlayers: executedPlayers,
+        voteResults: voteCount,
+        players: updatedPlayers,
         waitingForNextRound: true
     }));
 
-    sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam, voteResults: gameState.voteResults });
+    sendToAll({ 
+        type: 'gameResult', 
+        result: gameState.result, 
+        winningTeam: gameState.winningTeam, 
+        voteResults: gameState.voteResults,
+        updatedPlayers: gameState.players
+    });
     updateUI();
 }
 
@@ -317,15 +321,22 @@ export function reportSpy(reportedPlayerId) {
         updateUI();
         return "スパイの通報に成功しました。市民陣営の敗北です！";
     } else {
-        const reporter = gameState.players.find(p => p.id === currentPlayer.id);
-        reporter.points -= 3; // 誤った通報のペナルティを3点に増やす
+        const updatedPlayers = gameState.players.map(player => 
+            player.id === currentPlayer.id 
+                ? { ...player, points: player.points - 3 } 
+                : player
+        );
         updateGameState(prevState => ({
             ...prevState,
-            players: prevState.players.map(p => p.id === currentPlayer.id ? reporter : p),
+            players: updatedPlayers,
             result: "スパイの通報に失敗しました。通報者の持ち点が3点減少しました。",
             waitingForNextRound: true
         }));
-        sendToAll({ type: 'gameResult', result: gameState.result });
+        sendToAll({ 
+            type: 'gameResult', 
+            result: gameState.result, 
+            updatedPlayers: updatedPlayers 
+        });
         updateUI();
         return "スパイの通報に失敗しました。3ポイント失います。";
     }
@@ -335,8 +346,7 @@ export function startNewRound() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "待機中",
-        assignedRoles: {},
-        roleChanges: {},
+        assignedRoles: {},roleChanges: {},
         centerCards: [],
         actions: {},
         votes: {},
