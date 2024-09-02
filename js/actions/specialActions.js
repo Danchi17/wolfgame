@@ -9,17 +9,6 @@ window.usePigmanAbility = (pigmanId, targetId) => {
         pigmanMark: targetId,
         pigmanMarkTimeout: Date.now() + 60000 // 1分後
     });
-    return `${state.players.'use strict';
-
-window.usePigmanAbility = (pigmanId, targetId) => {
-    const state = window.getGameState();
-    if (state.pigmanMarkTimeout && Date.now() < state.pigmanMarkTimeout) {
-        throw new Error('Pigman ability is still on cooldown');
-    }
-    window.updateGameState({
-        pigmanMark: targetId,
-        pigmanMarkTimeout: Date.now() + 60000 // 1分後
-    });
     return `${state.players.find(p => p.id === targetId).name}に★マークを付与しました。`;
 };
 
