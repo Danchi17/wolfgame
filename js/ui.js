@@ -48,7 +48,7 @@ function updatePlayerList() {
 function updateGameInfo() {
     const gameInfoElement = document.getElementById('gameInfo');
     gameInfoElement.textContent = `ゲームフェーズ: ${gameState.phase}`;
-    if (gameState.phase === "結果") {
+    if (gameState.phase === "結果" || gameState.waitingForNextRound) {
         gameInfoElement.textContent += ` - ${gameState.result}`;
     }
 }
@@ -60,8 +60,8 @@ function updateButtons() {
     const newRoundButton = document.getElementById('newRound');
 
     if (startGameButton) startGameButton.style.display = (isHost && gameState.players.length === 4 && gameState.phase === "待機中") ? 'inline' : 'none';
-    if (nextPhaseButton) nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果") ? 'inline' : 'none';
-    if (resetGameButton) resetGameButton.style.display = (isHost && gameState.phase === "結果") ? 'inline' : 'none';
+    if (nextPhaseButton) nextPhaseButton.style.display = (isHost && gameState.phase !== "待機中" && gameState.phase !== "結果" && !gameState.waitingForNextRound) ? 'inline' : 'none';
+    if (resetGameButton) resetGameButton.style.display = (isHost && (gameState.phase === "結果" || gameState.waitingForNextRound)) ? 'inline' : 'none';
     if (newRoundButton) newRoundButton.style.display = (isHost && gameState.waitingForNextRound) ? 'inline' : 'none';
 }
 
@@ -234,10 +234,12 @@ function displayResults() {
     `;
 
     // 投票結果の表示
-    actionArea.innerHTML += '<h3>投票結果:</h3>';
-    for (const [playerId, votes] of Object.entries(gameState.voteResults)) {
-        const player = gameState.players.find(p => p.id === playerId);
-        actionArea.innerHTML += `<p>${player.name}: ${votes}票</p>`;
+    if (gameState.voteResults) {
+        actionArea.innerHTML += '<h3>投票結果:</h3>';
+        for (const [playerId, votes] of Object.entries(gameState.voteResults)) {
+            const player = gameState.players.find(p => p.id === playerId);
+            actionArea.innerHTML += `<p>${player.name}: ${votes}票</p>`;
+        }
     }
 }
 
