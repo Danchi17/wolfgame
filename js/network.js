@@ -56,8 +56,12 @@ export function handleReceivedData(data) {
                 ...prevState,
                 result: data.result,
                 winningTeam: data.winningTeam,
-                phase: "結果"
+                voteResults: data.voteResults,
+                players: data.updatedPlayers,
+                phase: "結果",
+                waitingForNextRound: true
             }));
+            updateUI();
             break;
     }
     updateUI();
