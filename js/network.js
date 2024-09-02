@@ -40,7 +40,7 @@ const setupConnection = (conn) => {
     connections.push(conn);
     conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
-        conn.on('data', (data) => handleReceivedData(data));
+        conn.on('data', (data) => handleReceivedData(data, conn));
     });
     conn.on('close', () => {
         console.log('Connection closed with:', conn.peer);
@@ -53,13 +53,17 @@ const setupConnection = (conn) => {
     });
 };
 
-const handleReceivedData = (data) => {
+const handleReceivedData = (data, conn) => {
     console.log('Received data:', data);
     try {
         switch (data.type) {
             case 'playerJoined':
                 window.addPlayer(data.player);
                 console.log('Player joined:', data.player);
+                // 新しいプレイヤーに現在のゲーム状態を送信
+                conn.send({ type: 'gameState', state: window.getGameState() });
+                // 他の全プレイヤーに新しいプレイヤーの情報を送信
+                window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
                 break;
             case 'gameState':
                 window.updateGameState(data.state);
@@ -84,10 +88,10 @@ const handleReceivedData = (data) => {
     }
 };
 
-window.sendToAll = (data) => {
+window.sendToAll = (data, excludeConnections = []) => {
     console.log('Sending data to all:', data);
     connections.forEach(conn => {
-        if (conn.open) {
+        if (conn.open && !excludeConnections.includes(conn)) {
             conn.send(data);
         }
     });
@@ -102,6 +106,7 @@ window.joinGame = (gameId, playerName) => {
         const newPlayer = { id: peer.id, name: playerName };
         conn.send({ type: 'playerJoined', player: newPlayer });
         window.addPlayer(newPlayer);  // 自分自身をプレイヤーリストに追加
+        window.updateGameState({ currentPlayerId: peer.id });  // 現在のプレイヤーIDを設定
         window.dispatchEvent(new Event('gameStateUpdated'));  // UI更新のためのイベント発火
     });
 };
