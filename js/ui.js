@@ -4,6 +4,7 @@ import { performAction } from './actions/playerActions.js';
 import { castVote } from './actions/voteActions.js';
 import { joinGame } from './network.js';
 import { getPlayerRole } from './game/roleLogic.js';
+import { usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy } from './actions/specialActions.js';
 
 export const renderUI = () => {
     const state = getGameState();
@@ -97,7 +98,7 @@ const renderActionArea = () => {
                             alert(result);
                             renderUI();
                         } catch (error) {
-                            alert(`エラーが発alert(`エラーが発生しました: ${error.message}`);
+                            alert(`エラーが発生しました: ${error.message}`);
                         }
                     });
                     actionArea.appendChild(button);
