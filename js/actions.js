@@ -178,9 +178,11 @@ export function handleVote(voterId, targetId) {
 
 function calculateResults() {
     const voteCount = {};
+    const voteDetails = {};
     for (const [voterId, targetId] of Object.entries(gameState.votes)) {
         const voteWeight = gameState.assignedRoles[voterId] === '村長' ? 2 : 1;
         voteCount[targetId] = (voteCount[targetId] || 0) + voteWeight;
+        voteDetails[voterId] = { targetId, weight: voteWeight };
     }
     const maxVotes = Math.max(...Object.values(voteCount));
     const executedPlayers = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
@@ -219,8 +221,10 @@ function calculateResults() {
         winningTeam: winningTeam,
         executedPlayers: executedPlayers,
         voteResults: voteCount,
+        voteDetails: voteDetails,
         players: updatedPlayers,
-        waitingForNextRound: true
+        waitingForNextRound: true,
+        phase: "結果"
     }));
 
     sendToAll({ 
@@ -228,6 +232,7 @@ function calculateResults() {
         result: gameState.result, 
         winningTeam: gameState.winningTeam, 
         voteResults: gameState.voteResults,
+        voteDetails: gameState.voteDetails,
         updatedPlayers: gameState.players
     });
     updateUI();
@@ -319,7 +324,8 @@ export function useKnowledgeablePuppyAbility(guessedRole, targetPlayerId) {
         result: result,
         winningTeam: winningTeam,
         players: updatedPlayers,
-        waitingForNextRound: winningTeam !== null
+        waitingForNextRound: winningTeam !== null,
+        phase: winningTeam !== null ? "結果" : prevState.phase
     }));
 
     sendToAll({ 
@@ -349,7 +355,7 @@ export function reportSpy(reportedPlayerId) {
         if (player.id === currentPlayer.id && reportedRole !== 'スパイ') {
             return { ...player, points: player.points - 3 };
         } else if (winningTeam) {
-            const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
+            const playerRole = roles.const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
             if (winningTeam !== playerRole.team) {
                 return { ...player, points: player.points - playerRole.cost };
             }
@@ -362,10 +368,12 @@ export function reportSpy(reportedPlayerId) {
         result: result,
         winningTeam: winningTeam,
         players: updatedPlayers,
-        waitingForNextRound: true
+        waitingForNextRound: true,
+        phase: "結果"
     }));
 
-    sendToAll({type: 'gameResult', 
+    sendToAll({ 
+        type: 'gameResult', 
         result: result, 
         winningTeam: winningTeam, 
         updatedPlayers: gameState.players
@@ -383,7 +391,9 @@ export function startNewRound() {
         centerCards: [],
         actions: {},
         votes: {},
+        voteDetails: {},
         result: "",
+        winningTeam: "",
         pigmanMark: null,
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
