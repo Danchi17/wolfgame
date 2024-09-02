@@ -1,23 +1,11 @@
-import { roles } from './roleLogic.js';
-import { shuffleArray } from './gameUtils.js';
+'use strict';
 
-export const createInitialState = () => ({
-    players: [],
-    phase: '待機中',
-    assignedRoles: {},
-    centerCards: [],
-    actions: {},
-    votes: {},
-    result: '',
-});
-
-export const initializeGame = () => {
-    const state = createInitialState();
-    return state;
+window.initializeGame = () => {
+    return window.createInitialState();
 };
 
-export const setupRoles = (playerIds) => {
-    const shuffledRoles = shuffleArray([...roles]);
+window.setupRoles = (playerIds) => {
+    const shuffledRoles = window.shuffleArray([...window.roles]);
     const playerRoles = shuffledRoles.slice(0, playerIds.length);
     const centerCards = shuffledRoles.slice(playerIds.length, playerIds.length + 2);
 
