@@ -58,7 +58,7 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
         renderRoleImage(player.role || 'unknown'),
         React.createElement('p', { className: "player-name" }, player.name),
         React.createElement('p', { className: "player-role" }, `役職: ${state.phase === '役職確認' ? player.role : '???'}`),
-        React.createElement('p', { className: "player-points" }, `ポイント: ${player.points}`)
+        React.createElement('p', { className: "player-points" }, `ポイント: ${player.points || 0}`)
       )
     )
   );
@@ -212,14 +212,26 @@ const EnhancedGameUI = () => {
   }, []);
 
   const handleCreateGame = (playerName) => {
-    const gameId = window.generateId();
-    window.setupNetwork();
-    window.addPlayer({ id: state.currentPlayerId, name: playerName });
-    alert(`ゲームが作成されました。ゲームID: ${gameId}`);
+    try {
+      const gameId = window.setupNetwork();
+      window.addPlayer({ id: gameId, name: playerName });
+      alert(`ゲームが作成されました。ゲームID: ${gameId}\nこのIDを他のプレイヤーに共有してください。`);
+      setIsInLobby(false);  // ゲーム画面に切り替え
+    } catch (error) {
+      console.error('Error creating game:', error);
+      alert('ゲームの作成中にエラーが発生しました。ページをリロードして再試行してください。');
+    }
   };
 
   const handleJoinGame = (playerName, gameId) => {
-    window.joinGame(gameId, playerName);
+    try {
+      window.setupNetwork();  // 自身のPeerインスタンスを作成
+      window.joinGame(gameId, playerName);
+      setIsInLobby(false);  // ゲーム画面に切り替え
+    } catch (error) {
+      console.error('Error joining game:', error);
+      alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認し、再試行してください。');
+    }
   };
 
   if (isInLobby) {
