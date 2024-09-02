@@ -1,6 +1,6 @@
-import { getGameState, updateGameState } from './gameState.js';
+'use strict';
 
-export const roles = [
+window.roles = [
     { name: "占い師", team: "市民", cost: 3, ability: "占い師のターン、誰か一人の役職を確認する。もしくは場札の2枚の役職を確認する" },
     { name: "占星術師", team: "市民", cost: 2, ability: "場札を含め、6枚の場にある役職の内、人狼陣営が何個あるか数が分かる。" },
     { name: "占い師の弟子", team: "市民", cost: 1, ability: "占い師のターン、誰か一人の役職を確認する。" },
@@ -15,21 +15,21 @@ export const roles = [
     { name: "スパイ", team: "市民", cost: 2, ability: "狼のターン時に人狼陣営とお互いを確認できる。スパイ通報ボタンが設置され、バレると市民陣営が強制敗北となる。" }
 ];
 
-export const getRoleByName = (roleName) => {
-    return roles.find(role => role.name === roleName);
+window.getRoleByName = (roleName) => {
+    return window.roles.find(role => role.name === roleName);
 };
 
-export const getPlayerRole = (playerId) => {
-    const { players, assignedRoles } = getGameState();
+window.getPlayerRole = (playerId) => {
+    const { players, assignedRoles } = window.getGameState();
     const player = players.find(p => p.id === playerId);
-    return player ? getRoleByName(assignedRoles[playerId]) : null;
+    return player ? window.getRoleByName(assignedRoles[playerId]) : null;
 };
 
-export const swapRoles = (player1Id, player2Id) => {
-    const state = getGameState();
+window.swapRoles = (player1Id, player2Id) => {
+    const state = window.getGameState();
     const { assignedRoles } = state;
     const temp = assignedRoles[player1Id];
     assignedRoles[player1Id] = assignedRoles[player2Id];
     assignedRoles[player2Id] = temp;
-    updateGameState({ assignedRoles });
+    window.updateGameState({ assignedRoles });
 };
