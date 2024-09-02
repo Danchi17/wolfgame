@@ -5,7 +5,7 @@ const LobbyScreen = ({ onCreateGame, onJoinGame }) => {
   const [gameId, setGameId] = React.useState('');
 
   return React.createElement('div', { className: 'lobby-screen' },
-    React.createElement('h1', null, '多能力一夜人狼 - ロビー'),
+    React.createElement('h1', null, '多能力一夜人狼'),
     React.createElement('input', {
       type: 'text',
       placeholder: 'プレイヤー名',
@@ -67,7 +67,33 @@ const renderRoleImage = (role) => {
   });
 };
 
-const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
+const PlayerCard = ({ player, currentPhase, onAction, onVote, onSpyReport, isCurrentPlayer }) => {
+  const isRoleRevealed = currentPhase === '役職確認' || currentPhase === '結果';
+  
+  return React.createElement('div', { className: "card player-card" },
+    React.createElement('div', { className: "text-center" },
+      renderRoleImage(isRoleRevealed || isCurrentPlayer ? player.role : 'unknown'),
+      React.createElement('p', { className: "player-name" }, player.name),
+      React.createElement('p', { className: "player-role" }, `役職: ${isRoleRevealed || isCurrentPlayer ? player.role : '???'}`),
+      React.createElement('p', { className: "player-points" }, `ポイント: ${player.points || 0}`),
+      !isCurrentPlayer && currentPhase === '投票' && React.createElement('button', { onClick: () => onVote(player.id) }, '投票'),
+      !isCurrentPlayer && React.createElement('button', { onClick: () => onSpyReport(player.id) }, 'スパイ通報'),
+      !isCurrentPlayer && (currentPhase === '占い師' || currentPhase === '人狼' || currentPhase === '怪盗') &&
+        React.createElement('button', { onClick: () => onAction(currentPhase, player.id) }, 'アクション')
+    )
+  );
+};
+
+const CenterCard = ({ cardNumber, role, isRevealed }) => {
+  return React.createElement('div', { className: "card center-card" },
+    React.createElement('div', { className: "text-center" },
+      renderRoleImage(isRevealed ? role : 'unknown'),
+      React.createElement('p', { className: "center-card-number" }, `場札 ${cardNumber}`)
+    )
+  );
+};
+
+const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, onSpyReport, onNextPhase }) => {
   const phases = ['待機中', '役職確認', '占い師', '人狼', '怪盗', '議論', '投票', '結果'];
   
   const renderPhaseIcon = (phase) => {
@@ -84,102 +110,18 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
     }
   };
 
-  const PlayerCard = ({ player }) => (
-    React.createElement('div', { className: "card player-card" },
-      React.createElement('div', { className: "text-center" },
-        renderRoleImage(player.role || 'unknown'),
-        React.createElement('p', { className: "player-name" }, player.name),
-        React.createElement('p', { className: "player-role" }, `役職: ${state.phase === '役職確認' ? player.role : '???'}`),
-        React.createElement('p', { className: "player-points" }, `ポイント: ${player.points || 0}`)
-      )
-    )
-  );
-
-  const CenterCard = ({ cardNumber }) => (
-    React.createElement('div', { className: "card center-card" },
-      React.createElement('div', { className: "text-center" },
-        React.createElement('p', { className: "center-card-number" }, `場札 ${cardNumber}`)
-      )
-    )
-  );
-
-  const handleAction = (action, target) => {
-    const result = window.performAction(state.currentPlayerId, action, target);
-    alert(result);
-  };
-
-  const handleVote = (targetId) => {
-    const result = window.castVote(state.currentPlayerId, targetId);
-    if (result) {
-      alert(result);
-    }
-  };
-
   const renderActionArea = () => {
     switch (currentPhase) {
       case '占い師':
       case '人狼':
       case '怪盗':
-        return state.players.map(player => (
-          player.id !== state.currentPlayerId && (
-            React.createElement('button', {
-              key: player.id,
-              onClick: () => handleAction(currentPhase, player.id)
-            }, `${player.name}に対してアクション`)
-          )
-        ));
+        return React.createElement('p', null, `${currentPhase}のアクションを実行してください。`);
+      case '議論':
+        return React.createElement('p', null, '議論の時間です。チャット機能などを使って話し合ってください。');
       case '投票':
-        return state.players.map(player => (
-          player.id !== state.currentPlayerId && (
-            React.createElement('button', {
-              key: player.id,
-              onClick: () => handleVote(player.id)
-            }, `${player.name}に投票`)
-          )
-        ));
+        return React.createElement('p', null, '処刑するプレイヤーに投票してください。');
       case '結果':
-        return React.createElement('p', null, state.result || '結果はまだ発表されていません。');
-      default:
-        return React.createElement('p', null, '現在のフェーズではアクションを実行できません。');
-    }
-  };
-
-  const renderSpecialAbilities = () => {
-    const currentPlayerRole = window.getPlayerRole(state.currentPlayerId);
-    if (!currentPlayerRole) return null;
-
-    switch (currentPlayerRole.name) {
-      case 'やっかいな豚男':
-        return React.createElement('button', {
-          onClick: () => {
-            const targetId = prompt('対象のプレイヤーIDを入力してください:');
-            if (targetId) {
-              const result = window.usePigmanAbility(state.currentPlayerId, targetId);
-              alert(result);
-            }
-          }
-        }, '★マークを付与');
-      case '博識な子犬':
-        return React.createElement('button', {
-          onClick: () => {
-            const targetId = prompt('対象のプレイヤーIDを入力してください:');
-            const guessedRole = prompt('推測する役職名を入力してください:');
-            if (targetId && guessedRole) {
-              const result = window.useKnowledgeablePuppyAbility(state.currentPlayerId, guessedRole, targetId);
-              alert(result);
-            }
-          }
-        }, '役職を推測');
-      case 'スパイ':
-        return React.createElement('button', {
-          onClick: () => {
-            const suspectedSpyId = prompt('スパイだと疑うプレイヤーIDを入力してください:');
-            if (suspectedSpyId) {
-              const result = window.reportSpy(state.currentPlayerId, suspectedSpyId);
-              alert(result);
-            }
-          }
-        }, 'スパイを通報');
+        return React.createElement('p', null, state.result || '結果待ち');
       default:
         return null;
     }
@@ -196,10 +138,7 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
           React.createElement('h2', null, phase),
           React.createElement('div', { className: "phase-icon" }, renderPhaseIcon(phase)),
           React.createElement('button', {
-            onClick: () => {
-              setCurrentPhase(phase);
-              window.nextPhase();
-            },
+            onClick: () => onNextPhase(phase),
             disabled: phases.indexOf(phase) > phases.indexOf(currentPhase),
             className: "phase-button"
           }, currentPhase === phase ? '現在のフェーズ' : 'このフェーズへ')
@@ -208,18 +147,43 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
     ),
     React.createElement('div', { className: "players-container" },
       state.players.map((player, index) => (
-        React.createElement(PlayerCard, { key: player.id, player: player })
+        React.createElement(PlayerCard, { 
+          key: player.id, 
+          player: player, 
+          currentPhase: currentPhase,
+          onAction: onAction,
+          onVote: onVote,
+          onSpyReport: onSpyReport,
+          isCurrentPlayer: player.id === state.currentPlayerId
+        })
       )),
       React.createElement('div', { className: "center-cards" },
-        React.createElement(CenterCard, { cardNumber: 1 }),
-        React.createElement(CenterCard, { cardNumber: 2 })
+        React.createElement(CenterCard, { cardNumber: 1, role: state.centerCards[0], isRevealed: currentPhase === '結果' }),
+        React.createElement(CenterCard, { cardNumber: 2, role: state.centerCards[1], isRevealed: currentPhase === '結果' })
       )
     ),
     React.createElement('div', { className: "action-area" },
       React.createElement('h2', null, 'アクションエリア'),
       React.createElement('p', null, `現在のフェーズ: ${currentPhase}`),
-      renderActionArea(),
-      renderSpecialAbilities()
+      renderActionArea()
+    )
+  );
+};
+
+const GameIdModal = ({ gameId, onClose }) => {
+  if (!gameId) return null;
+
+  return React.createElement('div', { className: 'modal', style: { display: 'block' } },
+    React.createElement('div', { className: 'modal-content' },
+      React.createElement('span', { className: 'close-button', onClick: onClose }, '×'),
+      React.createElement('h2', null, 'ゲームが作成されました'),
+      React.createElement('p', null, '以下のゲームIDを他のプレイヤーに共有してください：'),
+      React.createElement('p', { id: 'game-id-display' }, gameId),
+      React.createElement('button', { onClick: () => {
+        navigator.clipboard.writeText(gameId).then(() => {
+          alert('ゲームIDがクリップボードにコピーされました');
+        });
+      }}, 'ゲームIDをコピー')
     )
   );
 };
@@ -228,6 +192,7 @@ const EnhancedGameUI = () => {
   const [state, setState] = React.useState(() => window.getGameState());
   const [currentPhase, setCurrentPhase] = React.useState('待機中');
   const [isInLobby, setIsInLobby] = React.useState(true);
+  const [gameIdToShow, setGameIdToShow] = React.useState(null);
   
   React.useEffect(() => {
     const updateState = () => {
@@ -247,8 +212,8 @@ const EnhancedGameUI = () => {
     try {
       const gameId = window.setupNetwork();
       window.addPlayer({ id: gameId, name: playerName });
-      alert(`ゲームが作成されました。ゲームID: ${gameId}\nこのIDを他のプレイヤーに共有してください。`);
-      setIsInLobby(false);  // ゲーム画面に切り替え
+      setGameIdToShow(gameId);
+      setIsInLobby(false);
     } catch (error) {
       console.error('Error creating game:', error);
       alert('ゲームの作成中にエラーが発生しました。ページをリロードして再試行してください。');
@@ -257,19 +222,52 @@ const EnhancedGameUI = () => {
 
   const handleJoinGame = (playerName, gameId) => {
     try {
-      window.setupNetwork();  // 自身のPeerインスタンスを作成
+      window.setupNetwork();
       window.joinGame(gameId, playerName);
-      setIsInLobby(false);  // ゲーム画面に切り替え
+      setIsInLobby(false);
     } catch (error) {
       console.error('Error joining game:', error);
       alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認し、再試行してください。');
     }
   };
 
+  const handleAction = (actionType, targetId) => {
+    const result = window.performAction(state.currentPlayerId, actionType, targetId);
+    alert(result);
+  };
+
+  const handleVote = (targetId) => {
+    const result = window.castVote(state.currentPlayerId, targetId);
+    if (result) {
+      alert(result);
+    }
+  };
+
+  const handleSpyReport = (suspectedSpyId) => {
+    const result = window.reportSpy(state.currentPlayerId, suspectedSpyId);
+    alert(result);
+  };
+
+  const handleNextPhase = (newPhase) => {
+    setCurrentPhase(newPhase);
+    window.nextPhase();
+  };
+
   if (isInLobby) {
     return React.createElement(LobbyScreen, { onCreateGame: handleCreateGame, onJoinGame: handleJoinGame });
   } else {
-    return React.createElement(GameScreen, { state, currentPhase, setCurrentPhase });
+    return React.createElement(React.Fragment, null,
+      React.createElement(GameScreen, { 
+        state, 
+        currentPhase, 
+        setCurrentPhase, 
+        onAction: handleAction, 
+        onVote: handleVote, 
+        onSpyReport: handleSpyReport,
+        onNextPhase: handleNextPhase
+      }),
+      React.createElement(GameIdModal, { gameId: gameIdToShow, onClose: () => setGameIdToShow(null) })
+    );
   }
 };
 
