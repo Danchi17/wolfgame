@@ -6,14 +6,23 @@
     <title>多能力一夜人狼</title>
     <link rel="stylesheet" href="css/styles.css">
     <link rel="icon" href="data:,">
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
 </head>
 <body>
     <div id="app"></div>
-    <script type="text/babel" src="js/ui.js"></script>
-    <script type="module" src="js/main.js"></script>
+    <script src="js/game/gameUtils.js"></script>
+    <script src="js/game/gameState.js"></script>
+    <script src="js/game/roleLogic.js"></script>
+    <script src="js/game/gamePhases.js"></script>
+    <script src="js/game/gameSetup.js"></script>
+    <script src="js/actions/actionResults.js"></script>
+    <script src="js/actions/playerActions.js"></script>
+    <script src="js/actions/specialActions.js"></script>
+    <script src="js/actions/voteActions.js"></script>
+    <script src="js/network.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>
