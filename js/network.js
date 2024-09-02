@@ -3,7 +3,7 @@
 let peer;
 let connections = [];
 
-window.setupNetwork = (initialState) => {
+window.setupNetwork = () => {
     const peerOptions = {
         config: {
             'iceServers': [
@@ -32,14 +32,18 @@ window.setupNetwork = (initialState) => {
         console.error('PeerJS error:', error);
         handlePeerError(error);
     });
+
+    return peer.id;  // ゲームIDとしてPeer IDを返す
 };
 
 const setupConnection = (conn) => {
     connections.push(conn);
     conn.on('open', () => {
+        console.log('Connection opened with:', conn.peer);
         conn.on('data', (data) => handleReceivedData(data));
     });
     conn.on('close', () => {
+        console.log('Connection closed with:', conn.peer);
         connections = connections.filter(c => c !== conn);
         handlePlayerDisconnection(conn.peer);
     });
@@ -50,6 +54,7 @@ const setupConnection = (conn) => {
 };
 
 const handleReceivedData = (data) => {
+    console.log('Received data:', data);
     try {
         switch (data.type) {
             case 'playerJoined':
@@ -82,12 +87,12 @@ window.sendToAll = (data) => {
 };
 
 window.joinGame = (gameId, playerName) => {
-    const conn = peer.connect(gameId);
+    const conn = peer.connect(gameId, { reliable: true });
     setupConnection(conn);
     conn.on('open', () => {
-        const state = window.getGameState();
-        const newPlayer = { id: state.currentPlayerId, name: playerName };
-        window.sendToAll({ type: 'playerJoined', player: newPlayer });
+        console.log('Connected to host. Sending player info.');
+        const newPlayer = { id: peer.id, name: playerName };
+        conn.send({ type: 'playerJoined', player: newPlayer });
     });
 };
 
@@ -95,6 +100,8 @@ const handlePeerError = (error) => {
     console.error('Peer error:', error);
     if (error.type === 'network' || error.type === 'server-error') {
         alert('ネットワークエラーが発生しました。ページをリロードして再接続してください。');
+    } else if (error.type === 'peer-unavailable') {
+        alert('指定されたゲームIDが見つかりません。ゲームIDを確認して再試行してください。');
     }
 };
 
