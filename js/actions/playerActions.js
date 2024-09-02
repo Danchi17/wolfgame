@@ -1,9 +1,8 @@
-import { getGameState, updateGameState } from '../game/gameState.js';
-import { getPlayerRole } from '../game/roleLogic.js';
+'use strict';
 
-export const performAction = (playerId, actionType, target) => {
-    const state = getGameState();
-    const playerRole = getPlayerRole(playerId);
+window.performAction = (playerId, actionType, target) => {
+    const state = window.getGameState();
+    const playerRole = window.getPlayerRole(playerId);
 
     if (state.actions[playerId]) {
         return '既にアクションを実行しています。';
@@ -22,12 +21,11 @@ export const performAction = (playerId, actionType, target) => {
         case '怪盗':
             result = performThiefAction(playerId, target);
             break;
-        // 他のアクションタイプも同様に実装
         default:
             result = 'アクションが無効です。';
     }
 
-    updateGameState({
+    window.updateGameState({
         actions: {
             ...state.actions,
             [playerId]: { actionType, target }
@@ -38,7 +36,7 @@ export const performAction = (playerId, actionType, target) => {
 };
 
 const performSeerAction = (playerId, target) => {
-    const state = getGameState();
+    const state = window.getGameState();
     if (target === 'centerCards') {
         return `場札の役職: ${state.centerCards.map(card => card.name).join(', ')}`;
     } else {
@@ -48,7 +46,7 @@ const performSeerAction = (playerId, target) => {
 };
 
 const performAstrologerAction = () => {
-    const state = getGameState();
+    const state = window.getGameState();
     const allRoles = [
         ...Object.values(state.assignedRoles),
         ...state.centerCards.map(card => card.name)
@@ -60,11 +58,11 @@ const performAstrologerAction = () => {
 };
 
 const performThiefAction = (thiefId, targetId) => {
-    const state = getGameState();
+    const state = window.getGameState();
     const thiefRole = state.assignedRoles[thiefId];
     const targetRole = state.assignedRoles[targetId];
     
-    updateGameState({
+    window.updateGameState({
         assignedRoles: {
             ...state.assignedRoles,
             [thiefId]: targetRole,
@@ -75,10 +73,10 @@ const performThiefAction = (thiefId, targetId) => {
     return `${state.players.find(p => p.id === targetId).name}と役職を交換しました。あなたの新しい役職: ${targetRole}`;
 };
 
-export const performRoleAction = (phase) => {
-    const state = getGameState();
+window.performRoleAction = (phase) => {
+    const state = window.getGameState();
     const eligiblePlayers = state.players.filter(player => {
-        const role = getPlayerRole(player.id);
+        const role = window.getPlayerRole(player.id);
         return role && (
             (phase === '占い師' && ['占い師', '占い人狼', '占い師の弟子'].includes(role.name)) ||
             (phase === '人狼' && role.team === '人狼') ||
@@ -87,10 +85,8 @@ export const performRoleAction = (phase) => {
     });
 
     eligiblePlayers.forEach(player => {
-        // AIの行動ロジックをここに実装
-        // 例: ランダムなターゲットを選択
         const targets = state.players.filter(p => p.id !== player.id);
         const randomTarget = targets[Math.floor(Math.random() * targets.length)];
-        performAction(player.id, getPlayerRole(player.id).name, randomTarget.id);
+        window.performAction(player.id, window.getPlayerRole(player.id).name, randomTarget.id);
     });
 };
