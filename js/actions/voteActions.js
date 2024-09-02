@@ -1,22 +1,21 @@
-import { getGameState, updateGameState } from '../game/gameState.js';
-import { getPlayerRole } from '../game/roleLogic.js';
+'use strict';
 
-export const castVote = (voterId, targetId) => {
-    const state = getGameState();
+window.castVote = (voterId, targetId) => {
+    const state = window.getGameState();
     const updatedVotes = { ...state.votes, [voterId]: targetId };
-    updateGameState({ votes: updatedVotes });
+    window.updateGameState({ votes: updatedVotes });
 
     if (Object.keys(updatedVotes).length === state.players.length) {
-        return tallyVotes();
+        return window.tallyVotes();
     }
     return null;
 };
 
-export const tallyVotes = () => {
-    const state = getGameState();
+window.tallyVotes = () => {
+    const state = window.getGameState();
     const voteCount = {};
     Object.entries(state.votes).forEach(([voterId, targetId]) => {
-        const voterRole = getPlayerRole(voterId);
+        const voterRole = window.getPlayerRole(voterId);
         const weight = voterRole.name === '村長' ? 2 : 1;
         voteCount[targetId] = (voteCount[targetId] || 0) + weight;
     });
@@ -24,7 +23,7 @@ export const tallyVotes = () => {
     const maxVotes = Math.max(...Object.values(voteCount));
     const executed = Object.keys(voteCount).filter(id => voteCount[id] === maxVotes);
 
-    const werewolfExecuted = executed.some(id => getPlayerRole(id).team === '人狼');
+    const werewolfExecuted = executed.some(id => window.getPlayerRole(id).team === '人狼');
 
     let result = '';
     if (werewolfExecuted) {
@@ -33,6 +32,6 @@ export const tallyVotes = () => {
         result = "人狼は生き残りました。人狼陣営の勝利！";
     }
 
-    updateGameState({ result });
+    window.updateGameState({ result });
     return result;
 };
