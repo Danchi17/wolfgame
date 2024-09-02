@@ -24,7 +24,7 @@ export const setupNetwork = (initialState) => {
         }
     };
 
-    peer = new Peer(peerOptions);
+    peer = new Peer(generateRandomId(), peerOptions);
     
     peer.on('open', (id) => {
         console.log('My peer ID is: ' + id);
@@ -103,4 +103,8 @@ const addPlayer = (player) => {
     updateGameState({
         players: [...getGameState().players, player]
     });
+};
+
+const generateRandomId = () => {
+    return Math.random().toString(36).substr(2, 9);
 };
