@@ -1,5 +1,4 @@
-// モジュールのインポートを削除し、グローバルスコープで関数を使用する前提で修正
-// React関連の変数をグローバルスコープから取得
+'use strict';
 
 const EnhancedGameUI = () => {
   const [state, setState] = React.useState(() => getGameState());
@@ -8,8 +7,9 @@ const EnhancedGameUI = () => {
   React.useEffect(() => {
     const updateState = () => setState(getGameState());
     // ゲーム状態が変更されたときにUIを更新するためのイベントリスナーをここに追加
+    window.addEventListener('gameStateUpdated', updateState);
     return () => {
-      // クリーンアップ関数：イベントリスナーの削除など
+      window.removeEventListener('gameStateUpdated', updateState);
     };
   }, []);
 
@@ -30,17 +30,15 @@ const EnhancedGameUI = () => {
   };
 
   const renderRoleImage = (role) => {
-    return (
-      React.createElement('img', {
-        src: `images/roles/${role}.jpg`,
-        alt: role,
-        className: "role-image",
-        onError: (e) => {
-          e.target.onerror = null;
-          e.target.src = 'images/roles/unknown.jpg';
-        }
-      })
-    );
+    return React.createElement('img', {
+      src: `images/roles/${role}.jpg`,
+      alt: role,
+      className: "role-image",
+      onError: (e) => {
+        e.target.onerror = null;
+        e.target.src = 'images/roles/unknown.jpg';
+      }
+    });
   };
 
   const PlayerCard = ({ player }) => (
