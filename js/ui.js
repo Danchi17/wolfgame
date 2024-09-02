@@ -31,7 +31,7 @@ function updatePlayerList() {
         let roleToShow = '?';
         if (player.id === currentPlayer.id || gameState.phase === "結果") {
             roleToShow = gameState.assignedRoles[player.id] || '未割り当て';
-            if (gameState.roleChanges[player.id]) {
+            if (gameState.roleChanges[player.id] && (player.id === currentPlayer.id || gameState.phase === "結果")) {
                 roleToShow += ` (元: ${gameState.roleChanges[player.id].from})`;
             }
         } else if (phases.indexOf(gameState.phase) > phases.indexOf("役職確認")) {
@@ -234,8 +234,14 @@ function displayResults() {
     `;
 
     // 投票結果の表示
-    if (gameState.voteResults) {
+    if (gameState.voteResults && gameState.voteDetails) {
         actionArea.innerHTML += '<h3>投票結果:</h3>';
+        gameState.players.forEach(player => {
+            const votedFor = gameState.players.find(p => p.id === gameState.voteDetails[player.id]?.targetId);
+            const voteWeight = gameState.voteDetails[player.id]?.weight || 1;
+            actionArea.innerHTML += `<p>${player.name} → ${votedFor ? votedFor.name : '無効'} (${voteWeight}票)</p>`;
+        });
+        actionArea.innerHTML += '<h3>得票数:</h3>';
         for (const [playerId, votes] of Object.entries(gameState.voteResults)) {
             const player = gameState.players.find(p => p.id === playerId);
             actionArea.innerHTML += `<p>${player.name}: ${votes}票</p>`;
@@ -273,7 +279,7 @@ window.vote = function(targetId) {
     updateUI();
 };
 
-window.usePigmanAbility = function(targetId) {
+window.usePigmanwindow.usePigmanAbility = function(targetId) {
     const result = usePigmanAbility(targetId);
     showActionResult(result);
     updateUI();
