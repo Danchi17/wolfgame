@@ -92,17 +92,30 @@ function updateActionArea() {
             actionArea.innerHTML = `<p>あなたの役職は ${gameState.assignedRoles[currentPlayer.id]} です。</p>`;
             break;
         case "占い師":
+            if (["占い師", "占い人狼", "占い師の弟子", "占星術師"].includes(gameState.assignedRoles[currentPlayer.id])) {
+                createActionButtons();
+            } else {
+                actionArea.innerHTML = '<p>占い師のターンです。他のプレイヤーの行動を待っています。</p>';
+            }
+            break;
         case "人狼":
+            if (["人狼", "大熊", "やっかいな豚男", "蛇女", "博識な子犬", "スパイ"].includes(gameState.assignedRoles[currentPlayer.id])) {
+                createActionButtons();
+            } else {
+                actionArea.innerHTML = '<p>人狼のターンです。他のプレイヤーの行動を待っています。</p>';
+            }
+            break;
         case "怪盗":
-            createActionButtons();
+            if (gameState.assignedRoles[currentPlayer.id] === "怪盗") {
+                createActionButtons();
+            } else {
+                actionArea.innerHTML = '<p>怪盗のターンです。他のプレイヤーの行動を待っています。</p>';
+            }
             break;
         case "議論":
             actionArea.innerHTML = `<p>議論の時間です。他のプレイヤーと話し合ってください。</p>`;
             if (gameState.assignedRoles[currentPlayer.id] === "やっかいな豚男") {
                 createPigmanActionButtons();
-            }
-            if (gameState.assignedRoles[currentPlayer.id] === "占星術師") {
-                createAstrologerActionButton();
             }
             if (gameState.assignedRoles[currentPlayer.id] === "博識な子犬") {
                 createKnowledgeablePuppyActionButtons();
@@ -143,6 +156,9 @@ function createActionButtons() {
                 actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
             }
             break;
+        case "占星術師":
+            actionArea.innerHTML += `<button onclick="window.executeAction('占星術師', null)">人狼陣営の数を確認</button>`;
+            break;
         case "怪盗":
             gameState.players.forEach(player => {
                 if (player.id !== currentPlayer.id) {
@@ -169,11 +185,6 @@ function createPigmanActionButtons() {
             actionArea.innerHTML += `<button onclick="window.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
         }
     });
-}
-
-function createAstrologerActionButton() {
-    const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML += `<button onclick="window.executeAction('占星術師', null)">人狼陣営の数を確認</button>`;
 }
 
 function createKnowledgeablePuppyActionButtons() {
@@ -221,6 +232,13 @@ function displayResults() {
         <p>あなたの最終役職: ${gameState.assignedRoles[currentPlayer.id]}</p>
         <p>現在の持ち点: ${currentPlayer.points}</p>
     `;
+
+    // 投票結果の表示
+    actionArea.innerHTML += '<h3>投票結果:</h3>';
+    for (const [playerId, votes] of Object.entries(gameState.voteResults)) {
+        const player = gameState.players.find(p => p.id === playerId);
+        actionArea.innerHTML += `<p>${player.name}: ${votes}票</p>`;
+    }
 }
 
 export function showActionResult(result) {
@@ -274,6 +292,8 @@ window.reportSpy = function(reportedPlayerId) {
 
 window.startNewRound = function() {
     startNewRound();
+    const actionResultElement = document.getElementById('actionResult');
+    actionResultElement.textContent = ''; // アクション結果をリセット
     updateUI();
 };
 
