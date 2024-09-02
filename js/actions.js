@@ -294,59 +294,92 @@ export function usePigmanAbility(targetId) {
 export function useKnowledgeablePuppyAbility(guessedRole, targetPlayerId) {
     const targetRole = gameState.assignedRoles[targetPlayerId];
     const citizenRoles = ['占星術師', '占い師の弟子', '無法者', '村長'];
+    let result = '';
+    let winningTeam = '';
+
     if (guessedRole === targetRole && citizenRoles.includes(targetRole)) {
-        updateGameState(prevState => ({
-            ...prevState,
-            result: "博識な子犬が市民の役職を正しく推測しました。人狼陣営の勝利！",
-            winningTeam: "人狼"
-        }));
-        sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
-        updateUI();
-        return "市民の役職を正しく推測しました。人狼陣営の勝利です！";
+        result = "博識な子犬が市民の役職を正しく推測しました。人狼陣営の勝利！";
+        winningTeam = "人狼";
     } else {
-        return '推測が外れました。または、推測した役職が指定の市民陣営ではありませんでした。';
+        result = "博識な子犬の推測が外れました。ゲームを続行します。";
+        winningTeam = null;
     }
+
+    // プレイヤーの持ち点を更新
+    const updatedPlayers = gameState.players.map(player => {
+        const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
+        if (winningTeam && winningTeam !== playerRole.team) {
+            return { ...player, points: player.points - playerRole.cost };
+        }
+        return player;
+    });
+
+    updateGameState(prevState => ({
+        ...prevState,
+        result: result,
+        winningTeam: winningTeam,
+        players: updatedPlayers,
+        waitingForNextRound: winningTeam !== null
+    }));
+
+    sendToAll({ 
+        type: 'gameResult', 
+        result: result, 
+        winningTeam: winningTeam, 
+        updatedPlayers: gameState.players
+    });
+    updateUI();
+    return result;
 }
 
 export function reportSpy(reportedPlayerId) {
     const reportedRole = gameState.assignedRoles[reportedPlayerId];
+    let result = '';
+    let winningTeam = '';
+
     if (reportedRole === 'スパイ') {
-        updateGameState(prevState => ({
-            ...prevState,
-            result: "スパイが発覚しました。市民陣営の敗北！",
-            winningTeam: "人狼",
-            waitingForNextRound: true
-        }));
-        sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
-        updateUI();
-        return "スパイの通報に成功しました。市民陣営の敗北です！";
+        result = "スパイが発覚しました。市民陣営の敗北！";
+        winningTeam = "人狼";
     } else {
-        const updatedPlayers = gameState.players.map(player => 
-            player.id === currentPlayer.id 
-                ? { ...player, points: player.points - 3 } 
-                : player
-        );
-        updateGameState(prevState => ({
-            ...prevState,
-            players: updatedPlayers,
-            result: "スパイの通報に失敗しました。通報者の持ち点が3点減少しました。",
-            waitingForNextRound: true
-        }));
-        sendToAll({ 
-            type: 'gameResult', 
-            result: gameState.result, 
-            updatedPlayers: updatedPlayers 
-        });
-        updateUI();
-        return "スパイの通報に失敗しました。3ポイント失います。";
+        result = "スパイの通報に失敗しました。通報者の持ち点が3点減少しました。";
+        winningTeam = null;
     }
+
+    const updatedPlayers = gameState.players.map(player => {
+        if (player.id === currentPlayer.id && reportedRole !== 'スパイ') {
+            return { ...player, points: player.points - 3 };
+        } else if (winningTeam) {
+            const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
+            if (winningTeam !== playerRole.team) {
+                return { ...player, points: player.points - playerRole.cost };
+            }
+        }
+        return player;
+    });
+
+    updateGameState(prevState => ({
+        ...prevState,
+        result: result,
+        winningTeam: winningTeam,
+        players: updatedPlayers,
+        waitingForNextRound: true
+    }));
+
+    sendToAll({type: 'gameResult', 
+        result: result, 
+        winningTeam: winningTeam, 
+        updatedPlayers: gameState.players
+    });
+    updateUI();
+    return result;
 }
 
 export function startNewRound() {
     updateGameState(prevState => ({
         ...prevState,
         phase: "待機中",
-        assignedRoles: {},roleChanges: {},
+        assignedRoles: {},
+        roleChanges: {},
         centerCards: [],
         actions: {},
         votes: {},
