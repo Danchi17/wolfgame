@@ -46,8 +46,7 @@ const setupConnection = (conn) => {
         console.log('Connection closed with:', conn.peer);
         connections = connections.filter(c => c !== conn);
         handlePlayerDisconnection(conn.peer);
-    });
-    conn.on('error', (error) => {
+    });conn.on('error', (error) => {
         console.error('Connection error:', error);
         handleConnectionError(error, conn.peer);
     });
@@ -58,12 +57,14 @@ const handleReceivedData = (data, conn) => {
     try {
         switch (data.type) {
             case 'playerJoined':
-                window.addPlayer(data.player);
-                console.log('Player joined:', data.player);
-                // 新しいプレイヤーに現在のゲーム状態を送信
-                conn.send({ type: 'gameState', state: window.getGameState() });
-                // 他の全プレイヤーに新しいプレイヤーの情報を送信
-                window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
+                if (!window.getGameState().players.some(p => p.id === data.player.id)) {
+                    window.addPlayer(data.player);
+                    console.log('Player joined:', data.player);
+                    // 新しいプレイヤーに現在のゲーム状態を送信
+                    conn.send({ type: 'gameState', state: window.getGameState() });
+                    // 他の全プレイヤーに新しいプレイヤーの情報を送信
+                    window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
+                }
                 break;
             case 'gameState':
                 window.updateGameState(data.state);
@@ -81,7 +82,7 @@ const handleReceivedData = (data, conn) => {
             default:
                 console.warn('Unknown data type received:', data.type);
         }
-        // 状態が変更されたことを通知
+        console.log('Current game state after handling data:', window.getGameState());
         window.dispatchEvent(new Event('gameStateUpdated'));
     } catch (error) {
         console.error('Error handling received data:', error);
@@ -107,6 +108,7 @@ window.joinGame = (gameId, playerName) => {
         conn.send({ type: 'playerJoined', player: newPlayer });
         window.addPlayer(newPlayer);  // 自分自身をプレイヤーリストに追加
         window.updateGameState({ currentPlayerId: peer.id });  // 現在のプレイヤーIDを設定
+        console.log('Updated game state after joining:', window.getGameState());
         window.dispatchEvent(new Event('gameStateUpdated'));  // UI更新のためのイベント発火
     });
 };
