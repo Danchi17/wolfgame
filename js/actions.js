@@ -12,6 +12,10 @@ export function performAction(action, target) {
         return '既にアクションを実行しています。';
     }
 
+    if (!isCorrectPhaseForAction(action)) {
+        return 'このフェーズではその行動を取ることができません。';
+    }
+
     let result = '';
 
     switch (action) {
@@ -48,6 +52,19 @@ export function performAction(action, target) {
 
     sendToAll({ type: 'action', playerId: currentPlayer.id, action, target });
     return result;
+}
+
+function isCorrectPhaseForAction(action) {
+    switch (gameState.phase) {
+        case '占い師':
+            return ['占い師', '占い人狼', '占い師の弟子', '占星術師'].includes(action);
+        case '人狼':
+            return ['人狼', '大熊', 'やっかいな豚男', '蛇女', '博識な子犬', 'スパイ'].includes(action);
+        case '怪盗':
+            return action === '怪盗';
+        default:
+            return false;
+    }
 }
 
 function handleSeerAction(target) {
@@ -190,7 +207,8 @@ function calculateResults() {
             ...prevState,
             result: result,
             winningTeam: winningTeam,
-            executedPlayers: executedPlayers
+            executedPlayers: executedPlayers,
+            voteResults: voteCount
         }));
     }
 
@@ -207,7 +225,7 @@ function calculateResults() {
         waitingForNextRound: true
     }));
 
-    sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
+    sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam, voteResults: gameState.voteResults });
     updateUI();
 }
 
@@ -292,20 +310,24 @@ export function reportSpy(reportedPlayerId) {
         updateGameState(prevState => ({
             ...prevState,
             result: "スパイが発覚しました。市民陣営の敗北！",
-            winningTeam: "人狼"
+            winningTeam: "人狼",
+            waitingForNextRound: true
         }));
         sendToAll({ type: 'gameResult', result: gameState.result, winningTeam: gameState.winningTeam });
         updateUI();
         return "スパイの通報に成功しました。市民陣営の敗北です！";
     } else {
         const reporter = gameState.players.find(p => p.id === currentPlayer.id);
-        reporter.points -= 1; // 誤った通報のペナルティ
+        reporter.points -= 3; // 誤った通報のペナルティを3点に増やす
         updateGameState(prevState => ({
             ...prevState,
-            players: prevState.players.map(p => p.id === currentPlayer.id ? reporter : p)
+            players: prevState.players.map(p => p.id === currentPlayer.id ? reporter : p),
+            result: "スパイの通報に失敗しました。通報者の持ち点が3点減少しました。",
+            waitingForNextRound: true
         }));
+        sendToAll({ type: 'gameResult', result: gameState.result });
         updateUI();
-        return "スパイの通報に失敗しました。1ポイント失います。";
+        return "スパイの通報に失敗しました。3ポイント失います。";
     }
 }
 
@@ -322,7 +344,8 @@ export function startNewRound() {
         pigmanMark: null,
         pigmanMarkTimeout: null,
         waitingForNextRound: false,
-        roundNumber: prevState.roundNumber + 1
+        roundNumber: prevState.roundNumber + 1,
+        voteResults: {}
     }));
     sendToAll({ type: 'newRound', state: gameState });
     updateUI();
