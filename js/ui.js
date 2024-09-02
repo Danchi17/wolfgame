@@ -1,18 +1,29 @@
 'use strict';
 
-const EnhancedGameUI = () => {
-  const [state, setState] = React.useState(() => getGameState());
-  const [currentPhase, setCurrentPhase] = React.useState('待機中');
-  
-  React.useEffect(() => {
-    const updateState = () => setState(getGameState());
-    // ゲーム状態が変更されたときにUIを更新するためのイベントリスナーをここに追加
-    window.addEventListener('gameStateUpdated', updateState);
-    return () => {
-      window.removeEventListener('gameStateUpdated', updateState);
-    };
-  }, []);
+const LobbyScreen = ({ onCreateGame, onJoinGame }) => {
+  const [playerName, setPlayerName] = React.useState('');
+  const [gameId, setGameId] = React.useState('');
 
+  return React.createElement('div', { className: 'lobby-screen' },
+    React.createElement('h1', null, '多能力一夜人狼 - ロビー'),
+    React.createElement('input', {
+      type: 'text',
+      placeholder: 'プレイヤー名',
+      value: playerName,
+      onChange: (e) => setPlayerName(e.target.value)
+    }),
+    React.createElement('button', { onClick: () => onCreateGame(playerName) }, 'ゲームを作成'),
+    React.createElement('input', {
+      type: 'text',
+      placeholder: 'ゲームID',
+      value: gameId,
+      onChange: (e) => setGameId(e.target.value)
+    }),
+    React.createElement('button', { onClick: () => onJoinGame(playerName, gameId) }, 'ゲームに参加')
+  );
+};
+
+const GameScreen = ({ state, currentPhase, setCurrentPhase }) => {
   const phases = ['待機中', '役職確認', '占い師', '人狼', '怪盗', '議論', '投票', '結果'];
   
   const renderPhaseIcon = (phase) => {
@@ -61,16 +72,14 @@ const EnhancedGameUI = () => {
   );
 
   const handleAction = (action, target) => {
-    const result = performAction(state.currentPlayerId, action, target);
+    const result = window.performAction(state.currentPlayerId, action, target);
     alert(result);
-    setState(getGameState());
   };
 
   const handleVote = (targetId) => {
-    const result = castVote(state.currentPlayerId, targetId);
+    const result = window.castVote(state.currentPlayerId, targetId);
     if (result) {
       alert(result);
-      setState(getGameState());
     }
   };
 
@@ -104,7 +113,7 @@ const EnhancedGameUI = () => {
   };
 
   const renderSpecialAbilities = () => {
-    const currentPlayerRole = getPlayerRole(state.currentPlayerId);
+    const currentPlayerRole = window.getPlayerRole(state.currentPlayerId);
     if (!currentPlayerRole) return null;
 
     switch (currentPlayerRole.name) {
@@ -113,9 +122,8 @@ const EnhancedGameUI = () => {
           onClick: () => {
             const targetId = prompt('対象のプレイヤーIDを入力してください:');
             if (targetId) {
-              const result = usePigmanAbility(state.currentPlayerId, targetId);
+              const result = window.usePigmanAbility(state.currentPlayerId, targetId);
               alert(result);
-              setState(getGameState());
             }
           }
         }, '★マークを付与');
@@ -125,9 +133,8 @@ const EnhancedGameUI = () => {
             const targetId = prompt('対象のプレイヤーIDを入力してください:');
             const guessedRole = prompt('推測する役職名を入力してください:');
             if (targetId && guessedRole) {
-              const result = useKnowledgeablePuppyAbility(state.currentPlayerId, guessedRole, targetId);
+              const result = window.useKnowledgeablePuppyAbility(state.currentPlayerId, guessedRole, targetId);
               alert(result);
-              setState(getGameState());
             }
           }
         }, '役職を推測');
@@ -136,9 +143,8 @@ const EnhancedGameUI = () => {
           onClick: () => {
             const suspectedSpyId = prompt('スパイだと疑うプレイヤーIDを入力してください:');
             if (suspectedSpyId) {
-              const result = reportSpy(state.currentPlayerId, suspectedSpyId);
+              const result = window.reportSpy(state.currentPlayerId, suspectedSpyId);
               alert(result);
-              setState(getGameState());
             }
           }
         }, 'スパイを通報');
@@ -160,8 +166,7 @@ const EnhancedGameUI = () => {
           React.createElement('button', {
             onClick: () => {
               setCurrentPhase(phase);
-              nextPhase();
-              setState(getGameState());
+              window.nextPhase();
             },
             disabled: phases.indexOf(phase) > phases.indexOf(currentPhase),
             className: "phase-button"
@@ -185,6 +190,43 @@ const EnhancedGameUI = () => {
       renderSpecialAbilities()
     )
   );
+};
+
+const EnhancedGameUI = () => {
+  const [state, setState] = React.useState(() => window.getGameState());
+  const [currentPhase, setCurrentPhase] = React.useState('待機中');
+  const [isInLobby, setIsInLobby] = React.useState(true);
+  
+  React.useEffect(() => {
+    const updateState = () => {
+      const newState = window.getGameState();
+      setState(newState);
+      if (newState.players.length > 0) {
+        setIsInLobby(false);
+      }
+    };
+    window.addEventListener('gameStateUpdated', updateState);
+    return () => {
+      window.removeEventListener('gameStateUpdated', updateState);
+    };
+  }, []);
+
+  const handleCreateGame = (playerName) => {
+    const gameId = window.generateId();
+    window.setupNetwork();
+    window.addPlayer({ id: state.currentPlayerId, name: playerName });
+    alert(`ゲームが作成されました。ゲームID: ${gameId}`);
+  };
+
+  const handleJoinGame = (playerName, gameId) => {
+    window.joinGame(gameId, playerName);
+  };
+
+  if (isInLobby) {
+    return React.createElement(LobbyScreen, { onCreateGame: handleCreateGame, onJoinGame: handleJoinGame });
+  } else {
+    return React.createElement(GameScreen, { state, currentPhase, setCurrentPhase });
+  }
 };
 
 const renderUI = () => {
