@@ -1,8 +1,7 @@
-import { getGameState, updateGameState } from '../game/gameState.js';
-import { getPlayerRole } from '../game/roleLogic.js';
+'use strict';
 
-export const processActionResult = (action, result) => {
-    const state = getGameState();
+window.processActionResult = (action, result) => {
+    const state = window.getGameState();
     let message = '';
 
     switch (action) {
@@ -17,25 +16,24 @@ export const processActionResult = (action, result) => {
         case '怪盗':
             message = `怪盗の行動結果: ${result}`;
             break;
-        // 他のアクションの結果処理も同様に実装
         default:
             message = `行動結果: ${result}`;
     }
 
-    updateGameState({
+    window.updateGameState({
         actionResults: [...(state.actionResults || []), { action, result: message }]
     });
 
     return message;
 };
 
-export const announceResults = () => {
-    const state = getGameState();
+window.announceResults = () => {
+    const state = window.getGameState();
     let announcement = `ゲーム結果: ${state.result}\n`;
 
     announcement += "各プレイヤーの最終役職:\n";
     state.players.forEach(player => {
-        const role = getPlayerRole(player.id);
+        const role = window.getPlayerRole(player.id);
         announcement += `${player.name}: ${role.name} (${role.team})\n`;
     });
 
