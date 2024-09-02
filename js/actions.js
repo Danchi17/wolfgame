@@ -351,18 +351,17 @@ export function reportSpy(reportedPlayerId) {
         winningTeam = null;
     }
 
-    const updatedPlayers = gameState.players.map(player => {
-        if (player.id === currentPlayer.id && reportedRole !== 'スパイ') {
-            return { ...player, points: player.points - 3 };
-        } else if (winningTeam) {
-            const playerRole = roles.const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
-            if (winningTeam !== playerRole.team) {
-                return { ...player, points: player.points - playerRole.cost };
-            }
+  const updatedPlayers = gameState.players.map(player => {
+    if (player.id === currentPlayer.id && reportedRole !== 'スパイ') {
+        return { ...player, points: player.points - 3 };
+    } else if (winningTeam) {
+        const playerRole = roles.find(r => r.name === gameState.assignedRoles[player.id]);
+        if (winningTeam !== playerRole.team) {
+            return { ...player, points: player.points - playerRole.cost };
         }
-        return player;
-    });
-
+    }
+    return player;
+});
     updateGameState(prevState => ({
         ...prevState,
         result: result,
