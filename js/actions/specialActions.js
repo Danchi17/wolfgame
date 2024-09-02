@@ -3,6 +3,9 @@ import { getPlayerRole, swapRoles } from '../game/roleLogic.js';
 
 export const usePigmanAbility = (pigmanId, targetId) => {
     const state = getGameState();
+    if (state.pigmanMarkTimeout && Date.now() < state.pigmanMarkTimeout) {
+        throw new Error('Pigman ability is still on cooldown');
+    }
     updateGameState({
         pigmanMark: targetId,
         pigmanMarkTimeout: Date.now() + 60000 // 1分後
@@ -10,7 +13,7 @@ export const usePigmanAbility = (pigmanId, targetId) => {
     return `${state.players.find(p => p.id === targetId).name}に★マークを付与しました。`;
 };
 
-export const useKnowledgeablePuppyexport const useKnowledgeablePuppyAbility = (puppyId, guessedRole, targetId) => {
+export const useKnowledgeablePuppyAbility = (puppyId, guessedRole, targetId) => {
     const state = getGameState();
     const targetRole = getPlayerRole(targetId);
     const citizenRoles = ['占星術師', '占い師の弟子', '無法者', '村長'];
@@ -37,7 +40,6 @@ export const reportSpy = (reporterId, suspectedSpyId) => {
         });
         return "スパイの通報に成功しました。人狼陣営の勝利です。";
     } else {
-        // 通報者のポイントを減らす
         const updatedPlayers = state.players.map(player => 
             player.id === reporterId ? {...player, points: player.points - 3} : player
         );
