@@ -1,4 +1,4 @@
-import { getGameState } from './game/gameState.js';
+import { getGameState, updateGameState } from './game/gameState.js';
 import { startGame, nextPhase } from './game/gamePhases.js';
 import { performAction } from './actions/playerActions.js';
 import { castVote } from './actions/voteActions.js';
@@ -6,193 +6,206 @@ import { joinGame } from './network.js';
 import { getPlayerRole } from './game/roleLogic.js';
 import { usePigmanAbility, useKnowledgeablePuppyAbility, reportSpy } from './actions/specialActions.js';
 
-export const renderUI = () => {
-    const state = getGameState();
-    const app = document.getElementById('app');
-    app.innerHTML = '';
+const { useState, useEffect } = React;
 
-    if (state.phase === '待機中') {
-        renderLobby(app);
-    } else {
-        renderGameBoard(app);
+const EnhancedGameUI = () => {
+  const [state, setState] = useState(getGameState());
+  const [currentPhase, setCurrentPhase] = useState('待機中');
+  
+  useEffect(() => {
+    const updateState = () => setState(getGameState());
+    // ゲーム状態が変更されたときにUIを更新するためのイベントリスナーをここに追加
+    return () => {
+      // クリーンアップ関数：イベントリスナーの削除など
+    };
+  }, []);
+
+  const phases = ['待機中', '役職確認', '占い師', '人狼', '怪盗', '議論', '投票', '結果'];
+  
+  const renderPhaseIcon = (phase) => {
+    switch(phase) {
+      case '待機中': return '👥';
+      case '役職確認': return '🔍';
+      case '占い師': return '🔮';
+      case '人狼': return '🐺';
+      case '怪盗': return '🦹';
+      case '議論': return '💬';
+      case '投票': return '🗳️';
+      case '結果': return '🏆';
+      default: return null;
     }
-};
+  };
 
-const renderLobby = (container) => {
-    container.innerHTML = `
-        <h1>多能力一夜人狼</h1>
-        <div id="setupArea">
-            <input type="text" id="playerName" placeholder="プレイヤー名">
-            <button id="createGame">ゲームを作成</button>
-            <input type="text" id="gameId" placeholder="ゲームID">
-            <button id="joinGame">ゲームに参加</button>
-        </div>
-    `;
+  const renderRoleImage = (role) => {
+    return (
+      <img
+        src={`images/roles/${role}.jpg`}
+        alt={role}
+        className="role-image"
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = 'images/roles/unknown.jpg';
+        }}
+      />
+    );
+  };
 
-    document.getElementById('createGame').addEventListener('click', () => {
-        const playerName = document.getElementById('playerName').value;
-        if (playerName) {
-            startGame();
-            renderUI();
-        } else {
-            alert('プレイヤー名を入力してください。');
-        }
-    });
+  const PlayerCard = ({ player }) => (
+    <div className="card player-card">
+      <div className="text-center">
+        {renderRoleImage(player.role || 'unknown')}
+        <p className="player-name">{player.name}</p>
+        <p className="player-role">役職: {state.phase === '役職確認' ? player.role : '???'}</p>
+        <p className="player-points">ポイント: {player.points}</p>
+      </div>
+    </div>
+  );
 
-    document.getElementById('joinGame').addEventListener('click', () => {
-        const playerName = document.getElementById('playerName').value;
-        const gameId = document.getElementById('gameId').value;
-        if (playerName && gameId) {
-            joinGame(gameId, playerName);
-        } else {
-            alert('プレイヤー名とゲームIDを入力してください。');
-        }
-    });
-};
+  const CenterCard = ({ cardNumber }) => (
+    <div className="card center-card">
+      <div className="text-center">
+        <p className="center-card-number">場札 {cardNumber}</p>
+      </div>
+    </div>
+  );
 
-const renderGameBoard = (container) => {
-    const state = getGameState();
-    container.innerHTML = `
-        <h1>多能力一夜人狼</h1>
-        <div id="gameInfo">フェーズ: ${state.phase}</div>
-        <div id="playerList"></div>
-        <div id="actionArea"></div>
-        <button id="nextPhase">次のフェーズへ</button>
-    `;
+  const handleAction = (action, target) => {
+    const result = performAction(state.currentPlayerId, action, target);
+    alert(result);
+    setState(getGameState());
+  };
 
-    renderPlayers();
-    renderActionArea();
+  const handleVote = (targetId) => {
+    const result = castVote(state.currentPlayerId, targetId);
+    if (result) {
+      alert(result);
+      setState(getGameState());
+    }
+  };
 
-    document.getElementById('nextPhase').addEventListener('click', () => {
-        nextPhase();
-        renderUI();
-    });
-};
+  const renderActionArea = () => {
+    switch (currentPhase) {
+      case '占い師':
+      case '人狼':
+      case '怪盗':
+        return state.players.map(player => (
+          player.id !== state.currentPlayerId && (
+            <button key={player.id} onClick={() => handleAction(currentPhase, player.id)}>
+              {player.name}に対してアクション
+            </button>
+          )
+        ));
+      case '投票':
+        return state.players.map(player => (
+          player.id !== state.currentPlayerId && (
+            <button key={player.id} onClick={() => handleVote(player.id)}>
+              {player.name}に投票
+            </button>
+          )
+        ));
+      case '結果':
+        return <p>{state.result || '結果はまだ発表されていません。'}</p>;
+      default:
+        return <p>現在のフェーズではアクションを実行できません。</p>;
+    }
+  };
 
-const renderPlayers = () => {
-    const state = getGameState();
-    const playerList = document.getElementById('playerList');
-    playerList.innerHTML = state.players.map(player => `
-        <div class="player">
-            ${player.name}: ${state.assignedRoles[player.id] || '役職未定'}
-        </div>
-    `).join('');
-};
-
-const renderActionArea = () => {
-    const state = getGameState();
-    const actionArea = document.getElementById('actionArea');
-    actionArea.innerHTML = '';
-
+  const renderSpecialAbilities = () => {
     const currentPlayerRole = getPlayerRole(state.currentPlayerId);
+    if (!currentPlayerRole) return null;
 
-    if (['占い師', '人狼', '怪盗'].includes(state.phase)) {
-        if (currentPlayerRole && currentPlayerRole.name === state.phase) {
-            state.players.forEach(player => {
-                if (player.id !== state.currentPlayerId) {
-                    const button = document.createElement('button');
-                    button.textContent = `${player.name}に対してアクション`;
-                    button.addEventListener('click', () => {
-                        try {
-                            const result = performAction(state.currentPlayerId, state.phase, player.id);
-                            alert(result);
-                            renderUI();
-                        } catch (error) {
-                            alert(`エラーが発生しました: ${error.message}`);
-                        }
-                    });
-                    actionArea.appendChild(button);
-                }
-            });
-        } else {
-            actionArea.innerHTML = '<p>現在のフェーズではアクションを実行できません。</p>';
-        }
-    } else if (state.phase === '投票') {
-        state.players.forEach(player => {
-            if (player.id !== state.currentPlayerId) {
-                const button = document.createElement('button');
-                button.textContent = `${player.name}に投票`;
-                button.addEventListener('click', () => {
-                    try {
-                        const result = castVote(state.currentPlayerId, player.id);
-                        if (result) {
-                            alert(result);
-                        }
-                        renderUI();
-                    } catch (error) {
-                        alert(`エラーが発生しました: ${error.message}`);
-                    }
-                });
-                actionArea.appendChild(button);
+    switch (currentPlayerRole.name) {
+      case 'やっかいな豚男':
+        return (
+          <button onClick={() => {
+            const targetId = prompt('対象のプレイヤーIDを入力してください:');
+            if (targetId) {
+              const result = usePigmanAbility(state.currentPlayerId, targetId);
+              alert(result);
+              setState(getGameState());
             }
-        });
-    } else if (state.phase === '結果') {
-        const resultElement = document.createElement('p');
-        resultElement.textContent = state.result || '結果はまだ発表されていません。';
-        actionArea.appendChild(resultElement);
+          }}>
+            ★マークを付与
+          </button>
+        );
+      case '博識な子犬':
+        return (
+          <button onClick={() => {
+            const targetId = prompt('対象のプレイヤーIDを入力してください:');
+            const guessedRole = prompt('推測する役職名を入力してください:');
+            if (targetId && guessedRole) {
+              const result = useKnowledgeablePuppyAbility(state.currentPlayerId, guessedRole, targetId);
+              alert(result);
+              setState(getGameState());
+            }
+          }}>
+            役職を推測
+          </button>
+        );
+      case 'スパイ':
+        return (
+          <button onClick={() => {
+            const suspectedSpyId = prompt('スパイだと疑うプレイヤーIDを入力してください:');
+            if (suspectedSpyId) {
+              const result = reportSpy(state.currentPlayerId, suspectedSpyId);
+              alert(result);
+              setState(getGameState());
+            }
+          }}>
+            スパイを通報
+          </button>
+        );
+      default:
+        return null;
     }
+  };
 
-    // 特殊能力のボタンを追加
-    if (currentPlayerRole) {
-        switch (currentPlayerRole.name) {
-            case 'やっかいな豚男':
-                if (state.phase === '人狼') {
-                    const pigmanButton = document.createElement('button');
-                    pigmanButton.textContent = '★マークを付与';
-                    pigmanButton.addEventListener('click', () => {
-                        const targetId = prompt('対象のプレイヤーIDを入力してください:');
-                        if (targetId) {
-                            try {
-                                const result = usePigmanAbility(state.currentPlayerId, targetId);
-                                alert(result);
-                                renderUI();
-                            } catch (error) {
-                                alert(`エラーが発生しました: ${error.message}`);
-                            }
-                        }
-                    });
-                    actionArea.appendChild(pigmanButton);
-                }
-                break;
-            case '博識な子犬':
-                if (state.phase === '議論') {
-                    const puppyButton = document.createElement('button');
-                    puppyButton.textContent = '役職を推測';
-                    puppyButton.addEventListener('click', () => {
-                        const targetId = prompt('対象のプレイヤーIDを入力してください:');
-                        const guessedRole = prompt('推測する役職名を入力してください:');
-                        if (targetId && guessedRole) {
-                            try {
-                                const result = useKnowledgeablePuppyAbility(state.currentPlayerId, guessedRole, targetId);
-                                alert(result);
-                                renderUI();
-                            } catch (error) {
-                                alert(`エラーが発生しました: ${error.message}`);
-                            }
-                        }
-                    });
-                    actionArea.appendChild(puppyButton);
-                }
-                break;
-            case 'スパイ':
-                const spyButton = document.createElement('button');
-                spyButton.textContent = 'スパイを通報';
-                spyButton.addEventListener('click', () => {
-                    const suspectedSpyId = prompt('スパイだと疑うプレイヤーIDを入力してください:');
-                    if (suspectedSpyId) {
-                        try {
-                            const result = reportSpy(state.currentPlayerId, suspectedSpyId);
-                            alert(result);
-                            renderUI();
-                        } catch (error) {
-                            alert(`エラーが発生しました: ${error.message}`);
-                        }
-                    }
-                });
-                actionArea.appendChild(spyButton);
-                break;
-        }
-    }
+  return (
+    <div className="game-container">
+      <h1 className="game-title">多能力一夜人狼</h1>
+      
+      <div className="phase-container">
+        {phases.map((phase, index) => (
+          <div key={phase} className={`phase-card ${currentPhase === phase ? 'current-phase' : ''}`}>
+            <h2>{phase}</h2>
+            <div className="phase-icon">{renderPhaseIcon(phase)}</div>
+            <button 
+              onClick={() => {
+                setCurrentPhase(phase);
+                nextPhase();
+                setState(getGameState());
+              }}
+              disabled={phases.indexOf(phase) > phases.indexOf(currentPhase)}
+              className="phase-button"
+            >
+              {currentPhase === phase ? '現在のフェーズ' : 'このフェーズへ'}
+            </button>
+          </div>
+        ))}
+      </div>
+      
+      <div className="players-container">
+        {state.players.map((player, index) => (
+          <PlayerCard key={player.id} player={player} />
+        ))}
+        <div className="center-cards">
+          <CenterCard cardNumber={1} />
+          <CenterCard cardNumber={2} />
+        </div>
+      </div>
+      
+      <div className="action-area">
+        <h2>アクションエリア</h2>
+        <p>現在のフェーズ: {currentPhase}</p>
+        {renderActionArea()}
+        {renderSpecialAbilities()}
+      </div>
+    </div>
+  );
+};
+
+const renderUI = () => {
+  ReactDOM.render(<EnhancedGameUI />, document.getElementById('app'));
 };
 
 // UIの初期レンダリング
@@ -200,6 +213,8 @@ document.addEventListener('DOMContentLoaded', renderUI);
 
 // エラーハンドリングの追加
 window.addEventListener('error', (event) => {
-    console.error('Uncaught error:', event.error);
-    alert('予期せぬエラーが発生しました。ページをリロードしてください。');
+  console.error('Uncaught error:', event.error);
+  alert('予期せぬエラーが発生しました。ページをリロードしてください。');
 });
+
+export { renderUI };
