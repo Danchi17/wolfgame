@@ -198,6 +198,7 @@ const EnhancedGameUI = () => {
     const updateState = () => {
       const newState = window.getGameState();
       setState(newState);
+      console.log('Game state updated:', newState);
       if (newState.players.length > 0) {
         setIsInLobby(false);
       }
@@ -208,12 +209,18 @@ const EnhancedGameUI = () => {
     };
   }, []);
 
+  React.useEffect(() => {
+    console.log('Current game state:', state);
+    console.log('Current players:', state.players);
+  }, [state]);
+
   const handleCreateGame = (playerName) => {
     try {
       const gameId = window.setupNetwork();
       window.addPlayer({ id: gameId, name: playerName });
       setGameIdToShow(gameId);
       setIsInLobby(false);
+      console.log('Game created with ID:', gameId);
     } catch (error) {
       console.error('Error creating game:', error);
       alert('ゲームの作成中にエラーが発生しました。ページをリロードして再試行してください。');
@@ -222,8 +229,10 @@ const EnhancedGameUI = () => {
 
   const handleJoinGame = (playerName, gameId) => {
     try {
+      console.log('Joining game with name:', playerName, 'and gameId:', gameId);
       window.setupNetwork();
       window.joinGame(gameId, playerName);
+      console.log('Join game function called');
       setIsInLobby(false);
     } catch (error) {
       console.error('Error joining game:', error);
