@@ -1,6 +1,6 @@
-// gameState.js
+'use strict';
 
-const createInitialState = () => ({
+window.createInitialState = () => ({
     players: [],
     phase: '待機中',
     assignedRoles: {},
@@ -10,57 +10,56 @@ const createInitialState = () => ({
     result: '',
 });
 
-let gameState = createInitialState();
+let gameState = window.createInitialState();
 
-export const getGameState = () => gameState;
+window.getGameState = () => gameState;
 
-export const updateGameState = (newState) => {
+window.updateGameState = (newState) => {
     gameState = { ...gameState, ...newState };
     return gameState;
 };
 
-export const resetGameState = () => {
-    gameState = createInitialState();
+window.resetGameState = () => {
+    gameState = window.createInitialState();
     return gameState;
 };
 
-export const initializeGame = () => {
-    resetGameState();
+window.initializeGame = () => {
+    window.resetGameState();
     return gameState;
 };
 
-// 他の必要な関数をここに追加
-export const addPlayer = (player) => {
+window.addPlayer = (player) => {
     gameState.players.push(player);
     return gameState;
 };
 
-export const assignRoles = (roles) => {
+window.assignRoles = (roles) => {
     gameState.assignedRoles = roles;
     return gameState;
 };
 
-export const setCenterCards = (cards) => {
+window.setCenterCards = (cards) => {
     gameState.centerCards = cards;
     return gameState;
 };
 
-export const setPhase = (phase) => {
+window.setPhase = (phase) => {
     gameState.phase = phase;
     return gameState;
 };
 
-export const addAction = (playerId, action) => {
+window.addAction = (playerId, action) => {
     gameState.actions[playerId] = action;
     return gameState;
 };
 
-export const addVote = (voterId, targetId) => {
+window.addVote = (voterId, targetId) => {
     gameState.votes[voterId] = targetId;
     return gameState;
 };
 
-export const setResult = (result) => {
+window.setResult = (result) => {
     gameState.result = result;
     return gameState;
 };
