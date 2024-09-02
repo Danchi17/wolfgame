@@ -149,23 +149,23 @@ function createActionButtons() {
         case "占い師の弟子":
             gameState.players.forEach(player => {
                 if (player.id !== currentPlayer.id) {
-                    actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', '${player.id}')">占う: ${player.name}</button>`;
+                    actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('${playerRole}', '${player.id}')">占う: ${player.name}</button>`;
                 }
             });
             if (playerRole !== "占い師の弟子") {
-                actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
+                actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('${playerRole}', 'graveyard')">墓地を占う</button>`;
             }
             break;
         case "占星術師":
-            actionArea.innerHTML += `<button onclick="window.executeAction('占星術師', null)">人狼陣営の数を確認</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('占星術師', null)">人狼陣営の数を確認</button>`;
             break;
         case "怪盗":
             gameState.players.forEach(player => {
                 if (player.id !== currentPlayer.id) {
-                    actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>`;
+                    actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('怪盗', '${player.id}')">交換: ${player.name}</button>`;
                 }
             });
-            actionArea.innerHTML += `<button onclick="window.executeAction('怪盗', null)">交換しない</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('怪盗', null)">交換しない</button>`;
             break;
         case "人狼":
         case "大熊":
@@ -173,7 +173,7 @@ function createActionButtons() {
         case "蛇女":
         case "博識な子犬":
         case "スパイ":
-            actionArea.innerHTML += `<button onclick="window.executeAction('${playerRole}', null)">仲間を確認</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.executeAction('${playerRole}', null)">仲間を確認</button>`;
             break;
     }
 }
@@ -182,7 +182,7 @@ function createPigmanActionButtons() {
     const actionArea = document.getElementById('actionArea');
     gameState.players.forEach(player => {
         if (player.id !== currentPlayer.id) {
-            actionArea.innerHTML += `<button onclick="window.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.usePigmanAbility('${player.id}')">★マークを付与: ${player.name}</button>`;
         }
     });
 }
@@ -197,7 +197,7 @@ function createKnowledgeablePuppyActionButtons() {
                 <select id="guess-${player.id}">
                     ${citizenRoles.map(role => `<option value="${role}">${role}</option>`).join('')}
                 </select>
-                <button onclick="window.guessPlayerRole('${player.id}')">推測: ${player.name}</button><br>
+                <button onclick="window.gameActions.guessPlayerRole('${player.id}')">推測: ${player.name}</button><br>
             `;
         }
     });
@@ -208,7 +208,7 @@ function createSpyReportButtons() {
     actionArea.innerHTML += `<p>スパイだと思うプレイヤーを通報：</p>`;
     gameState.players.forEach(player => {
         if (player.id !== currentPlayer.id) {
-            actionArea.innerHTML += `<button onclick="window.reportSpy('${player.id}')">通報: ${player.name}</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.reportSpy('${player.id}')">通報: ${player.name}</button>`;
         }
     });
 }
@@ -220,7 +220,7 @@ function createVoteButtons() {
     `;
     gameState.players.forEach(player => {
         if (player.id !== currentPlayer.id) {
-            actionArea.innerHTML += `<button onclick="window.vote('${player.id}')">投票: ${player.name}</button>`;
+            actionArea.innerHTML += `<button onclick="window.gameActions.vote('${player.id}')">投票: ${player.name}</button>`;
         }
     });
 }
@@ -268,42 +268,41 @@ function updatePigmanMarkCountdown() {
 }
 
 // グローバルスコープに関数を公開
-window.executeAction = function(action, target) {
-    const result = performAction(action, target);
-    showActionResult(result);
-    updateUI();
-};
-
-window.vote = function(targetId) {
-    vote(targetId);
-    updateUI();
-};
-
-window.usePigmanwindow.usePigmanAbility = function(targetId) {
-    const result = usePigmanAbility(targetId);
-    showActionResult(result);
-    updateUI();
-};
-
-window.guessPlayerRole = function(targetPlayerId) {
-    const guessedRole = document.getElementById(`guess-${targetPlayerId}`).value;
-    const result = useKnowledgeablePuppyAbility(guessedRole, targetPlayerId);
-    showActionResult(result);
-    updateUI();
-};
-
-window.reportSpy = function(reportedPlayerId) {
-    const result = reportSpy(reportedPlayerId);
-    showActionResult(result);
-    updateUI();
-};
-
-window.startNewRound = function() {
-    startNewRound();
-    const actionResultElement = document.getElementById('actionResult');
-    actionResultElement.textContent = ''; // アクション結果をリセット
-    updateUI();
-};
+if (typeof window !== 'undefined') {
+    window.gameActions = {
+        executeAction: function(action, target) {
+            const result = performAction(action, target);
+            showActionResult(result);
+            updateUI();
+        },
+        vote: function(targetId) {
+            vote(targetId);
+            updateUI();
+        },
+        usePigmanAbility: function(targetId) {
+            const result = usePigmanAbility(targetId);
+            showActionResult(result);
+            updateUI();
+        },
+        guessPlayerRole: function(targetPlayerId) {
+            const guessedRole = document.getElementById(`guess-${targetPlayerId}`).value;
+            const result = useKnowledgeablePuppyAbility(guessedRole, targetPlayerId);
+            showActionResult(result);
+            updateUI();
+        },
+        reportSpy: function(reportedPlayerId) {
+            const result = reportSpy(reportedPlayerId);
+            showActionResult(result);
+            updateUI();
+        },
+        startNewRound: function() {
+            startNewRound();
+            const actionResultElement = document.getElementById('actionResult');
+            actionResultElement.textContent = ''; // アクション結果をリセット
+            updateUI();
+        }
+    };
+}
 
 // 初期UIの更新
 document.addEventListener('DOMContentLoaded', () => {
