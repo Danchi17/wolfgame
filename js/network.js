@@ -7,7 +7,24 @@ let peer;
 let connections = [];
 
 export const setupNetwork = (initialState) => {
-    peer = new Peer();
+    const peerOptions = {
+        host: 'your-peerjs-server.com',
+        port: 9000,
+        path: '/myapp',
+        secure: true,
+        config: {
+            'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { 
+                    urls: 'turn:your-turn-server.com:3478',
+                    username: 'username',
+                    credential: 'password'
+                }
+            ]
+        }
+    };
+
+    peer = new Peer(peerOptions);
     
     peer.on('open', (id) => {
         console.log('My peer ID is: ' + id);
@@ -17,6 +34,11 @@ export const setupNetwork = (initialState) => {
     peer.on('connection', (conn) => {
         setupConnection(conn);
     });
+
+    peer.on('error', (error) => {
+        console.error('PeerJS error:', error);
+        // エラーに応じて適切な処理を行う
+    });
 };
 
 const setupConnection = (conn) => {
@@ -24,24 +46,38 @@ const setupConnection = (conn) => {
     conn.on('open', () => {
         conn.on('data', (data) => handleReceivedData(data));
     });
+    conn.on('close', () => {
+        connections = connections.filter(c => c !== conn);
+        // プレイヤーの切断処理を行う
+    });
+    conn.on('error', (error) => {
+        console.error('Connection error:', error);
+        // エラーに応じて適切な処理を行う
+    });
 };
 
 const handleReceivedData = (data) => {
-    switch (data.type) {
-        case 'playerJoined':
-            addPlayer(data.player);
-            break;
-        case 'gameState':
-            updateGameState(data.state);
-            break;
-        case 'action':
-            const result = performAction(data.playerId, data.action, data.target);
-            processActionResult(data.action, result);
-            break;
-        case 'vote':
-            castVote(data.voterId, data.targetId);
-            break;
-        // 他のメッセージタイプも同様に処理
+    try {
+        switch (data.type) {
+            case 'playerJoined':
+                addPlayer(data.player);
+                break;
+            case 'gameState':
+                updateGameState(data.state);
+                break;
+            case 'action':
+                const result = performAction(data.playerId, data.action, data.target);
+                processActionResult(data.action, result);
+                break;
+            case 'vote':
+                castVote(data.voterId, data.targetId);
+                break;
+            default:
+                console.warn('Unknown data type received:', data.type);
+        }
+    } catch (error) {
+        console.error('Error handling received data:', error);
+        // エラーに応じて適切な処理を行う
     }
 };
 
@@ -64,7 +100,7 @@ export const joinGame = (gameId, playerName) => {
 };
 
 const addPlayer = (player) => {
-    updateGameState(state => ({
-        players: [...state.players, player]
-    }));
+    updateGameState({
+        players: [...getGameState().players, player]
+    });
 };
