@@ -8,20 +8,16 @@ let connections = [];
 
 export const setupNetwork = (initialState) => {
     const peerOptions = {
-        host: 'your-peerjs-server.com',
-        port: 9000,
-        path: '/myapp',
-        secure: true,
         config: {
             'iceServers': [
                 { urls: 'stun:stun.l.google.com:19302' },
-                { 
-                    urls: 'turn:your-turn-server.com:3478',
-                    username: 'username',
-                    credential: 'password'
-                }
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' },
+                { urls: 'stun:stun4.l.google.com:19302' }
             ]
-        }
+        },
+        debug: 3
     };
 
     peer = new Peer(generateRandomId(), peerOptions);
@@ -38,6 +34,7 @@ export const setupNetwork = (initialState) => {
     peer.on('error', (error) => {
         console.error('PeerJS error:', error);
         // エラーに応じて適切な処理を行う
+        handlePeerError(error);
     });
 };
 
@@ -49,10 +46,12 @@ const setupConnection = (conn) => {
     conn.on('close', () => {
         connections = connections.filter(c => c !== conn);
         // プレイヤーの切断処理を行う
+        handlePlayerDisconnection(conn.peer);
     });
     conn.on('error', (error) => {
         console.error('Connection error:', error);
         // エラーに応じて適切な処理を行う
+        handleConnectionError(error, conn.peer);
     });
 };
 
@@ -107,4 +106,27 @@ const addPlayer = (player) => {
 
 const generateRandomId = () => {
     return Math.random().toString(36).substr(2, 9);
+};
+
+const handlePeerError = (error) => {
+    console.error('Peer error:', error);
+    // ユーザーにエラーを通知し、必要に応じて再接続を試みる
+    if (error.type === 'network' || error.type === 'server-error') {
+        alert('ネットワークエラーが発生しました。ページをリロードして再接続してください。');
+    }
+};
+
+const handlePlayerDisconnection = (peerId) => {
+    console.log('Player disconnected:', peerId);
+    // 切断したプレイヤーをゲーム状態から削除するなどの処理を行う
+    const state = getGameState();
+    const updatedPlayers = state.players.filter(player => player.id !== peerId);
+    updateGameState({ players: updatedPlayers });
+};
+
+const handleConnectionError = (error, peerId) => {
+    console.error('Connection error with peer:', peerId, error);
+    // エラーに応じて適切な処理を行う
+    // 例: 接続エラーが発生したプレイヤーをゲームから削除する
+    handlePlayerDisconnection(peerId);
 };
