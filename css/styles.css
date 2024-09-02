@@ -1,63 +1,176 @@
-/* 既存のスタイル */
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  margin: 0;
+  padding: 20px;
+}
 
-/* 新しいUIのスタイル */
 .game-container {
-  padding: 1rem;
-  background-color: #f3f4f6;
-  min-height: 100vh;
+  max-width: 1000px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
 .game-title {
-  font-size: 2rem;
-  font-weight: bold;
   text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.phase-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.phase-card {
-  background-color: white;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-.current-phase {
-  background-color: #dbeafe;
+  color: #333;
 }
 
 .players-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  grid-template-areas: 
+    "player1 player2"
+    "center center"
+    "player3 player4";
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
-.card {
-  background-color: white;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+.player-card {
+  width: 200px;
+  height: 280px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
 }
+
+.player-card:nth-child(1) { grid-area: player1; }
+.player-card:nth-child(2) { grid-area: player2; }
+.player-card:nth-child(3) { grid-area: player3; }
+.player-card:nth-child(4) { grid-area: player4; }
 
 .center-cards {
-  grid-column: 1 / -1;
+  grid-area: center;
   display: flex;
   justify-content: center;
-  gap: 1rem;
+  gap: 20px;
+}
+
+.center-card {
+  width: 150px;
+  height: 200px;
+  background-color: #e0e0e0;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.role-image {
+  width: 100%;
+  height: auto;
+  max-width: 120px;
+  max-height: 120px;
+  object-fit: contain;
+  margin-bottom: 10px;
+}
+
+.player-name, .player-role, .player-points {
+  margin: 5px 0;
+  text-align: center;
+}
+
+.phase-container {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.phase-card {
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px;
+  margin: 5px;
+  text-align: center;
+}
+
+.current-phase {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
 }
 
 .action-area {
-  background-color: white;
-  border-radius: 0.5rem;
-  padding: 1rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  background-color: #e9ecef;
+  border-radius: 5px;
+  padding: 15px;
+  margin-top: 20px;
 }
 
-/* ボタンやその他の要素のスタイルを必要に応じて追加 */
+/* モーダルスタイル */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0,0,0,0.4);
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 15% auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 500px;
+  text-align: center;
+}
+
+.close-button {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+#game-id-display {
+  font-size: 18px;
+  font-weight: bold;
+  margin: 10px 0;
+  user-select: all;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
