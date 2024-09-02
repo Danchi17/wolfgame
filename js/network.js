@@ -57,10 +57,15 @@ export function handleReceivedData(data) {
                 result: data.result,
                 winningTeam: data.winningTeam,
                 voteResults: data.voteResults,
+                voteDetails: data.voteDetails,
                 players: data.updatedPlayers,
                 phase: "結果",
                 waitingForNextRound: true
             }));
+            updateUI();
+            break;
+        case 'newRound':
+            updateGameState(data.state);
             updateUI();
             break;
     }
