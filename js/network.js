@@ -46,8 +46,7 @@ const setupConnection = (conn) => {
         console.log('Connection closed with:', conn.peer);
         connections = connections.filter(c => c !== conn);
         handlePlayerDisconnection(conn.peer);
-    });
-    conn.on('error', (error) => {
+    });conn.on('error', (error) => {
         console.error('Connection error:', error);
         handleConnectionError(error, conn.peer);
     });
