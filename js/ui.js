@@ -113,6 +113,9 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
   const renderActionArea = () => {
     switch (currentPhase) {
       case '占い師':
+      caseconst renderActionArea = () => {
+    switch (currentPhase) {
+      case '占い師':
       case '人狼':
       case '怪盗':
         return React.createElement('p', null, `${currentPhase}のアクションを実行してください。`);
@@ -284,14 +287,11 @@ const renderUI = () => {
   ReactDOM.render(React.createElement(EnhancedGameUI), document.getElementById('app'));
 };
 
-// UIの初期レンダリング
 document.addEventListener('DOMContentLoaded', renderUI);
 
-// エラーハンドリングの追加
 window.addEventListener('error', (event) => {
   console.error('Uncaught error:', event.error);
   alert('予期せぬエラーが発生しました。ページをリロードしてください。');
 });
 
-// グローバルスコープに renderUI 関数を公開
 window.renderUI = renderUI;
