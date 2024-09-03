@@ -129,6 +129,7 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
 
   return React.createElement('div', { className: "game-container" },
     React.createElement('h1', { className: "game-title" }, '多能力一夜人狼'),
+    React.createElement('p', null, `ゲームID: ${state.gameId}`),
     React.createElement('div', { className: "phase-container" },
       phases.map((phase, index) => (
         React.createElement('div', {
@@ -216,8 +217,7 @@ const EnhancedGameUI = () => {
 
   const handleCreateGame = (playerName) => {
     try {
-      const gameId = window.setupNetwork();
-      window.addPlayer({ id: gameId, name: playerName });
+      const gameId = window.createGame(playerName);
       setGameIdToShow(gameId);
       setIsInLobby(false);
       console.log('Game created with ID:', gameId);
@@ -230,13 +230,12 @@ const EnhancedGameUI = () => {
   const handleJoinGame = (playerName, gameId) => {
     try {
       console.log('Joining game with name:', playerName, 'and gameId:', gameId);
-      window.setupNetwork();
       window.joinGame(gameId, playerName);
       console.log('Join game function called');
       setIsInLobby(false);
     } catch (error) {
       console.error('Error joining game:', error);
-      alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認し、再試行してください。');
+      alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認して再試行してください。');
     }
   };
 
