@@ -40,6 +40,8 @@ const setupConnection = (conn) => {
     connections.push(conn);
     conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
+        // 接続が開かれたら、現在のゲーム状態を送信
+        conn.send({ type: 'fullGameState', state: window.getGameState() });
         conn.on('data', (data) => handleReceivedData(data, conn));
     });
     conn.on('close', () => {
@@ -57,11 +59,17 @@ const handleReceivedData = (data, conn) => {
     console.log('Received data:', data);
     try {
         switch (data.type) {
+            case 'fullGameState':
+                window.updateGameState(data.state);
+                console.log('Full game state received and updated');
+                break;
             case 'playerJoined':
                 if (!window.getGameState().players.some(p => p.id === data.player.id)) {
                     window.addPlayer(data.player);
                     console.log('Player joined:', data.player);
-                    conn.send({ type: 'gameState', state: window.getGameState() });
+                    // 新しいプレイヤーに現在のゲーム状態を送信
+                    conn.send({ type: 'fullGameState', state: window.getGameState() });
+                    // 他の全プレイヤーに新しいプレイヤーの情報を送信
                     window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
                 }
                 break;
