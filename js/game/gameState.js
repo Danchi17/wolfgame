@@ -17,12 +17,17 @@ window.getGameState = () => {
 };
 
 window.addPlayer = (player) => {
-    if (!gameState.players.some(p => p.id === player.id)) {
+    const existingPlayerIndex = gameState.players.findIndex(p => p.id === player.id);
+    if (existingPlayerIndex !== -1) {
+        // プレイヤーが既に存在する場合は更新
+        gameState.players[existingPlayerIndex] = player;
+    } else {
+        // 新しいプレイヤーを追加
         gameState.players.push(player);
-        console.log('Player added to game state:', player);
-        console.log('Updated game state:', gameState);
-        window.dispatchEvent(new Event('gameStateUpdated'));
     }
+    console.log('Player added or updated in game state:', player);
+    console.log('Updated game state:', gameState);
+    window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
 window.updateGameState = (newState) => {
@@ -86,6 +91,23 @@ window.setResult = (result) => {
 window.initializeGame = () => {
     window.resetGameState();
     return gameState;
+};
+
+window.removePlayer = (playerId) => {
+    gameState.players = gameState.players.filter(player => player.id !== playerId);
+    console.log('Player removed:', playerId);
+    console.log('Updated game state:', gameState);
+    window.dispatchEvent(new Event('gameStateUpdated'));
+};
+
+window.updatePlayerRole = (playerId, role) => {
+    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+    if (playerIndex !== -1) {
+        gameState.players[playerIndex].role = role;
+        gameState.assignedRoles[playerId] = role;
+        console.log('Player role updated:', playerId, role);
+        window.dispatchEvent(new Event('gameStateUpdated'));
+    }
 };
 
 window.debugGameState = () => {
