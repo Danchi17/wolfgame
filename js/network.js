@@ -6,6 +6,8 @@ let gameId = null;
 let isHost = false;
 let connectionAttempts = 0;
 const MAX_CONNECTION_ATTEMPTS = 3;
+const CONNECTION_TIMEOUT = 10000; // 10 seconds
+let connectionTimer;
 
 window.setupNetwork = () => {
     const peerOptions = {
@@ -44,6 +46,7 @@ const setupConnection = (conn) => {
     connections[conn.peer] = conn;
     conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
+        clearTimeout(connectionTimer);
         sendFullGameState(conn);
         conn.on('data', (data) => handleReceivedData(data, conn));
     });
@@ -147,7 +150,14 @@ const attemptConnection = (gameId, playerName) => {
     connectionAttempts++;
     const conn = peer.connect(gameId, { reliable: true });
     
+    connectionTimer = setTimeout(() => {
+        console.log('Connection attempt timed out');
+        conn.close();
+        retryConnection(gameId, playerName);
+    }, CONNECTION_TIMEOUT);
+
     conn.on('open', () => {
+        clearTimeout(connectionTimer);
         console.log('Connected to host. Sending player info.');
         setupConnection(conn);
         const newPlayer = { id: peer.id, name: playerName };
@@ -160,8 +170,14 @@ const attemptConnection = (gameId, playerName) => {
 
     conn.on('error', (error) => {
         console.error('Connection error:', error);
-        setTimeout(() => attemptConnection(gameId, playerName), 1000);
+        clearTimeout(connectionTimer);
+        retryConnection(gameId, playerName);
     });
+};
+
+const retryConnection = (gameId, playerName) => {
+    console.log('Retrying connection...');
+    setTimeout(() => attemptConnection(gameId, playerName), 1000);
 };
 
 const handlePeerError = (error) => {
@@ -170,6 +186,8 @@ const handlePeerError = (error) => {
         alert('ネットワークエラーが発生しました。ページをリロードして再接続してください。');
     } else if (error.type === 'peer-unavailable') {
         alert('指定されたゲームIDが見つかりません。ゲームIDを確認して再試行してください。');
+    } else {
+        alert('エラーが発生しました: ' + error.message);
     }
 };
 
