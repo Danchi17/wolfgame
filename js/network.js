@@ -41,7 +41,7 @@ const setupConnection = (conn) => {
     conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
         // 接続が開かれたら、現在のゲーム状態を送信
-        conn.send({ type: 'fullGameState', state: window.getGameState() });
+        sendFullGameState(conn);
         conn.on('data', (data) => handleReceivedData(data, conn));
     });
     conn.on('close', () => {
@@ -55,36 +55,45 @@ const setupConnection = (conn) => {
     });
 };
 
+const sendFullGameState = (conn) => {
+    const fullState = window.getGameState();
+    console.log('Sending full game state:', fullState);
+    conn.send({ type: 'fullGameState', state: fullState });
+};
+
 const handleReceivedData = (data, conn) => {
     console.log('Received data:', data);
     try {
         switch (data.type) {
             case 'fullGameState':
                 window.updateGameState(data.state);
-                console.log('Full game state received and updated');
+                console.log('Full game state received and updated:', data.state);
                 break;
             case 'playerJoined':
                 if (!window.getGameState().players.some(p => p.id === data.player.id)) {
                     window.addPlayer(data.player);
                     console.log('Player joined:', data.player);
                     // 新しいプレイヤーに現在のゲーム状態を送信
-                    conn.send({ type: 'fullGameState', state: window.getGameState() });
+                    sendFullGameState(conn);
                     // 他の全プレイヤーに新しいプレイヤーの情報を送信
-                    window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
+                    broadcastPlayerJoined(data.player, conn);
                 }
                 break;
             case 'gameState':
                 window.updateGameState(data.state);
                 console.log('Game state updated:', data.state);
+                broadcastGameState(data.state, conn);
                 break;
             case 'action':
                 const result = window.performAction(data.playerId, data.action, data.target);
                 window.processActionResult(data.action, result);
                 console.log('Action performed:', data.action, 'Result:', result);
+                broadcastGameState(window.getGameState(), conn);
                 break;
             case 'vote':
                 window.castVote(data.voterId, data.targetId);
                 console.log('Vote cast:', data.voterId, 'voted for', data.targetId);
+                broadcastGameState(window.getGameState(), conn);
                 break;
             default:
                 console.warn('Unknown data type received:', data.type);
@@ -96,10 +105,19 @@ const handleReceivedData = (data, conn) => {
     }
 };
 
-window.sendToAll = (data, excludeConnections = []) => {
-    console.log('Sending data to all:', data);
+const broadcastPlayerJoined = (player, excludeConn) => {
+    const data = { type: 'playerJoined', player: player };
     connections.forEach(conn => {
-        if (conn.open && !excludeConnections.includes(conn)) {
+        if (conn !== excludeConn && conn.open) {
+            conn.send(data);
+        }
+    });
+};
+
+const broadcastGameState = (state, excludeConn) => {
+    const data = { type: 'gameState', state: state };
+    connections.forEach(conn => {
+        if (conn !== excludeConn && conn.open) {
             conn.send(data);
         }
     });
@@ -134,6 +152,7 @@ const handlePlayerDisconnection = (peerId) => {
     const state = window.getGameState();
     const updatedPlayers = state.players.filter(player => player.id !== peerId);
     window.updateGameState({ players: updatedPlayers });
+    broadcastGameState(window.getGameState());
     window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
