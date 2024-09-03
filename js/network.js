@@ -4,6 +4,8 @@ let peer;
 let connections = {};
 let gameId = null;
 let isHost = false;
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
 window.setupNetwork = () => {
     const peerOptions = {
@@ -132,16 +134,33 @@ window.joinGame = (gameId, playerName) => {
         return;
     }
     console.log('Attempting to join game:', gameId, 'as', playerName);
+    connectionAttempts = 0;
+    attemptConnection(gameId, playerName);
+};
+
+const attemptConnection = (gameId, playerName) => {
+    if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        alert('接続を確立できませんでした。ゲームIDを確認して再試行してください。');
+        return;
+    }
+
+    connectionAttempts++;
     const conn = peer.connect(gameId, { reliable: true });
-    setupConnection(conn);
+    
     conn.on('open', () => {
         console.log('Connected to host. Sending player info.');
+        setupConnection(conn);
         const newPlayer = { id: peer.id, name: playerName };
         conn.send({ type: 'playerJoined', player: newPlayer });
         window.addPlayer(newPlayer);
         window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
         console.log('Updated game state after joining:', window.getGameState());
         window.dispatchEvent(new Event('gameStateUpdated'));
+    });
+
+    conn.on('error', (error) => {
+        console.error('Connection error:', error);
+        setTimeout(() => attemptConnection(gameId, playerName), 1000);
     });
 };
 
