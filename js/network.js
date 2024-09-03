@@ -5,8 +5,8 @@ let connections = {};
 let gameId = null;
 let isHost = false;
 let connectionAttempts = 0;
-const MAX_CONNECTION_ATTEMPTS = 3;
-const CONNECTION_TIMEOUT = 10000; // 10 seconds
+const MAX_CONNECTION_ATTEMPTS = 5;
+const CONNECTION_TIMEOUT = 15000; // 15 seconds
 let connectionTimer;
 
 window.setupNetwork = () => {
@@ -17,13 +17,18 @@ window.setupNetwork = () => {
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
                 { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' }
+                { urls: 'stun:stun4.l.google.com:19302' },
+                {
+                    urls: 'turn:numb.viagenie.ca',
+                    credential: 'muazkh',
+                    username: 'webrtc@live.com'
+                }
             ]
         },
         debug: 3
     };
 
-    peer = new Peer(window.generateId(), peerOptions);
+    peer = new Peer(generateId(), peerOptions);
     
     peer.on('open', (id) => {
         console.log('My peer ID is: ' + id);
@@ -40,6 +45,10 @@ window.setupNetwork = () => {
     });
 
     return peer.id;
+};
+
+const generateId = () => {
+    return Math.random().toString(36).substr(2, 9);
 };
 
 const setupConnection = (conn) => {
@@ -123,7 +132,7 @@ const broadcastGameState = (state, excludeConn) => {
 
 window.createGame = (playerName) => {
     isHost = true;
-    gameId = window.generateId(); // ユニークなゲームIDを生成
+    gameId = generateId();
     const newPlayer = { id: peer.id, name: playerName };
     window.addPlayer(newPlayer);
     window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
@@ -148,6 +157,8 @@ const attemptConnection = (gameId, playerName) => {
     }
 
     connectionAttempts++;
+    console.log(`Connection attempt ${connectionAttempts} of ${MAX_CONNECTION_ATTEMPTS}`);
+
     const conn = peer.connect(gameId, { reliable: true });
     
     connectionTimer = setTimeout(() => {
@@ -177,7 +188,7 @@ const attemptConnection = (gameId, playerName) => {
 
 const retryConnection = (gameId, playerName) => {
     console.log('Retrying connection...');
-    setTimeout(() => attemptConnection(gameId, playerName), 1000);
+    setTimeout(() => attemptConnection(gameId, playerName), 2000);
 };
 
 const handlePeerError = (error) => {
@@ -216,6 +227,8 @@ window.isHostPlayer = () => isHost;
 window.debugConnections = () => {
     console.log('Is host:', isHost);
     console.log('Game ID:', gameId);
+    console.log('Peer ID:', peer.id);
     console.log('Connections:', connections);
+    console.log('PeerJS connection state:', peer.connections);
     console.log('Current game state:', window.getGameState());
 };
