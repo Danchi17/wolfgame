@@ -83,13 +83,11 @@ window.setResult = (result) => {
     window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
-// ゲーム開始時の初期化
 window.initializeGame = () => {
     window.resetGameState();
     return gameState;
 };
 
-// デバッグ用：現在のゲーム状態をコンソールに出力
 window.debugGameState = () => {
     console.log('Current game state:', gameState);
 };
