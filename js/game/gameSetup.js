@@ -25,3 +25,8 @@ window.setupRoles = (playerIds) => {
 
     return { assignedRoles, centerCards };
 };
+
+// ゲーム開始時の初期化
+window.createInitialState = () => {
+    return window.initializeGame();
+};
