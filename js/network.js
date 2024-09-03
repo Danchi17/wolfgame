@@ -1,8 +1,8 @@
 'use strict';
 
 let peer;
-let hostConnection = null;
-let guestConnections = [];
+let connections = {};
+let gameId = null;
 let isHost = false;
 
 window.setupNetwork = () => {
@@ -27,7 +27,7 @@ window.setupNetwork = () => {
     });
 
     peer.on('connection', (conn) => {
-        setupGuestConnection(conn);
+        setupConnection(conn);
     });
 
     peer.on('error', (error) => {
@@ -38,38 +38,21 @@ window.setupNetwork = () => {
     return peer.id;
 };
 
-const setupGuestConnection = (conn) => {
-    guestConnections.push(conn);
+const setupConnection = (conn) => {
+    connections[conn.peer] = conn;
     conn.on('open', () => {
-        console.log('Guest connection opened with:', conn.peer);
+        console.log('Connection opened with:', conn.peer);
         sendFullGameState(conn);
-        conn.on('data', (data) => handleGuestData(data, conn));
+        conn.on('data', (data) => handleReceivedData(data, conn));
     });
     conn.on('close', () => {
-        console.log('Guest connection closed with:', conn.peer);
-        guestConnections = guestConnections.filter(c => c !== conn);
+        console.log('Connection closed with:', conn.peer);
+        delete connections[conn.peer];
         handlePlayerDisconnection(conn.peer);
     });
     conn.on('error', (error) => {
-        console.error('Guest connection error:', error);
+        console.error('Connection error:', error);
         handleConnectionError(error, conn.peer);
-    });
-};
-
-const setupHostConnection = (conn) => {
-    hostConnection = conn;
-    conn.on('open', () => {
-        console.log('Host connection opened with:', conn.peer);
-        conn.on('data', handleHostData);
-    });
-    conn.on('close', () => {
-        console.log('Host connection closed');
-        hostConnection = null;
-        // ホストが切断された場合の処理をここに追加
-    });
-    conn.on('error', (error) => {
-        console.error('Host connection error:', error);
-        // ホスト接続エラーの処理をここに追加
     });
 };
 
@@ -79,81 +62,84 @@ const sendFullGameState = (conn) => {
     conn.send({ type: 'fullGameState', state: fullState });
 };
 
-const handleGuestData = (data, conn) => {
-    console.log('Received data from guest:', data);
-    switch (data.type) {
-        case 'playerJoined':
-            handlePlayerJoined(data.player);
-            break;
-        case 'action':
-            handlePlayerAction(data.playerId, data.action, data.target);
-            break;
-        case 'vote':
-            handlePlayerVote(data.voterId, data.targetId);
-            break;
-        default:
-            console.warn('Unknown data type received from guest:', data.type);
+const handleReceivedData = (data, conn) => {
+    console.log('Received data:', data);
+    try {
+        switch (data.type) {
+            case 'fullGameState':
+                window.updateGameState(data.state);
+                console.log('Full game state received and updated:', data.state);
+                break;
+            case 'playerJoined':
+                handlePlayerJoined(data.player, conn);
+                break;
+            case 'gameState':
+                window.updateGameState(data.state);
+                console.log('Game state updated:', data.state);
+                broadcastGameState(data.state, conn);
+                break;
+            case 'action':
+                const result = window.performAction(data.playerId, data.action, data.target);
+                window.processActionResult(data.action, result);
+                console.log('Action performed:', data.action, 'Result:', result);
+                broadcastGameState(window.getGameState(), conn);
+                break;
+            case 'vote':
+                window.castVote(data.voterId, data.targetId);
+                console.log('Vote cast:', data.voterId, 'voted for', data.targetId);
+                broadcastGameState(window.getGameState(), conn);
+                break;
+            default:
+                console.warn('Unknown data type received:', data.type);
+        }
+        console.log('Current game state after handling data:', window.getGameState());
+        window.dispatchEvent(new Event('gameStateUpdated'));
+    } catch (error) {
+        console.error('Error handling received data:', error);
     }
 };
 
-const handleHostData = (data) => {
-    console.log('Received data from host:', data);
-    switch (data.type) {
-        case 'fullGameState':
-            window.updateGameState(data.state);
-            console.log('Full game state received and updated:', data.state);
-            break;
-        case 'gameStateUpdate':
-            window.updateGameState(data.state);
-            console.log('Game state updated:', data.state);
-            break;
-        default:
-            console.warn('Unknown data type received from host:', data.type);
-    }
-    window.dispatchEvent(new Event('gameStateUpdated'));
-};
-
-const handlePlayerJoined = (player) => {
+const handlePlayerJoined = (player, conn) => {
     const currentState = window.getGameState();
     if (!currentState.players.some(p => p.id === player.id)) {
         window.addPlayer(player);
         console.log('Player joined:', player);
-        broadcastGameState();
+        broadcastGameState(window.getGameState(), conn);
     }
 };
 
-const handlePlayerAction = (playerId, action, target) => {
-    const result = window.performAction(playerId, action, target);
-    window.processActionResult(action, result);
-    console.log('Action performed:', action, 'Result:', result);
-    broadcastGameState();
-};
-
-const handlePlayerVote = (voterId, targetId) => {
-    window.castVote(voterId, targetId);
-    console.log('Vote cast:', voterId, 'voted for', targetId);
-    broadcastGameState();
-};
-
-const broadcastGameState = () => {
-    const currentState = window.getGameState();
-    guestConnections.forEach(conn => {
-        if (conn.open) {
-            conn.send({ type: 'gameStateUpdate', state: currentState });
+const broadcastGameState = (state, excludeConn) => {
+    Object.values(connections).forEach(conn => {
+        if (conn !== excludeConn && conn.open) {
+            conn.send({ type: 'gameState', state: state });
         }
     });
 };
 
+window.createGame = (playerName) => {
+    isHost = true;
+    gameId = window.generateId(); // ユニークなゲームIDを生成
+    const newPlayer = { id: peer.id, name: playerName };
+    window.addPlayer(newPlayer);
+    window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
+    console.log('Game created with ID:', gameId);
+    return gameId;
+};
+
 window.joinGame = (gameId, playerName) => {
+    if (!gameId) {
+        console.error('Game ID is required to join a game');
+        return;
+    }
     console.log('Attempting to join game:', gameId, 'as', playerName);
     const conn = peer.connect(gameId, { reliable: true });
-    setupHostConnection(conn);
+    setupConnection(conn);
     conn.on('open', () => {
         console.log('Connected to host. Sending player info.');
         const newPlayer = { id: peer.id, name: playerName };
         conn.send({ type: 'playerJoined', player: newPlayer });
         window.addPlayer(newPlayer);
-        window.updateGameState({ currentPlayerId: peer.id });
+        window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
         console.log('Updated game state after joining:', window.getGameState());
         window.dispatchEvent(new Event('gameStateUpdated'));
     });
@@ -171,7 +157,7 @@ const handlePeerError = (error) => {
 const handlePlayerDisconnection = (peerId) => {
     console.log('Player disconnected:', peerId);
     window.removePlayer(peerId);
-    broadcastGameState();
+    broadcastGameState(window.getGameState());
 };
 
 const handleConnectionError = (error, peerId) => {
@@ -179,30 +165,20 @@ const handleConnectionError = (error, peerId) => {
     handlePlayerDisconnection(peerId);
 };
 
-window.sendToHost = (data) => {
-    if (hostConnection && hostConnection.open) {
-        console.log('Sending data to host:', data);
-        hostConnection.send(data);
-    } else {
-        console.error('No open connection to host');
-    }
+window.sendToAll = (data, excludeConnections = []) => {
+    console.log('Sending data to all:', data);
+    Object.values(connections).forEach(conn => {
+        if (conn.open && !excludeConnections.includes(conn)) {
+            conn.send(data);
+        }
+    });
 };
 
 window.isHostPlayer = () => isHost;
 
-window.createGame = (playerName) => {
-    isHost = true;
-    const gameId = peer.id;
-    const newPlayer = { id: gameId, name: playerName };
-    window.addPlayer(newPlayer);
-    window.updateGameState({ currentPlayerId: gameId });
-    console.log('Game created with ID:', gameId);
-    return gameId;
-};
-
 window.debugConnections = () => {
     console.log('Is host:', isHost);
-    console.log('Host connection:', hostConnection);
-    console.log('Guest connections:', guestConnections);
+    console.log('Game ID:', gameId);
+    console.log('Connections:', connections);
     console.log('Current game state:', window.getGameState());
 };
