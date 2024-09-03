@@ -40,7 +40,6 @@ const setupConnection = (conn) => {
     connections.push(conn);
     conn.on('open', () => {
         console.log('Connection opened with:', conn.peer);
-        // 接続が開かれたら、現在のゲーム状態を送信
         sendFullGameState(conn);
         conn.on('data', (data) => handleReceivedData(data, conn));
     });
@@ -70,14 +69,7 @@ const handleReceivedData = (data, conn) => {
                 console.log('Full game state received and updated:', data.state);
                 break;
             case 'playerJoined':
-                if (!window.getGameState().players.some(p => p.id === data.player.id)) {
-                    window.addPlayer(data.player);
-                    console.log('Player joined:', data.player);
-                    // 新しいプレイヤーに現在のゲーム状態を送信
-                    sendFullGameState(conn);
-                    // 他の全プレイヤーに新しいプレイヤーの情報を送信
-                    broadcastPlayerJoined(data.player, conn);
-                }
+                handlePlayerJoined(data.player, conn);
                 break;
             case 'gameState':
                 window.updateGameState(data.state);
@@ -102,6 +94,18 @@ const handleReceivedData = (data, conn) => {
         window.dispatchEvent(new Event('gameStateUpdated'));
     } catch (error) {
         console.error('Error handling received data:', error);
+    }
+};
+
+const handlePlayerJoined = (player, conn) => {
+    const currentState = window.getGameState();
+    if (!currentState.players.some(p => p.id === player.id)) {
+        window.addPlayer(player);
+        console.log('Player joined:', player);
+        // 新しいプレイヤーに現在のゲーム状態を送信
+        sendFullGameState(conn);
+        // 他の全プレイヤーに新しいプレイヤーの情報を送信
+        broadcastPlayerJoined(player, conn);
     }
 };
 
@@ -149,16 +153,22 @@ const handlePeerError = (error) => {
 
 const handlePlayerDisconnection = (peerId) => {
     console.log('Player disconnected:', peerId);
-    const state = window.getGameState();
-    const updatedPlayers = state.players.filter(player => player.id !== peerId);
-    window.updateGameState({ players: updatedPlayers });
+    window.removePlayer(peerId);
     broadcastGameState(window.getGameState());
-    window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
 const handleConnectionError = (error, peerId) => {
     console.error('Connection error with peer:', peerId, error);
     handlePlayerDisconnection(peerId);
+};
+
+window.sendToAll = (data, excludeConnections = []) => {
+    console.log('Sending data to all:', data);
+    connections.forEach(conn => {
+        if (conn.open && !excludeConnections.includes(conn)) {
+            conn.send(data);
+        }
+    });
 };
 
 window.debugConnections = () => {
