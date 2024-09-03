@@ -1,7 +1,16 @@
 'use strict';
 
 window.initializeGame = () => {
-    return window.createInitialState();
+    return {
+        players: [],
+        currentPlayerId: null,
+        phase: '待機中',
+        assignedRoles: {},
+        centerCards: [],
+        actions: {},
+        votes: {},
+        result: '',
+    };
 };
 
 window.setupRoles = (playerIds) => {
