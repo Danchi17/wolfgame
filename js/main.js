@@ -1,7 +1,7 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gameState = window.initializeGame();
+    const gameState = window.createInitialState();
     window.setupNetwork(gameState);
     window.renderUI(gameState);
 });
