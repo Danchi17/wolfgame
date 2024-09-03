@@ -33,7 +33,7 @@ window.setupNetwork = () => {
         handlePeerError(error);
     });
 
-    return peer.id;  // ゲームIDとしてPeer IDを返す
+    return peer.id;
 };
 
 const setupConnection = (conn) => {
@@ -46,7 +46,8 @@ const setupConnection = (conn) => {
         console.log('Connection closed with:', conn.peer);
         connections = connections.filter(c => c !== conn);
         handlePlayerDisconnection(conn.peer);
-    });conn.on('error', (error) => {
+    });
+    conn.on('error', (error) => {
         console.error('Connection error:', error);
         handleConnectionError(error, conn.peer);
     });
@@ -60,9 +61,7 @@ const handleReceivedData = (data, conn) => {
                 if (!window.getGameState().players.some(p => p.id === data.player.id)) {
                     window.addPlayer(data.player);
                     console.log('Player joined:', data.player);
-                    // 新しいプレイヤーに現在のゲーム状態を送信
                     conn.send({ type: 'gameState', state: window.getGameState() });
-                    // 他の全プレイヤーに新しいプレイヤーの情報を送信
                     window.sendToAll({ type: 'playerJoined', player: data.player }, [conn]);
                 }
                 break;
@@ -106,10 +105,10 @@ window.joinGame = (gameId, playerName) => {
         console.log('Connected to host. Sending player info.');
         const newPlayer = { id: peer.id, name: playerName };
         conn.send({ type: 'playerJoined', player: newPlayer });
-        window.addPlayer(newPlayer);  // 自分自身をプレイヤーリストに追加
-        window.updateGameState({ currentPlayerId: peer.id });  // 現在のプレイヤーIDを設定
+        window.addPlayer(newPlayer);
+        window.updateGameState({ currentPlayerId: peer.id });
         console.log('Updated game state after joining:', window.getGameState());
-        window.dispatchEvent(new Event('gameStateUpdated'));  // UI更新のためのイベント発火
+        window.dispatchEvent(new Event('gameStateUpdated'));
     });
 };
 
@@ -127,7 +126,7 @@ const handlePlayerDisconnection = (peerId) => {
     const state = window.getGameState();
     const updatedPlayers = state.players.filter(player => player.id !== peerId);
     window.updateGameState({ players: updatedPlayers });
-    window.dispatchEvent(new Event('gameStateUpdated'));  // UI更新のためのイベント発火
+    window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
 const handleConnectionError = (error, peerId) => {
@@ -135,7 +134,6 @@ const handleConnectionError = (error, peerId) => {
     handlePlayerDisconnection(peerId);
 };
 
-// デバッグ用：現在の接続状況をコンソールに出力
 window.debugConnections = () => {
     console.log('Current connections:', connections);
     console.log('Current game state:', window.getGameState());
