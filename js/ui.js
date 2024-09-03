@@ -113,9 +113,6 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
   const renderActionArea = () => {
     switch (currentPhase) {
       case '占い師':
-      caseconst renderActionArea = () => {
-    switch (currentPhase) {
-      case '占い師':
       case '人狼':
       case '怪盗':
         return React.createElement('p', null, `${currentPhase}のアクションを実行してください。`);
