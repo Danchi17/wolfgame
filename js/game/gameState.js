@@ -95,6 +95,9 @@ window.initializeGame = () => {
 
 window.removePlayer = (playerId) => {
     gameState.players = gameState.players.filter(player => player.id !== playerId);
+    delete gameState.assignedRoles[playerId];
+    delete gameState.actions[playerId];
+    delete gameState.votes[playerId];
     console.log('Player removed:', playerId);
     console.log('Updated game state:', gameState);
     window.dispatchEvent(new Event('gameStateUpdated'));
@@ -112,4 +115,31 @@ window.updatePlayerRole = (playerId, role) => {
 
 window.debugGameState = () => {
     console.log('Current game state:', gameState);
+};
+
+window.getPlayerById = (playerId) => {
+    return gameState.players.find(player => player.id === playerId);
+};
+
+window.updatePlayerInfo = (playerId, info) => {
+    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+    if (playerIndex !== -1) {
+        gameState.players[playerIndex] = { ...gameState.players[playerIndex], ...info };
+        console.log('Player info updated:', playerId, info);
+        window.dispatchEvent(new Event('gameStateUpdated'));
+    }
+};
+
+window.isGameReady = () => {
+    return gameState.players.length >= 2; // 最小プレイヤー数を2人と仮定
+};
+
+window.startGame = () => {
+    if (window.isGameReady()) {
+        window.setPhase('役職確認');
+        // ここで役職の割り当てなどの初期化処理を行う
+        console.log('Game started');
+    } else {
+        console.log('Not enough players to start the game');
+    }
 };
