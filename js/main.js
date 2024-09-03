@@ -1,9 +1,9 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gameState = initializeGame();
-    setupNetwork(gameState);
-    renderUI(gameState);
+    const gameState = window.initializeGame();
+    window.setupNetwork(gameState);
+    window.renderUI(gameState);
 });
 
 // ゲーム状態が更新されたときに発火するカスタムイベント
