@@ -1,7 +1,7 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gameState = window.createInitialState();
+    const gameState = window.initializeGame();
     window.setupNetwork(gameState);
     window.renderUI(gameState);
 });
@@ -16,3 +16,10 @@ window.updateGameState = (newState) => {
     window.dispatchEvent(gameStateUpdatedEvent);
     return updatedState;
 };
+
+// window.renderUI が定義されていない場合に備えて、フォールバックの定義を追加
+if (typeof window.renderUI !== 'function') {
+    window.renderUI = () => {
+        console.warn('window.renderUI is not properly defined. Please check ui.js file.');
+    };
+}
