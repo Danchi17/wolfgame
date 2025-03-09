@@ -90,52 +90,111 @@ function handleNightPhase(gameData) {
   
   console.log(`夜フェーズ処理中: 現在のフェーズ=${currentPhase}, ゲームID=${gameId}`);
   
+  // まず共通のUI部分を構築
+  const gameContainer = document.getElementById('gameStatus');
+  let phaseTitle = '';
+  let phaseTime = 15; // 秒
+  
   // 各役職のターン処理
   if (currentPhase === 'seer') {
+    phaseTitle = '占いフェーズ';
     // 占い師系の処理
     showSeerUI(gameData);
-    
-    // ホストの場合、一定時間後に次のフェーズへ
-    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
-      console.log(`占い師フェーズ終了まで15秒カウントダウン開始`);
-      // 手動でフェーズを進めるボタンを追加（デバッグ用）
-      addPhaseSkipButton(gameId, 'werewolf', '人狼フェーズへ');
-      
-      setTimeout(() => {
-        console.log(`占い師フェーズ終了、人狼フェーズへ移行します (${gameId})`);
-        updateGamePhase(gameId, 'werewolf');
-      }, 15000); // 15秒後（短縮）
-    }
   } else if (currentPhase === 'werewolf') {
+    phaseTitle = '人狼フェーズ';
     // 人狼系の処理
     showWerewolfUI(gameData);
-    
-    // ホストの場合、一定時間後に次のフェーズへ
-    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
-      console.log(`人狼フェーズ終了まで15秒カウントダウン開始`);
-      // 手動でフェーズを進めるボタンを追加（デバッグ用）
-      addPhaseSkipButton(gameId, 'thief', '怪盗フェーズへ');
-      
-      setTimeout(() => {
-        console.log(`人狼フェーズ終了、怪盗フェーズへ移行します (${gameId})`);
-        updateGamePhase(gameId, 'thief');
-      }, 15000); // 15秒後（短縮）
-    }
   } else if (currentPhase === 'thief') {
+    phaseTitle = '怪盗フェーズ';
     // 怪盗の処理
     showThiefUI(gameData);
+  }
+  
+  // ホストプレイヤーの場合はフェーズ制御ボタンを追加
+  if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+    // 次のフェーズへの移行制御を追加
+    let nextPhaseText = '';
+    let nextPhase = '';
+    let isStatusChange = false;
     
-    // ホストの場合、一定時間後に日中フェーズへ
-    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
-      console.log(`怪盗フェーズ終了まで15秒カウントダウン開始`);
-      // 手動でフェーズを進めるボタンを追加（デバッグ用）
-      addPhaseSkipButton(gameId, null, '日中フェーズへ', true);
-      
-      setTimeout(() => {
-        console.log(`怪盗フェーズ終了、日中フェーズへ移行します (${gameId})`);
-        updateGameStatus(gameId, 'day');
-      }, 15000); // 15秒後（短縮）
+    if (currentPhase === 'seer') {
+      nextPhase = 'werewolf';
+      nextPhaseText = '人狼フェーズへ';
+    } else if (currentPhase === 'werewolf') {
+      nextPhase = 'thief';
+      nextPhaseText = '怪盗フェーズへ';
+    } else if (currentPhase === 'thief') {
+      nextPhase = null;
+      nextPhaseText = '日中フェーズへ';
+      isStatusChange = true;
     }
+    
+    // フェーズ制御UI追加
+    const phaseControlDiv = document.createElement('div');
+    phaseControlDiv.className = 'phase-control';
+    phaseControlDiv.style.marginTop = '20px';
+    phaseControlDiv.style.padding = '10px';
+    phaseControlDiv.style.backgroundColor = '#f0f0f0';
+    phaseControlDiv.style.borderRadius = '5px';
+    
+    phaseControlDiv.innerHTML = `
+      <p><strong>ホスト操作パネル</strong></p>
+      <p>現在: ${phaseTitle} (${phaseTime}秒後に自動で次へ)</p>
+      <div id="phaseTimer" style="margin: 10px 0;">残り時間: ${phaseTime}秒</div>
+    `;
+    
+    // フェーズスキップボタン
+    const skipButton = document.createElement('button');
+    skipButton.className = 'btn primary';
+    skipButton.textContent = `今すぐ${nextPhaseText}`;
+    skipButton.addEventListener('click', () => {
+      console.log(`手動でフェーズを進めます: ${nextPhase || '日中フェーズ'}`);
+      stopTimer(); // タイマーがあれば停止
+      
+      if (isStatusChange) {
+        updateGameStatus(gameId, 'day');
+      } else {
+        updateGamePhase(gameId, nextPhase);
+      }
+    });
+    
+    phaseControlDiv.appendChild(skipButton);
+    
+    // 既存のUI要素の下部に追加
+    gameContainer.appendChild(phaseControlDiv);
+    
+    // タイマー開始
+    let remainingTime = phaseTime;
+    const timerDisplay = document.getElementById('phaseTimer');
+    
+    const phaseTimer = setInterval(() => {
+      remainingTime--;
+      if (timerDisplay) {
+        timerDisplay.textContent = `残り時間: ${remainingTime}秒`;
+      }
+      
+      if (remainingTime <= 0) {
+        clearInterval(phaseTimer);
+        console.log(`${phaseTitle}終了、次のフェーズへ移行します (${gameId})`);
+        
+        if (isStatusChange) {
+          updateGameStatus(gameId, 'day');
+        } else {
+          updateGamePhase(gameId, nextPhase);
+        }
+      }
+    }, 1000);
+    
+    // グローバル変数に保存して必要時に停止できるようにする
+    window.currentPhaseTimer = phaseTimer;
+  }
+}
+
+// タイマー停止関数
+function stopTimer() {
+  if (window.currentPhaseTimer) {
+    clearInterval(window.currentPhaseTimer);
+    window.currentPhaseTimer = null;
   }
 }
 // フェーズをスキップするボタンを追加（デバッグ用）
