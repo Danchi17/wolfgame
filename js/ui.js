@@ -181,11 +181,26 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
         React.createElement(CenterCard, { cardNumber: 2, role: state.centerCards[1], isRevealed: currentPhase === '結果' })
       )
     ),
-    React.createElement('div', { className: "action-area" },
-      React.createElement('h2', null, 'アクションエリア'),
-      React.createElement('p', null, `現在のフェーズ: ${currentPhase}`),
-      renderActionArea()
-    )
+React.createElement('div', { className: "action-area" },
+  React.createElement('h2', null, 'アクションエリア'),
+  React.createElement('p', null, `現在のフェーズ: ${currentPhase}`),
+  // デバッグ用の強制同期ボタンを追加
+  React.createElement('button', {
+    onClick: () => {
+      if (typeof window.forceStateSync === 'function') {
+        const result = window.forceStateSync();
+        alert(result ? "強制同期を実行しました" : "同期できませんでした（接続がありません）");
+      } else {
+        alert("強制同期機能が利用できません");
+      }
+    },
+    style: {
+      backgroundColor: '#ff9900',
+      margin: '10px 0'
+    }
+  }, '強制同期（デバッグ用）'),
+  renderActionArea()
+)
   );
 };
 
