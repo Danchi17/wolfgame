@@ -685,12 +685,20 @@ function startTimer(seconds, callback) {
   }, 1000);
 }
 
+// タイマー停止関数（複数タイプのタイマーに対応）
 function stopTimer() {
+  // 議論フェーズのタイマー停止
   if (timerInterval) {
     clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  
+  // 夜フェーズのタイマー停止
+  if (window.currentPhaseTimer) {
+    clearInterval(window.currentPhaseTimer);
+    window.currentPhaseTimer = null;
   }
 }
-
 // ゲームIDの取得
 function getGameId(gameData) {
   // gameDataに追加されたgameIdプロパティを使用
