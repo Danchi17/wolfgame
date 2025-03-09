@@ -419,12 +419,132 @@ function showSeerUI(gameData) {
 
 // 人狼UIの表示
 function showWerewolfUI(gameData) {
-  // 略（同様の実装）
+  const role = currentPlayer.data.role;
+  if (!role) return;
+  
+  // 人狼系の役職の場合のみUI表示
+  if (role.name === '大熊' || role.name === '占い人狼' || role.name === 'やっかいな豚男' || 
+      role.name === '蛇女' || role.name === '博識な子犬') {
+    const gameContainer = document.getElementById('gameStatus');
+    
+    // 人狼共通UI
+    gameContainer.innerHTML = `
+      <h3>人狼フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+    `;
+    
+    // 役職別の特殊UI
+    if (role.name === '占い人狼') {
+      // 占い人狼は他の人狼と確認できない
+      gameContainer.innerHTML += `<p>あなたは一匹狼です。他の人狼と確認することはできません。</p>`;
+    } else {
+      // 他の人狼役職の表示
+      const werewolves = Object.entries(gameData.players)
+        .filter(([id, player]) => 
+          player.role && 
+          player.role.team === 'werewolf' && 
+          id !== currentPlayer.id &&
+          player.role.name !== '占い人狼'
+        )
+        .map(([id, player]) => player.name);
+      
+      if (werewolves.length > 0) {
+        gameContainer.innerHTML += `
+          <p>あなたの仲間: ${werewolves.join('、')}</p>
+        `;
+      } else {
+        gameContainer.innerHTML += `<p>他の人狼は見つかりませんでした。</p>`;
+      }
+    }
+    
+    // 役職固有の能力UI
+    if (role.name === 'やっかいな豚男') {
+      gameContainer.innerHTML += `
+        <p>★マークを付与するプレイヤーを選択してください:</p>
+        <div class="player-targets">
+          ${Object.entries(gameData.players).map(([id, player]) => {
+            if (id !== currentPlayer.id) {
+              return `<button class="btn player-target" data-id="${id}">${player.name}に★を付ける</button>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      `;
+      
+      // ★マーク付与のイベント
+      setTimeout(() => {
+        document.querySelectorAll('.player-target').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const targetId = e.target.dataset.id;
+            const targetPlayer = gameData.players[targetId];
+            // ★マークの付与処理
+            alert(`${targetPlayer.name}に★マークを付与しました！（1分後に消えます）`);
+          });
+        });
+      }, 100);
+    }
+  } else {
+    // 人狼系役職でない場合
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>人狼フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>人狼陣営のプレイヤーが自分たちを確認しています。</p>
+    `;
+  }
 }
 
 // 怪盗UIの表示
 function showThiefUI(gameData) {
-  // 略（同様の実装）
+  const role = currentPlayer.data.role;
+  if (!role) return;
+  
+  // 怪盗役職の場合のみUI表示
+  if (role.name === '怪盗') {
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>怪盗フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>役職を交換するプレイヤーを選択するか、交換しないを選べます:</p>
+      <div class="action-targets">
+        <button id="noExchangeBtn" class="btn action">交換しない</button>
+        <div class="player-targets">
+          ${Object.entries(gameData.players).map(([id, player]) => {
+            if (id !== currentPlayer.id) {
+              return `<button class="btn player-target" data-id="${id}">${player.name}と交換する</button>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      </div>
+    `;
+    
+    // 交換しないボタンのイベント
+    document.getElementById('noExchangeBtn').addEventListener('click', () => {
+      alert('役職の交換をしませんでした。');
+    });
+    
+    // 役職交換ボタンのイベント
+    document.querySelectorAll('.player-target').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const targetId = e.target.dataset.id;
+        const targetPlayer = gameData.players[targetId];
+        // 役職交換の処理
+        alert(`${targetPlayer.name}との役職交換: あなたは「${targetPlayer.role.name}」になりました！`);
+        
+        // ここで実際の役職交換処理を実装する
+        exchangeRoles(gameData.id || getGameId(gameData), currentPlayer.id, targetId);
+      });
+    });
+  } else {
+    // 怪盗役職でない場合
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>怪盗フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>怪盗がいれば、他のプレイヤーと役職を交換している可能性があります。</p>
+    `;
+  }
 }
 
 // フェーズの更新
