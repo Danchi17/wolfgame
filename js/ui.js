@@ -361,17 +361,18 @@ const handleCreateGame = (playerName) => {
   }
 };
 
-  const handleJoinGame = (playerName, gameId) => {
-    try {
-      console.log('Joining game with name:', playerName, 'and gameId:', gameId);
-      window.joinGame(gameId, playerName);
-      console.log('Join game function called');
+const handleJoinGame = (playerName, gameId) => {
+  try {
+    console.log('Joining game with name:', playerName, 'and gameId:', gameId);
+    const result = window.joinGame(gameId, playerName);
+    if (result) {
       setIsInLobby(false);
-    } catch (error) {
-      console.error('Error joining game:', error);
-      alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認して再試行してください。');
     }
-  };
+  } catch (error) {
+    console.error('Error joining game:', error);
+    alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認してください。');
+  }
+};
 
   const handleAction = (actionType, targetId) => {
     const result = window.performAction(state.currentPlayerId, actionType, targetId);
