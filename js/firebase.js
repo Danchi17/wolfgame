@@ -5,16 +5,15 @@ import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/1
 
 // Firebaseの設定
 const firebaseConfig = {
-  apiKey: "AIzaSyBGN2sXbblEZNqhwDCGsgmE2wiL34ZEY",
-  authDomain: "wolfgame-274sf.firebaseapp.com",
-  projectId: "wolfgame-274sf",
-  databaseURL: "https://wolfgame-274sf-default-rtdb.asia-southeast1.firebasedatabase.app",
-  storageBucket: "wolfgame-274sf.appspot.com",
-  messagingSenderId: "883873633291",
-  appId: "1:883873633291:web:57f19afb2a69e40150f1ce",
-  measurementId: "G-0X81NW2924"
+  apiKey: "AIzaSyBGN2sXbblEZNxjviwDCGsgmE2wiL34ZEY",
+  authDomain: "wolfgame-2745f.firebaseapp.com",
+  databaseURL: "https://wolfgame-2745f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "wolfgame-2745f",
+  storageBucket: "wolfgame-2745f.firebasestorage.app",
+  messagingSenderId: "883873033291",
+  appId: "1:883873033291:web:57f19afb2a69e40150f1ce",
+  measurementId: "G-GXBTWW29Z4"
 };
-
 // Firebaseの初期化
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
