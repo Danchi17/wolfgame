@@ -632,8 +632,13 @@ function stopTimer() {
 
 // ゲームIDの取得
 function getGameId(gameData) {
-  // Firebaseのデータ構造から適切にIDを取得
-  return gameData.id;
+  // gameDataに追加されたgameIdプロパティを使用
+  if (gameData.gameId) {
+    return gameData.gameId;
+  }
+  
+  console.error('gameDataにgameIdがありません', gameData);
+  return null; // IDが見つからない場合
 }
 
 // 役職交換処理の関数を追加
