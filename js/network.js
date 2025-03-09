@@ -122,48 +122,21 @@ const handleReceivedData = (data, conn) => {
         switch (data.type) {
             case 'fullGameState':
                 if (data.state && typeof data.state === 'object') {
-                    window.updateGameState(data.state);
-                    console.log('ゲーム状態を更新しました');
+                    // 重要な変更: 現在のプレイヤーID情報を保持
+                    const currentPlayerId = window.getGameState().currentPlayerId;
+                    
+                    // ゲーム状態を更新するが、currentPlayerIdは保持する
+                    const updatedState = {
+                        ...data.state,
+                        currentPlayerId: currentPlayerId
+                    };
+                    
+                    window.updateGameState(updatedState);
+                    console.log('完全なゲーム状態を受信し更新しました', updatedState);
                 }
                 break;
                 
-            case 'playerJoined':
-                if (data.player) {
-                    handlePlayerJoined(data.player, conn);
-                }
-                break;
-                
-            case 'gameState':
-                if (data.state && typeof data.state === 'object') {
-                    window.updateGameState(data.state);
-                    broadcastGameState(data.state, conn);
-                }
-                break;
-                
-            case 'action':
-                if (data.playerId && data.action) {
-                    const result = window.performAction(data.playerId, data.action, data.target);
-                    if (typeof window.processActionResult === 'function') {
-                        window.processActionResult(data.action, result);
-                    }
-                    broadcastGameState(window.getGameState(), conn);
-                }
-                break;
-                
-            case 'vote':
-                if (data.voterId && data.targetId) {
-                    window.castVote(data.voterId, data.targetId);
-                    broadcastGameState(window.getGameState(), conn);
-                }
-                break;
-                
-            case 'requestFullState':
-                console.log('ゲーム状態の完全リクエストを受信');
-                sendFullGameState(conn);
-                break;
-                
-            default:
-                console.warn('不明なデータタイプ:', data.type);
+            // 他のケース...
         }
         
         window.dispatchEvent(new Event('gameStateUpdated'));
