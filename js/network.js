@@ -754,3 +754,47 @@ window.debugConnections = () => {
 window.addEventListener('beforeunload', () => {
     isConnecting = false;
 });
+
+// 強制的にゲーム状態を全員に同期する関数
+window.forceStateSync = () => {
+    console.log('強制同期を実行します');
+    
+    // 接続が存在するか確認
+    if (Object.keys(connections).length === 0) {
+        console.log('接続がありません。同期できません。');
+        return false;
+    }
+    
+    // ゲーム状態を取得
+    const currentState = window.getGameState();
+    
+    // プレイヤー情報を整理（自分自身を含む完全なリスト）
+    console.log('自分自身を含むプレイヤーリスト:', currentState.players);
+    
+    // 全接続に送信
+    Object.values(connections).forEach(conn => {
+        if (conn && conn.open) {
+            try {
+                // まずプレイヤー情報だけを送信
+                conn.send({
+                    type: 'forcePlayersList',
+                    players: currentState.players
+                });
+                
+                // 少し遅延させてからゲーム状態も送信
+                setTimeout(() => {
+                    conn.send({
+                        type: 'fullGameState',
+                        state: currentState
+                    });
+                }, 500);
+                
+                console.log(`強制同期データを送信: ${conn.peer}`);
+            } catch (e) {
+                console.error('強制同期中のエラー:', e);
+            }
+        }
+    });
+    
+    return true;
+};
