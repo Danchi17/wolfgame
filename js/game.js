@@ -682,11 +682,13 @@ function startTimer(seconds, callback) {
   }, 1000);
 }
 
-// タイマー関連の変数
-let timerInterval;
-let currentPhaseTimer;
-
-
+// タイマー停止関数（すべてのタイマーに対応）
+function stopTimer() {
+  // 議論フェーズのタイマー停止
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
   
   // 夜フェーズのタイマー停止
   if (window.currentPhaseTimer) {
