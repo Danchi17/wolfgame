@@ -6,6 +6,96 @@ import { getRandomRoles, isWerewolfTeam } from './roles.js';
 let currentGame = null;
 let currentPlayer = null;
 
+// タイマー管理クラス
+class GameTimer {
+  constructor() {
+    this.timers = {
+      phase: null,  // 夜フェーズなどのフェーズ用タイマー
+      discussion: null, // 議論用タイマー
+      other: null   // その他のタイマー用
+    };
+  }
+
+  // フェーズタイマーの開始
+  startPhaseTimer(seconds, timerDisplay, callback) {
+    // 既存のタイマーをクリア
+    this.stopPhaseTimer();
+    
+    let remainingTime = seconds;
+    
+    this.timers.phase = setInterval(() => {
+      remainingTime--;
+      
+      if (timerDisplay) {
+        timerDisplay.textContent = `残り時間: ${remainingTime}秒`;
+      }
+      
+      if (remainingTime <= 0) {
+        this.stopPhaseTimer();
+        if (callback) callback();
+      }
+    }, 1000);
+    
+    return this.timers.phase;
+  }
+  
+  // 議論タイマーの開始
+  startDiscussionTimer(seconds, callback) {
+    // 既存のタイマーをクリア
+    this.stopDiscussionTimer();
+    
+    const timerDisplay = document.getElementById('timerDisplay');
+    if (!timerDisplay) return null;
+    
+    let remainingTime = seconds;
+    
+    this.timers.discussion = setInterval(() => {
+      remainingTime--;
+      
+      // 時間表示の更新
+      const minutes = Math.floor(remainingTime / 60);
+      const secs = remainingTime % 60;
+      timerDisplay.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+      
+      if (remainingTime <= 0) {
+        this.stopDiscussionTimer();
+        if (callback) callback();
+      }
+    }, 1000);
+    
+    return this.timers.discussion;
+  }
+  
+  // 各種タイマーの停止関数
+  stopPhaseTimer() {
+    if (this.timers.phase) {
+      clearInterval(this.timers.phase);
+      this.timers.phase = null;
+    }
+  }
+  
+  stopDiscussionTimer() {
+    if (this.timers.discussion) {
+      clearInterval(this.timers.discussion);
+      this.timers.discussion = null;
+    }
+  }
+  
+  // 全てのタイマーを停止
+  stopAllTimers() {
+    this.stopPhaseTimer();
+    this.stopDiscussionTimer();
+    
+    if (this.timers.other) {
+      clearInterval(this.timers.other);
+      this.timers.other = null;
+    }
+  }
+}
+
+// タイマー管理インスタンスの作成
+const gameTimer = new GameTimer();
+
 // ゲームの初期化
 function initGame(gameData, playerId) {
   currentGame = gameData;
@@ -66,6 +156,9 @@ async function distributeRoles(gameId) {
 
 // フェーズの処理
 function handlePhase(phase, gameData) {
+  // 全てのタイマーを停止してから新しいフェーズを開始
+  gameTimer.stopAllTimers();
+  
   switch (phase) {
     case 'night':
       handleNightPhase(gameData);
@@ -149,7 +242,7 @@ function handleNightPhase(gameData) {
     skipButton.textContent = `今すぐ${nextPhaseText}`;
     skipButton.addEventListener('click', () => {
       console.log(`手動でフェーズを進めます: ${nextPhase || '日中フェーズ'}`);
-      stopTimer(); // タイマーがあれば停止
+      gameTimer.stopAllTimers(); // タイマーがあれば停止
       
       if (isStatusChange) {
         updateGameStatus(gameId, 'day');
@@ -163,35 +256,21 @@ function handleNightPhase(gameData) {
     // 既存のUI要素の下部に追加
     gameContainer.appendChild(phaseControlDiv);
     
- // タイマー開始
-    let remainingTime = phaseTime;
+    // タイマー開始
     const timerDisplay = document.getElementById('phaseTimer');
     
-    // 既存のタイマーがあれば停止
-    if (currentPhaseTimer) {
-      clearInterval(currentPhaseTimer);
-    }
-    
-    currentPhaseTimer = setInterval(() => {
-      remainingTime--;
-      if (timerDisplay) {
-        timerDisplay.textContent = `残り時間: ${remainingTime}秒`;
-      }
+    // フェーズタイマー開始
+    gameTimer.startPhaseTimer(phaseTime, timerDisplay, () => {
+      console.log(`${phaseTitle}終了、次のフェーズへ移行します (${gameId})`);
       
-      if (remainingTime <= 0) {
-        clearInterval(currentPhaseTimer);
-        console.log(`${phaseTitle}終了、次のフェーズへ移行します (${gameId})`);
-        
-        if (isStatusChange) {
-          updateGameStatus(gameId, 'day');
-        } else {
-          updateGamePhase(gameId, nextPhase);
-        }
+      if (isStatusChange) {
+        updateGameStatus(gameId, 'day');
+      } else {
+        updateGamePhase(gameId, nextPhase);
       }
-    }, 1000);
+    });
   }
 }
-
 
 // フェーズをスキップするボタンを追加（デバッグ用）
 function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = false) {
@@ -213,6 +292,8 @@ function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = fals
   
   skipBtn.addEventListener('click', () => {
     console.log(`手動でフェーズを進めます: ${nextPhase || '日中フェーズ'}`);
+    gameTimer.stopAllTimers();
+    
     if (isStatusChange) {
       updateGameStatus(gameId, 'day');
     } else {
@@ -222,6 +303,7 @@ function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = fals
   
   gameStatus.appendChild(skipBtn);
 }
+
 // 日中フェーズの処理
 function handleDayPhase(gameData) {
   // 議論タイマーの表示
@@ -234,8 +316,8 @@ function handleDayPhase(gameData) {
       `<button id="skipTimer" class="btn primary">スキップ</button>` : ''}
   `;
   
-  // タイマー処理
-  startTimer(180, () => {
+  // 議論タイマー開始
+  gameTimer.startDiscussionTimer(180, () => {
     const gameId = gameData.id || getGameId(gameData);
     updateGameStatus(gameId, 'voting');
   });
@@ -243,7 +325,7 @@ function handleDayPhase(gameData) {
   // スキップボタンの処理（ホストのみ）
   if (currentPlayer.data.isHost) {
     document.getElementById('skipTimer').addEventListener('click', () => {
-      stopTimer();
+      gameTimer.stopAllTimers();
       const gameId = gameData.id || getGameId(gameData);
       updateGameStatus(gameId, 'voting');
     });
@@ -657,51 +739,6 @@ function updateGamePhase(gameId, phase) {
   });
 }
 
-// タイマー関連
-let timerInterval;
-let currentPhaseTimer;
-
-function startTimer(seconds, callback) {
-  const timerDisplay = document.getElementById('timerDisplay');
-  if (!timerDisplay) return;
-  
-  let remainingTime = seconds;
-  
-  timerInterval = setInterval(() => {
-    remainingTime--;
-    
-    // 時間表示の更新
-    const minutes = Math.floor(remainingTime / 60);
-    const secs = remainingTime % 60;
-    timerDisplay.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
-    
-    if (remainingTime <= 0) {
-      clearInterval(timerInterval);
-      if (callback) callback();
-    }
-  }, 1000);
-}
-
-// タイマー停止関数（すべてのタイマーに対応）
-function stopTimer() {
-  // 議論フェーズのタイマー停止
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-  
-  // 夜フェーズのタイマー停止
-  if (window.currentPhaseTimer) {
-    clearInterval(window.currentPhaseTimer);
-    window.currentPhaseTimer = null;
-  }
-  
-  // 他のタイマーがある場合はこちらも対応
-  if (currentPhaseTimer) {
-    clearInterval(currentPhaseTimer);
-    currentPhaseTimer = null;
-  }
-}
 // ゲームIDの取得
 function getGameId(gameData) {
   // gameDataに追加されたgameIdプロパティを使用
