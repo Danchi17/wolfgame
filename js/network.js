@@ -117,7 +117,6 @@ const setupConnection = (conn) => {
 };
 
 // 受信データを処理する関数
-// 受信データを処理する関数
 const handleReceivedData = (data, conn) => {
     console.log('データを受信:', data ? (typeof data === 'object' ? data.type : 'non-object data') : 'null');
     
@@ -144,7 +143,7 @@ const handleReceivedData = (data, conn) => {
                 }
                 break;
                 
-            // 追加：playerJoined ケースを処理
+            // 追加: playerJoined ケースを処理
             case 'playerJoined':
                 if (data.player && typeof data.player === 'object') {
                     console.log('新しいプレイヤーが参加しました:', data.player);
@@ -159,7 +158,20 @@ const handleReceivedData = (data, conn) => {
                 }, 300);
                 break;
                 
-            // 他のケース...
+            case 'gameState':
+                if (data.state && typeof data.state === 'object') {
+                    // プレイヤーID情報を保持
+                    const currentId = window.getGameState().currentPlayerId;
+                    const updatedState = {
+                        ...data.state,
+                        currentPlayerId: currentId
+                    };
+                    window.updateGameState(updatedState);
+                }
+                break;
+                
+            default:
+                console.log('未処理のデータタイプ:', data.type);
         }
         
         window.dispatchEvent(new Event('gameStateUpdated'));
@@ -207,17 +219,6 @@ const handlePlayerJoined = (player, conn) => {
         setTimeout(() => {
             sendFullGameState(conn);
         }, 300);
-    }
-};
-    const currentState = window.getGameState();
-    if (!currentState.players.some(p => p.id === player.id)) {
-        window.addPlayer(player);
-        console.log('プレイヤーが参加しました:', player.name);
-        broadcastGameState(window.getGameState());
-        sendFullGameState(conn);
-    } else {
-        console.log('プレイヤーは既に参加しています:', player.name);
-        sendFullGameState(conn);
     }
 };
 
@@ -415,8 +416,6 @@ const continueCreateGame = (playerName) => {
     });
     
     console.log('ゲームを作成しました、ID:', gameId);
-    alert(`ゲームIDをコピーしてください: ${gameId}`);
-    
     return gameId;
 };
 
