@@ -3,6 +3,39 @@
 const LobbyScreen = ({ onCreateGame, onJoinGame }) => {
   const [playerName, setPlayerName] = React.useState('');
   const [gameId, setGameId] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleCreateGame = async () => {
+    if (!playerName.trim()) {
+      alert('プレイヤー名を入力してください');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await onCreateGame(playerName);
+    } catch (error) {
+      console.error('ゲーム作成エラー:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleJoinGame = async () => {
+    if (!playerName.trim() || !gameId.trim()) {
+      alert('プレイヤー名とゲームIDを入力してください');
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      await onJoinGame(playerName, gameId);
+    } catch (error) {
+      console.error('ゲーム参加エラー:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return React.createElement('div', { className: 'lobby-screen' },
     React.createElement('h1', null, '多能力一夜人狼'),
@@ -10,19 +43,26 @@ const LobbyScreen = ({ onCreateGame, onJoinGame }) => {
       type: 'text',
       placeholder: 'プレイヤー名',
       value: playerName,
-      onChange: (e) => setPlayerName(e.target.value)
+      onChange: (e) => setPlayerName(e.target.value),
+      disabled: isLoading
     }),
-    React.createElement('button', { onClick: () => onCreateGame(playerName) }, 'ゲームを作成'),
+    React.createElement('button', { 
+      onClick: handleCreateGame, 
+      disabled: isLoading 
+    }, isLoading ? '処理中...' : 'ゲームを作成'),
     React.createElement('input', {
       type: 'text',
       placeholder: 'ゲームID',
       value: gameId,
-      onChange: (e) => setGameId(e.target.value)
+      onChange: (e) => setGameId(e.target.value),
+      disabled: isLoading
     }),
-    React.createElement('button', { onClick: () => onJoinGame(playerName, gameId) }, 'ゲームに参加')
+    React.createElement('button', { 
+      onClick: handleJoinGame, 
+      disabled: isLoading 
+    }, isLoading ? '処理中...' : 'ゲームに参加')
   );
 };
-
 const renderRoleImage = (role) => {
   // roleがnullまたは未定義の場合は'unknown'を使用
   const roleName = role ? role : 'unknown';
