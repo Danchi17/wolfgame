@@ -590,4 +590,24 @@ function getGameId(gameData) {
   return gameData.id;
 }
 
+// 役職交換処理の関数を追加
+function exchangeRoles(gameId, playerId1, playerId2) {
+  const updates = {};
+  
+  // Firebaseで役職を交換
+  const gameRef = ref(db, `games/${gameId}`);
+  get(gameRef).then((snapshot) => {
+    const gameData = snapshot.val();
+    if (!gameData) return;
+    
+    const role1 = gameData.players[playerId1].role;
+    const role2 = gameData.players[playerId2].role;
+    
+    updates[`players/${playerId1}/role`] = role2;
+    updates[`players/${playerId2}/role`] = role1;
+    
+    update(ref(db, `games/${gameId}`), updates);
+  });
+}
+
 export { initGame, startGame, handlePhase };
