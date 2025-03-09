@@ -174,6 +174,32 @@ const handleReceivedData = (data, conn) => {
         }
         
         switch (data.type) {
+            case 'forcePlayersList':
+                // 強制的なプレイヤーリスト更新
+                if (data.players && Array.isArray(data.players)) {
+                    console.log('強制的なプレイヤーリストを受信:', data.players);
+                    
+                    // 自分自身のIDを取得
+                    const myId = window.getGameState().currentPlayerId;
+                    const myPlayer = window.getGameState().players.find(p => p.id === myId);
+                    
+                    // 受信したプレイヤーリストに自分がいなければ追加
+                    let updatedPlayers = [...data.players];
+                    if (myPlayer && !updatedPlayers.some(p => p.id === myId)) {
+                        updatedPlayers.push(myPlayer);
+                    }
+                    
+                    console.log('更新するプレイヤーリスト:', updatedPlayers);
+                    
+                    // 更新を2回実行してUIに確実に反映させる
+                    window.updateGameState({ players: [] });
+                    setTimeout(() => {
+                        window.updateGameState({ players: updatedPlayers });
+                        console.log('強制的にプレイヤーリストを更新しました');
+                    }, 100);
+                }
+                break;
+                
             case 'fullGameState':
                 if (data.state && typeof data.state === 'object') {
                     // 現在の状態を取得
@@ -231,11 +257,17 @@ const handleReceivedData = (data, conn) => {
                 }
                 break;
                 
-            // 追加: playerJoined ケースを処理
             case 'playerJoined':
                 if (data.player && typeof data.player === 'object') {
                     console.log('新しいプレイヤーが参加しました:', data.player);
                     handlePlayerJoined(data.player, conn);
+                    
+                    // 重要: 参加を検知したら強制同期を実行
+                    setTimeout(() => {
+                        if (isHost) {
+                            window.forceStateSync();
+                        }
+                    }, 1000);
                 }
                 break;
                 
@@ -291,42 +323,44 @@ const handleReceivedData = (data, conn) => {
                     console.log('ゲーム状態を更新しました:', updatedState);
                 }
                 break;
-                case 'requestAllPlayers':
-        console.log('全プレイヤーリストのリクエストを受信');
-        const allPlayersData = {
-            type: 'allPlayers',
-            players: window.getGameState().players
-        };
-        conn.send(allPlayersData);
-        break;
-        
-    case 'allPlayers':
-        if (data.players && Array.isArray(data.players)) {
-            console.log('全プレイヤーリストを受信:', data.players.length);
-            // 自分自身のIDを取得
-            const myId = window.getGameState().currentPlayerId;
-            
-            // 受信したプレイヤーリストを現在のリストとマージ
-            const mergedPlayers = mergePlayersArray(
-                window.getGameState().players || [],
-                data.players
-            );
-            
-            // 自分のプレイヤー情報は上書きしない
-            const finalPlayers = mergedPlayers.map(player => {
-                if (player.id === myId) {
-                    // 自分のプレイヤー情報を現在の状態から取得
-                    const myPlayerInfo = window.getGameState().players.find(p => p.id === myId);
-                    return myPlayerInfo || player; // 見つからなければ受信データを使用
+                
+            case 'requestAllPlayers':
+                console.log('全プレイヤーリストのリクエストを受信');
+                const allPlayersData = {
+                    type: 'allPlayers',
+                    players: window.getGameState().players
+                };
+                conn.send(allPlayersData);
+                break;
+                
+            case 'allPlayers':
+                if (data.players && Array.isArray(data.players)) {
+                    console.log('全プレイヤーリストを受信:', data.players.length);
+                    // 自分自身のIDを取得
+                    const myId = window.getGameState().currentPlayerId;
+                    
+                    // 受信したプレイヤーリストを現在のリストとマージ
+                    const mergedPlayers = mergePlayersArray(
+                        window.getGameState().players || [],
+                        data.players
+                    );
+                    
+                    // 自分のプレイヤー情報は上書きしない
+                    const finalPlayers = mergedPlayers.map(player => {
+                        if (player.id === myId) {
+                            // 自分のプレイヤー情報を現在の状態から取得
+                            const myPlayerInfo = window.getGameState().players.find(p => p.id === myId);
+                            return myPlayerInfo || player; // 見つからなければ受信データを使用
+                        }
+                        return player;
+                    });
+                    
+                    // 更新されたプレイヤーリストをゲーム状態に適用
+                    window.updateGameState({ players: finalPlayers });
+                    console.log('プレイヤーリストを更新しました:', finalPlayers);
                 }
-                return player;
-            });
-            
-            // 更新されたプレイヤーリストをゲーム状態に適用
-            window.updateGameState({ players: finalPlayers });
-            console.log('プレイヤーリストを更新しました:', finalPlayers);
-        }
-        break;
+                break;
+                
             default:
                 console.log('未処理のデータタイプ:', data.type);
         }
