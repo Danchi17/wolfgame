@@ -1,5 +1,6 @@
 'use strict';
 
+// ゲーム状態の初期値
 let gameState = {
     players: [],
     currentPlayerId: null,
@@ -9,201 +10,120 @@ let gameState = {
     actions: {},
     votes: {},
     result: '',
+    gameId: null
 };
 
+// ゲーム状態の取得
 window.getGameState = () => {
-    console.log('Getting game state:', gameState);
     return {...gameState};
 };
 
+// プレイヤー追加
 window.addPlayer = (player) => {
-    const existingPlayerIndex = gameState.players.findIndex(p => p.id === player.id);
-    if (existingPlayerIndex !== -1) {
-        // プレイヤーが既に存在する場合は更新
-        gameState.players[existingPlayerIndex] = player;
+    if (!player || !player.id) return;
+    
+    // 既存のプレイヤーか確認
+    const index = gameState.players.findIndex(p => p.id === player.id);
+    
+    if (index >= 0) {
+        // 既存プレイヤーの更新
+        gameState.players[index] = {...gameState.players[index], ...player};
     } else {
-        // 新しいプレイヤーを追加
+        // 新規プレイヤーの追加
         gameState.players.push(player);
     }
-    console.log('Player added or updated in game state:', player);
-    console.log('Updated game state:', gameState);
-    window.dispatchEvent(new Event('gameStateUpdated'));
+    
+    // イベント発火
+    dispatchStateUpdate();
 };
 
-// updateGameState関数を修正して、プレイヤー配列と重要な状態を正しくマージするように
+// ゲーム状態の更新
 window.updateGameState = (newState) => {
-    // デバッグログの追加
-    console.log('updateGameState 呼び出し前の状態:', {...gameState});
-    console.log('新しく適用する状態:', newState);
+    if (!newState) return {...gameState};
     
-    // 特別な処理が必要な配列やオブジェクトを処理
-    const updatedPlayers = newState.players 
-        ? mergePlayersArrays(gameState.players || [], newState.players)
-        : gameState.players;
-        
-    // assignedRoles、votes、actionsは単純に上書きするのではなく、マージする
-    const updatedAssignedRoles = newState.assignedRoles
-        ? { ...(gameState.assignedRoles || {}), ...newState.assignedRoles }
-        : gameState.assignedRoles;
-        
-    const updatedVotes = newState.votes
-        ? { ...(gameState.votes || {}), ...newState.votes }
-        : gameState.votes;
-        
-    const updatedActions = newState.actions
-        ? { ...(gameState.actions || {}), ...newState.actions }
-        : gameState.actions;
+    // 現在のプレイヤーIDを保存
+    const myId = gameState.currentPlayerId;
     
-    // centerCardsは上書きする（ただし、newStateにcenterCardsがある場合のみ）
-    const updatedCenterCards = newState.centerCards || gameState.centerCards;
-    
-    // 新しい状態を元の状態とマージ
+    // 状態を更新
     gameState = { 
         ...gameState, 
         ...newState,
-        // マージしたプロパティを使用
-        players: updatedPlayers,
-        assignedRoles: updatedAssignedRoles,
-        votes: updatedVotes,
-        actions: updatedActions,
-        centerCards: updatedCenterCards
+        // 自分のIDは常に保持
+        currentPlayerId: myId || newState.currentPlayerId
     };
     
-    console.log('Game state updated:', gameState);
-    console.log('更新後のプレイヤー:', gameState.players);
-    try {
-        window.dispatchEvent(new Event('gameStateUpdated'));
-    } catch (e) {
-        console.error('gameStateUpdatedイベントのディスパッチに失敗:', e);
-    }
-    return {...gameState}; // 更新された状態のコピーを返す
+    // イベント発火
+    dispatchStateUpdate();
+    
+    return {...gameState};
 };
 
-// プレイヤー配列を重複なくマージする関数
-function mergePlayersArrays(currentPlayers, newPlayers) {
-    // プレイヤーIDをキーとして現在のプレイヤーのマップを作成
-    const playerMap = {};
-    currentPlayers.forEach(player => {
-        if (player && player.id) {
-            playerMap[player.id] = player;
-        }
-    });
+// プレイヤー削除
+window.removePlayer = (playerId) => {
+    if (!playerId) return;
     
-    // 新しいプレイヤーでマップを更新（既存のプレイヤーは上書き）
-    newPlayers.forEach(player => {
-        if (player && player.id) {
-            playerMap[player.id] = player;
-        }
-    });
+    // プレイヤーを削除
+    gameState.players = gameState.players.filter(p => p.id !== playerId);
     
-    // マップの値を配列に変換して返す
-    return Object.values(playerMap);
-}
+    // 関連データも削除
+    delete gameState.assignedRoles[playerId];
+    delete gameState.actions[playerId];
+    delete gameState.votes[playerId];
+    
+    // イベント発火
+    dispatchStateUpdate();
+};
 
+// ゲーム状態リセット
 window.resetGameState = () => {
+    const currentId = gameState.currentPlayerId;
+    
     gameState = {
         players: [],
-        currentPlayerId: null,
+        currentPlayerId: currentId,
         phase: '待機中',
         assignedRoles: {},
         centerCards: [],
         actions: {},
         votes: {},
         result: '',
+        gameId: gameState.gameId
     };
-    console.log('Game state reset:', gameState);
-    window.dispatchEvent(new Event('gameStateUpdated'));
+    
+    dispatchStateUpdate();
 };
 
-window.setPhase = (phase) => {
-    gameState.phase = phase;
-    console.log('Game phase set to:', phase);
-    window.dispatchEvent(new Event('gameStateUpdated'));
+// 役職設定
+window.setupRoles = (playerIds) => {
+    if (!Array.isArray(playerIds) || playerIds.length === 0) return null;
+    
+    const shuffledRoles = window.shuffleArray([...window.roles]);
+    const playerRoles = shuffledRoles.slice(0, playerIds.length);
+    const centerCards = shuffledRoles.slice(playerIds.length, playerIds.length + 2);
+    
+    const assignedRoles = {};
+    playerIds.forEach((id, index) => {
+        assignedRoles[id] = playerRoles[index].name;
+    });
+    
+    gameState.assignedRoles = assignedRoles;
+    gameState.centerCards = centerCards;
+    
+    dispatchStateUpdate();
+    return { assignedRoles, centerCards };
 };
 
-window.assignRoles = (roles) => {
-    gameState.assignedRoles = roles;
-    console.log('Roles assigned:', roles);
-    window.dispatchEvent(new Event('gameStateUpdated'));
+// イベント発火
+const dispatchStateUpdate = () => {
+    try {
+        window.dispatchEvent(new Event('gameStateUpdated'));
+    } catch (e) {
+        console.error('イベント発火エラー:', e);
+    }
 };
 
-window.setCenterCards = (cards) => {
-    gameState.centerCards = cards;
-    console.log('Center cards set:', cards);
-    window.dispatchEvent(new Event('gameStateUpdated'));
-};
-
-window.performAction = (playerId, action, target) => {
-    gameState.actions[playerId] = { action, target };
-    console.log('Action performed:', playerId, action, target);
-    window.dispatchEvent(new Event('gameStateUpdated'));
-    return `${action} action performed on ${target}`;
-};
-
-window.castVote = (voterId, targetId) => {
-    gameState.votes[voterId] = targetId;
-    console.log('Vote cast:', voterId, 'voted for', targetId);
-    window.dispatchEvent(new Event('gameStateUpdated'));
-};
-
-window.setResult = (result) => {
-    gameState.result = result;
-    console.log('Game result set:', result);
-    window.dispatchEvent(new Event('gameStateUpdated'));
-};
-
+// ゲーム初期化
 window.initializeGame = () => {
     window.resetGameState();
-    return gameState;
-};
-
-window.removePlayer = (playerId) => {
-    gameState.players = gameState.players.filter(player => player.id !== playerId);
-    delete gameState.assignedRoles[playerId];
-    delete gameState.actions[playerId];
-    delete gameState.votes[playerId];
-    console.log('Player removed:', playerId);
-    console.log('Updated game state:', gameState);
-    window.dispatchEvent(new Event('gameStateUpdated'));
-};
-
-window.updatePlayerRole = (playerId, role) => {
-    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
-    if (playerIndex !== -1) {
-        gameState.players[playerIndex].role = role;
-        gameState.assignedRoles[playerId] = role;
-        console.log('Player role updated:', playerId, role);
-        window.dispatchEvent(new Event('gameStateUpdated'));
-    }
-};
-
-window.debugGameState = () => {
-    console.log('Current game state:', gameState);
-};
-
-window.getPlayerById = (playerId) => {
-    return gameState.players.find(player => player.id === playerId);
-};
-
-window.updatePlayerInfo = (playerId, info) => {
-    const playerIndex = gameState.players.findIndex(p => p.id === playerId);
-    if (playerIndex !== -1) {
-        gameState.players[playerIndex] = { ...gameState.players[playerIndex], ...info };
-        console.log('Player info updated:', playerId, info);
-        window.dispatchEvent(new Event('gameStateUpdated'));
-    }
-};
-
-window.isGameReady = () => {
-    return gameState.players.length >= 2; // 最小プレイヤー数を2人と仮定
-};
-
-window.startGame = () => {
-    if (window.isGameReady()) {
-        window.setPhase('役職確認');
-        // ここで役職の割り当てなどの初期化処理を行う
-        console.log('Game started');
-    } else {
-        console.log('Not enough players to start the game');
-    }
+    return {...gameState};
 };
