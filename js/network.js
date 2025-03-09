@@ -153,13 +153,46 @@ const handleReceivedData = (data, conn) => {
     }
 };
 
-// プレイヤー参加を処理する関数
+// プレイヤー参加を処理する関数を修正
 const handlePlayerJoined = (player, conn) => {
     if (!player || !player.id) {
         console.warn('無効なプレイヤーデータ:', player);
         return;
     }
 
+    const currentState = window.getGameState();
+    
+    // 既存のプレイヤーかどうかをチェック
+    const existingPlayer = currentState.players.find(p => p.id === player.id);
+    
+    if (!existingPlayer) {
+        // 新しいプレイヤーを追加
+        window.addPlayer(player);
+        console.log('プレイヤーが参加しました:', player.name);
+        
+        // 状態変更前後のプレイヤー数をログ出力（デバッグ用）
+        const updatedState = window.getGameState();
+        console.log(
+            `プレイヤー追加: 追加前=${currentState.players.length}人, ` +
+            `追加後=${updatedState.players.length}人`
+        );
+        
+        // まず自分の状態を更新してから他のプレイヤーに伝える
+        broadcastGameState(updatedState);
+        
+        // 遅延を少し入れてから完全な状態を新しい接続に送信
+        setTimeout(() => {
+            sendFullGameState(conn);
+        }, 500);
+    } else {
+        console.log('プレイヤーは既に参加しています:', player.name);
+        
+        // 既存プレイヤーの場合でも最新の状態を送信
+        setTimeout(() => {
+            sendFullGameState(conn);
+        }, 300);
+    }
+};
     const currentState = window.getGameState();
     if (!currentState.players.some(p => p.id === player.id)) {
         window.addPlayer(player);
