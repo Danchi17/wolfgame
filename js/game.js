@@ -494,23 +494,25 @@ function showSeerUI(gameData) {
     `;
     
     // 場札占いボタンのイベント
-    const checkFieldBtn = document.getElementById('checkFieldCards');
-    if (checkFieldBtn) {
-      checkFieldBtn.addEventListener('click', () => {
-        // 場札確認表示
-        const fieldCards = gameData.field_cards || [];
-        alert(`場札の役職:\n1枚目: ${fieldCards[0].name}\n2枚目: ${fieldCards[1].name}`);
+    setTimeout(() => {
+      const checkFieldBtn = document.getElementById('checkFieldCards');
+      if (checkFieldBtn) {
+        checkFieldBtn.addEventListener('click', () => {
+          // 場札確認表示
+          const fieldCards = gameData.field_cards || [];
+          alert(`場札の役職:\n1枚目: ${fieldCards[0].name}\n2枚目: ${fieldCards[1].name}`);
+        });
+      }
+      
+      // プレイヤー占いボタンのイベント
+      document.querySelectorAll('.player-target').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetId = e.target.dataset.id;
+          const targetPlayer = gameData.players[targetId];
+          alert(`${targetPlayer.name}の役職: ${targetPlayer.role.name}`);
+        });
       });
-    }
-    
-    // プレイヤー占いボタンのイベント
-    document.querySelectorAll('.player-target').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const targetId = e.target.dataset.id;
-        const targetPlayer = gameData.players[targetId];
-        alert(`${targetPlayer.name}の役職: ${targetPlayer.role.name}`);
-      });
-    });
+    }, 100); // DOMが確実に更新された後にイベントをバインド
   } else {
     // 占い系役職でない場合
     const gameContainer = document.getElementById('gameStatus');
