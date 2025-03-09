@@ -347,17 +347,19 @@ const EnhancedGameUI = () => {
     console.log('Current players:', state.players);
   }, [state]);
 
-  const handleCreateGame = (playerName) => {
-    try {
-      const gameId = window.createGame(playerName);
+const handleCreateGame = (playerName) => {
+  try {
+    const gameId = window.createGame(playerName);
+    if (gameId) {
       setGameIdToShow(gameId);
       setIsInLobby(false);
       console.log('Game created with ID:', gameId);
-    } catch (error) {
-      console.error('Error creating game:', error);
-      alert('ゲームの作成中にエラーが発生しました。ページをリロードして再試行してください。');
     }
-  };
+  } catch (error) {
+    console.error('Error creating game:', error);
+    alert('ゲームの作成中にエラーが発生しました。');
+  }
+};
 
   const handleJoinGame = (playerName, gameId) => {
     try {
