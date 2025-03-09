@@ -90,13 +90,22 @@ const sendFullGameState = (conn) => {
         console.log('送信する状態のプレイヤー情報:', 
             fullState.players ? fullState.players.map(p => p.name).join(', ') : 'なし');
         
-        // ゲーム状態を送信
-        conn.send({ 
-            type: 'fullGameState', 
-            state: fullState 
+        // まず全プレイヤー情報を送信
+        conn.send({
+            type: 'allPlayers',
+            players: fullState.players
         });
         
-        console.log('完全なゲーム状態を送信しました');
+        // 少し遅延させてからゲーム状態を送信（プレイヤー情報が先に処理されるようにするため）
+        setTimeout(() => {
+            // ゲーム状態を送信
+            conn.send({ 
+                type: 'fullGameState', 
+                state: fullState 
+            });
+            
+            console.log('完全なゲーム状態を送信しました');
+        }, 300);
     } catch (e) {
         console.error('ゲーム状態の送信エラー:', e);
     }
