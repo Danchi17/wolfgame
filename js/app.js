@@ -159,6 +159,9 @@ function enterGameRoom(gameId) {
 
 // ゲームUI更新
 function updateGameUI(gameData, gameId) {
+  // ゲームIDをgameDataに追加
+  gameData.gameId = gameId;
+  
   const currentUserId = auth.currentUser.uid;
   const currentPlayer = gameData.players[currentUserId];
   
@@ -238,5 +241,4 @@ function updateGameUI(gameData, gameId) {
     handlePhase(gameData.status, gameData);
   }
 }
-
 export { showHomeScreen };
