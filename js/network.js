@@ -235,6 +235,135 @@ const handlePlayerJoined = (player, conn) => {
     if (!currentState.players.some(p => p.id === player.id)) {
         window.addPlayer(player);
         console.log('プレイヤーが参加しました:', player.name);
+        
+        // 全プレイヤーに最新のゲーム状態を送信
+        const updatedState = window.getGameState();
+        broadcastGameState(updatedState);
+        
+        // 接続したプレイヤーに特別に全ゲーム状態を送信
+        sendFullGameState(conn);
+    } else {
+        console.log('プレイヤーは既に参加しています:', player.name);
+        
+        // それでも最新状態を送信して同期を確保
+        sendFullGameState(conn);
+    }
+};
+
+// sendFullGameState関数を修正
+const sendFullGameState = (conn) => {
+    try {
+        const fullState = window.getGameState();
+        console.log('完全なゲーム状態の送信:', JSON.stringify(fullState).substring(0, 100) + '...');
+        
+        // 確実に全てのプレイヤー情報が含まれるようにする
+        if (conn && conn.open) {
+            conn.send({ 
+                type: 'fullGameState', 
+                state: fullState 
+            });
+            console.log('状態送信完了: プレイヤー数', fullState.players.length);
+        } else {
+            console.warn('接続が閉じられているか無効です');
+        }
+    } catch (e) {
+        console.error('ゲーム状態の送信エラー:', e);
+    }
+};
+
+// setupConnection関数を修正
+const setupConnection = (conn) => {
+    console.log('接続のセットアップ中:', conn.peer);
+    
+    // 既存の接続がある場合は閉じる
+    if (connections[conn.peer]) {
+        console.log('既存の接続を閉じます:', conn.peer);
+        connections[conn.peer].close();
+    }
+    
+    connections[conn.peer] = conn;
+    
+    // 接続イベントハンドラの設定
+    conn.on('open', () => {
+        console.log('接続が確立されました:', conn.peer);
+        clearTimeout(connectionTimer);
+        
+        // 少し待ってからゲーム状態の送信（接続が安定するまで待つ）
+        setTimeout(() => {
+            // ゲーム状態の送信
+            sendFullGameState(conn);
+        }, 500);
+        
+        // データ受信ハンドラ
+        conn.on('data', (data) => handleReceivedData(data, conn));
+    });
+    
+    conn.on('close', () => {
+        console.log('接続が閉じられました:', conn.peer);
+        delete connections[conn.peer];
+        handlePlayerDisconnection(conn.peer);
+    });
+    
+    conn.on('error', (error) => {
+        console.error('接続エラー:', error);
+        handleConnectionError(error, conn.peer);
+    });
+};
+
+// ゲームに参加した際の処理を修正
+const continueJoinGame = (gameId, playerName) => {
+    console.log('ゲームに参加しています:', gameId, 'プレイヤー名:', playerName);
+    connectionAttempts = 0;
+    isConnecting = true;
+    
+    // 既にゲームIDが設定されている場合は再利用
+    window.gameId = gameId;
+    
+    attemptConnection(gameId, playerName);
+    return true;
+};
+
+// 接続成功時の処理を修正
+conn.on('open', () => {
+    clearTimeout(connectionTimer);
+    console.log('ホストに接続しました。プレイヤー情報を送信します。');
+    isConnecting = false;
+    
+    // 接続の設定
+    setupConnection(conn);
+    
+    // プレイヤー情報の送信
+    const newPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
+    conn.send({ type: 'playerJoined', player: newPlayer });
+    
+    // ローカル状態の更新
+    window.addPlayer(newPlayer);
+    window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
+    
+    // UIの更新
+    window.dispatchEvent(new Event('gameStateUpdated'));
+    
+    // 全ゲーム状態のリクエスト
+    conn.send({ type: 'requestFullState' });
+});
+
+// handleReceivedData関数にrequestFullStateの処理を追加
+switch (data.type) {
+    // 既存のケース...
+    
+    case 'requestFullState':
+        // クライアントから完全なゲーム状態のリクエストを受信
+        console.log('ゲーム状態の完全リクエストを受信');
+        sendFullGameState(conn);
+        break;
+        
+    // その他のケース...
+}
+
+    const currentState = window.getGameState();
+    if (!currentState.players.some(p => p.id === player.id)) {
+        window.addPlayer(player);
+        console.log('プレイヤーが参加しました:', player.name);
         broadcastGameState(window.getGameState(), conn);
     } else {
         console.log('プレイヤーは既に参加しています:', player.name);
