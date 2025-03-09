@@ -5,685 +5,15 @@ let peer;
 let connections = {};
 let gameId = null;
 let isHost = false;
-let connectionAttempts = 0;
-const MAX_CONNECTION_ATTEMPTS = 5;
-const CONNECTION_TIMEOUT = 30000; // 30秒
-let connectionTimer;
-let isConnecting = false;
 
-// プレイヤー配列をマージする関数
-const mergePlayersArray = (currentPlayers, newPlayers) => {
-    if (!Array.isArray(currentPlayers)) currentPlayers = [];
-    if (!Array.isArray(newPlayers)) newPlayers = [];
-    
-    // プレイヤーIDをキーとした辞書を作成
-    const playerMap = {};
-    
-    // 現在のプレイヤーをマップに追加
-    currentPlayers.forEach(player => {
-        if (player && player.id) {
-            playerMap[player.id] = player;
-        }
-    });
-    
-    // 新しいプレイヤーでマップを更新（既存のプレイヤーは上書き）
-    newPlayers.forEach(player => {
-        if (player && player.id) {
-            playerMap[player.id] = player;
-        }
-    });
-    
-    // マップの値を配列に変換
-    return Object.values(playerMap);
-};
-
-// PeerJSの初期化を行う関数
-const initializePeer = (peerOptions) => {
-    // 既存のピアがある場合は破棄
+// PeerJSの初期化
+const initializePeer = () => {
+    // 既存のピアを破棄
     if (peer) {
-        try {
-            peer.destroy();
-        } catch (e) {
-            console.log('前回のピア破棄中にエラー:', e);
-        }
+        try { peer.destroy(); } catch (e) { console.log('ピア破棄エラー:', e); }
     }
     
-    peer = new Peer(window.generateId(), peerOptions);
-    
-    peer.on('open', (id) => {
-        console.log('ピアIDを取得しました: ' + id);
-        window.updateGameState({ currentPlayerId: id });
-        isConnecting = false;
-    });
-
-    peer.on('connection', (conn) => {
-        console.log('新しい接続リクエストを受信:', conn.peer);
-        setupConnection(conn);
-    });
-
-    peer.on('error', (error) => {
-        console.error('PeerJSエラー:', error);
-        handlePeerError(error);
-    });
-
-    peer.on('disconnected', () => {
-        console.log('PeerJSサーバーから切断されました。再接続を試みます...');
-        setTimeout(() => {
-            peer.reconnect();
-        }, 1000);
-    });
-};
-
-// 完全なゲーム状態を送信する関数
-const sendFullGameState = (conn) => {
-    try {
-        // ゲーム状態を取得
-        const fullState = window.getGameState();
-        
-        // 接続先を確認
-        if (!conn || !conn.open) {
-            console.warn('接続が閉じられているか無効です');
-            return;
-        }
-        
-        // デバッグ用にプレイヤー情報を表示
-        console.log('送信する状態のプレイヤー情報:', 
-            fullState.players ? fullState.players.map(p => p.name).join(', ') : 'なし');
-        
-        // まず全プレイヤー情報を送信
-        conn.send({
-            type: 'allPlayers',
-            players: fullState.players
-        });
-        
-        // 少し遅延させてからゲーム状態を送信（プレイヤー情報が先に処理されるようにするため）
-        setTimeout(() => {
-            // ゲーム状態を送信
-            conn.send({ 
-                type: 'fullGameState', 
-                state: fullState 
-            });
-            
-            console.log('完全なゲーム状態を送信しました');
-        }, 300);
-    } catch (e) {
-        console.error('ゲーム状態の送信エラー:', e);
-    }
-};
-
-// 接続をセットアップする関数
-const setupConnection = (conn) => {
-    console.log('接続のセットアップ中:', conn.peer);
-    
-    if (connections[conn.peer]) {
-        console.log('既存の接続を閉じます:', conn.peer);
-        try {
-            connections[conn.peer].close();
-        } catch (e) {
-            console.warn('既存の接続を閉じる際にエラーが発生しました:', e);
-        }
-    }
-    
-    connections[conn.peer] = conn;
-    
-    conn.on('open', () => {
-        console.log('接続が確立されました:', conn.peer);
-        clearTimeout(connectionTimer);
-        isConnecting = false;
-        connectionAttempts = 0;
-        
-        // 接続確立後、より長い遅延で状態を共有
-        setTimeout(() => {
-            try {
-                sendFullGameState(conn);
-                console.log('初期状態を送信しました:', conn.peer);
-            } catch (e) {
-                console.error('初期状態の送信に失敗しました:', e);
-            }
-        }, 800);
-        
-        conn.on('data', (data) => {
-            try {
-                handleReceivedData(data, conn);
-            } catch (e) {
-                console.error('データ処理エラー:', e);
-            }
-        });
-    });
-    
-    conn.on('close', () => {
-        console.log('接続が閉じられました:', conn.peer);
-        delete connections[conn.peer];
-        handlePlayerDisconnection(conn.peer);
-    });
-    
-    conn.on('error', (error) => {
-        console.error('接続エラー:', error);
-        handleConnectionError(error, conn.peer);
-    });
-};
-
-// 受信データを処理する関数
-const handleReceivedData = (data, conn) => {
-    console.log('データを受信:', data ? (typeof data === 'object' ? data.type : 'non-object data') : 'null');
-    
-    try {
-        if (!data || typeof data !== 'object') {
-            console.warn('無効なデータ:', typeof data);
-            return;
-        }
-        
-        switch (data.type) {
-            case 'forcePlayersList':
-                // 強制的なプレイヤーリスト更新
-                if (data.players && Array.isArray(data.players)) {
-                    console.log('強制的なプレイヤーリストを受信:', data.players);
-                    
-                    // 自分自身のIDを取得
-                    const myId = window.getGameState().currentPlayerId;
-                    const myPlayer = window.getGameState().players.find(p => p.id === myId);
-                    
-                    // 受信したプレイヤーリストに自分がいなければ追加
-                    let updatedPlayers = [...data.players];
-                    if (myPlayer && !updatedPlayers.some(p => p.id === myId)) {
-                        updatedPlayers.push(myPlayer);
-                    }
-                    
-                    console.log('更新するプレイヤーリスト:', updatedPlayers);
-                    
-                    // 更新を2回実行してUIに確実に反映させる
-                    window.updateGameState({ players: [] });
-                    setTimeout(() => {
-                        window.updateGameState({ players: updatedPlayers });
-                        console.log('強制的にプレイヤーリストを更新しました');
-                    }, 100);
-                }
-                break;
-                
-            case 'fullGameState':
-                if (data.state && typeof data.state === 'object') {
-                    // 現在の状態を取得
-                    const currentState = window.getGameState();
-                    
-                    // 重要: 現在のプレイヤーIDとプレイヤー情報を保持
-                    const currentPlayerId = currentState.currentPlayerId;
-                    
-                    // プレイヤー配列のマージを確保する
-                    // 既存のプレイヤーと新しいプレイヤーをマージ
-                    const mergedPlayers = mergePlayersArray(currentState.players || [], data.state.players || []);
-                    
-                    // 役職情報とアクションのマージ
-                    const mergedAssignedRoles = {
-                        ...(currentState.assignedRoles || {}),
-                        ...(data.state.assignedRoles || {})
-                    };
-                    
-                    // アクション情報のマージ
-                    const mergedActions = {
-                        ...(currentState.actions || {}),
-                        ...(data.state.actions || {})
-                    };
-                    
-                    // 投票情報のマージ
-                    const mergedVotes = {
-                        ...(currentState.votes || {}),
-                        ...(data.state.votes || {})
-                    };
-                    
-                    // centerCardsの処理（送信元の情報を優先）
-                    const mergedCenterCards = data.state.centerCards && data.state.centerCards.length > 0
-                        ? data.state.centerCards
-                        : currentState.centerCards || [];
-                    
-                    // ゲーム状態を更新（フェーズは送信元を優先）
-                    const phase = data.state.phase !== '待機中' ? data.state.phase : currentState.phase;
-                    
-                    // ゲーム状態を更新
-                    const updatedState = {
-                        ...data.state,
-                        currentPlayerId: currentPlayerId,
-                        players: mergedPlayers,
-                        assignedRoles: mergedAssignedRoles,
-                        actions: mergedActions,
-                        votes: mergedVotes,
-                        centerCards: mergedCenterCards,
-                        phase: phase
-                    };
-                    
-                    window.updateGameState(updatedState);
-                    console.log('完全なゲーム状態を受信し更新しました', updatedState);
-                    console.log('マージ後のプレイヤー:', updatedState.players);
-                    console.log('マージ後の役職情報:', updatedState.assignedRoles);
-                }
-                break;
-                
-            case 'playerJoined':
-                if (data.player && typeof data.player === 'object') {
-                    console.log('新しいプレイヤーが参加しました:', data.player);
-                    handlePlayerJoined(data.player, conn);
-                    
-                    // 重要: 参加を検知したら強制同期を実行
-                    setTimeout(() => {
-                        if (isHost) {
-                            window.forceStateSync();
-                        }
-                    }, 1000);
-                }
-                break;
-                
-            case 'requestFullState':
-                console.log('完全なゲーム状態のリクエストを受信しました');
-                setTimeout(() => {
-                    sendFullGameState(conn);
-                }, 300);
-                break;
-                
-            case 'gameState':
-                if (data.state && typeof data.state === 'object') {
-                    // 現在の状態を取得
-                    const currentState = window.getGameState();
-                    const currentId = currentState.currentPlayerId;
-                    
-                    // プレイヤー配列のマージ
-                    const mergedPlayers = mergePlayersArray(currentState.players || [], data.state.players || []);
-                    
-                    // 役職情報のマージ
-                    const mergedAssignedRoles = {
-                        ...(currentState.assignedRoles || {}),
-                        ...(data.state.assignedRoles || {})
-                    };
-                    
-                    // アクション情報のマージ
-                    const mergedActions = {
-                        ...(currentState.actions || {}),
-                        ...(data.state.actions || {})
-                    };
-                    
-                    // 投票情報のマージ
-                    const mergedVotes = {
-                        ...(currentState.votes || {}),
-                        ...(data.state.votes || {})
-                    };
-                    
-                    // フェーズ情報（送信元を優先）
-                    const phase = data.state.phase !== '待機中' ? data.state.phase : currentState.phase;
-                    
-                    // 更新されたゲーム状態
-                    const updatedState = {
-                        ...data.state,
-                        currentPlayerId: currentId,
-                        players: mergedPlayers,
-                        assignedRoles: mergedAssignedRoles,
-                        actions: mergedActions,
-                        votes: mergedVotes,
-                        phase: phase
-                    };
-                    
-                    window.updateGameState(updatedState);
-                    console.log('ゲーム状態を更新しました:', updatedState);
-                }
-                break;
-                
-            case 'requestAllPlayers':
-                console.log('全プレイヤーリストのリクエストを受信');
-                const allPlayersData = {
-                    type: 'allPlayers',
-                    players: window.getGameState().players
-                };
-                conn.send(allPlayersData);
-                break;
-                
-            case 'allPlayers':
-                if (data.players && Array.isArray(data.players)) {
-                    console.log('全プレイヤーリストを受信:', data.players.length);
-                    // 自分自身のIDを取得
-                    const myId = window.getGameState().currentPlayerId;
-                    
-                    // 受信したプレイヤーリストを現在のリストとマージ
-                    const mergedPlayers = mergePlayersArray(
-                        window.getGameState().players || [],
-                        data.players
-                    );
-                    
-                    // 自分のプレイヤー情報は上書きしない
-                    const finalPlayers = mergedPlayers.map(player => {
-                        if (player.id === myId) {
-                            // 自分のプレイヤー情報を現在の状態から取得
-                            const myPlayerInfo = window.getGameState().players.find(p => p.id === myId);
-                            return myPlayerInfo || player; // 見つからなければ受信データを使用
-                        }
-                        return player;
-                    });
-                    
-                    // 更新されたプレイヤーリストをゲーム状態に適用
-                    window.updateGameState({ players: finalPlayers });
-                    console.log('プレイヤーリストを更新しました:', finalPlayers);
-                }
-                break;
-                
-            default:
-                console.log('未処理のデータタイプ:', data.type);
-        }
-        
-        window.dispatchEvent(new Event('gameStateUpdated'));
-        
-    } catch (error) {
-        console.error('データ処理エラー:', error);
-    }
-};
-
-// プレイヤー参加を処理する関数
-const handlePlayerJoined = (player, conn) => {
-    if (!player || !player.id) {
-        console.warn('無効なプレイヤーデータ:', player);
-        return;
-    }
-    
-    console.log('参加プレイヤーデータを受信:', player);
-
-    const currentState = window.getGameState();
-    
-    // 既存のプレイヤーかどうかをチェック
-    const existingPlayerIndex = currentState.players.findIndex(p => p && p.id === player.id);
-    
-    if (existingPlayerIndex === -1) {
-        // 新しいプレイヤーを追加
-        window.addPlayer(player);
-        console.log('プレイヤーが参加しました:', player.name);
-        
-        // 状態変更前後のプレイヤー数をログ出力（デバッグ用）
-        const updatedState = window.getGameState();
-        console.log(
-            `プレイヤー追加: 追加前=${currentState.players.length}人, ` +
-            `追加後=${updatedState.players.length}人`
-        );
-        console.log('現在のプレイヤー:', updatedState.players.map(p => p.name).join(', '));
-        
-        // ディレイを入れて全接続に強制的にプレイヤーリストを送信
-        setTimeout(() => {
-            Object.values(connections).forEach(otherConn => {
-                if (otherConn && otherConn.open) {
-                    try {
-                        console.log(`接続先にプレイヤーリストを強制送信: ${otherConn.peer}`);
-                        otherConn.send({
-                            type: 'forcePlayersList',
-                            players: updatedState.players
-                        });
-                    } catch (e) {
-                        console.error('プレイヤーリスト送信エラー:', e);
-                    }
-                }
-            });
-        }, 500);
-        
-        // さらに遅延して完全な状態を送信
-        setTimeout(() => {
-            Object.values(connections).forEach(otherConn => {
-                if (otherConn && otherConn.open) {
-                    try {
-                        sendFullGameState(otherConn);
-                    } catch (e) {
-                        console.error('状態送信エラー:', e);
-                    }
-                }
-            });
-        }, 1000);
-    } else {
-        console.log('プレイヤーは既に参加しています:', player.name);
-        // プレイヤー情報を更新
-        const updatedPlayers = [...currentState.players];
-        updatedPlayers[existingPlayerIndex] = player;
-        window.updateGameState({ players: updatedPlayers });
-        
-        // 更新されたプレイヤー情報を全員に配信
-        setTimeout(() => {
-            Object.values(connections).forEach(otherConn => {
-                if (otherConn && otherConn.open) {
-                    try {
-                        otherConn.send({
-                            type: 'forcePlayersList',
-                            players: updatedPlayers
-                        });
-                    } catch (e) {
-                        console.error('更新プレイヤーリスト送信エラー:', e);
-                    }
-                }
-            });
-        }, 300);
-    }
-};
-        
-        // ホストの場合、遅延してから状態を再送信
-        if (isHost) {
-            setTimeout(() => {
-                broadcastGameState(window.getGameState());
-            }, 1000);
-        }
-    } else {
-        console.log('プレイヤーは既に参加しています:', player.name);
-        // プレイヤー情報を更新
-        const updatedPlayers = [...currentState.players];
-        updatedPlayers[existingPlayerIndex] = player;
-        window.updateGameState({ players: updatedPlayers });
-    }
-    // タイムアウトを増やして常に状態を送信する
-    setTimeout(() => {
-        sendFullGameState(conn);
-    }, 800);
-};
-
-// ゲーム状態をブロードキャストする関数
-const broadcastGameState = (state, excludeConn) => {
-    const conns = Object.values(connections).filter(c => c !== excludeConn && c.open);
-    console.log(`ゲーム状態を${conns.length}人のプレイヤーに送信中...`);
-    
-    conns.forEach(conn => {
-        try {
-            conn.send({ type: 'gameState', state: state });
-        } catch (e) {
-            console.error('状態の送信に失敗:', e);
-        }
-    });
-};
-
-// 接続を試みる関数
-const attemptConnection = (gameId, playerName) => {
-    if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
-        isConnecting = false;
-        alert('接続を確立できませんでした。ゲームIDを確認して再試行してください。');
-        return;
-    }
-
-    connectionAttempts++;
-    console.log(`接続試行 ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}`);
-
-    try {
-        if (connectionTimer) {
-            clearTimeout(connectionTimer);
-        }
-        
-        if (!peer || peer.destroyed) {
-            console.log('ピアが無効です。再初期化します。');
-            initializePeer({
-                config: {
-                    'iceServers': [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' }
-                    ]
-                },
-                debug: 1
-            });
-            retryConnection(gameId, playerName);
-            return;
-        }
-        
-        if (peer.disconnected) {
-            console.log('ピアが切断されています。再接続します。');
-            try {
-                peer.reconnect();
-                setTimeout(() => {
-                    retryConnection(gameId, playerName);
-                }, 2000);
-                return;
-            } catch (e) {
-                console.error('再接続エラー:', e);
-                initializePeer({
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    },
-                    debug: 1
-                });
-                retryConnection(gameId, playerName);
-                return;
-            }
-        }
-        
-        console.log('ピアに接続しています:', gameId);
-        const conn = peer.connect(gameId, { 
-            reliable: true,
-            serialization: 'json'
-        });
-        
-        connectionTimer = setTimeout(() => {
-            console.log('接続タイムアウト');
-            if (conn && conn.open) conn.close();
-            retryConnection(gameId, playerName);
-        }, CONNECTION_TIMEOUT);
-
-        conn.on('open', () => {
-            clearTimeout(connectionTimer);
-            console.log('ホストに接続しました。プレイヤー情報を送信します。');
-            isConnecting = false;
-            
-            setupConnection(conn);
-            
-            const newPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
-            conn.send({ type: 'playerJoined', player: newPlayer });
-            
-            window.addPlayer(newPlayer);
-            window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
-            
-            window.dispatchEvent(new Event('gameStateUpdated'));
-            
-            conn.send({ type: 'requestFullState' });
-        });
-
-        conn.on('error', (error) => {
-            console.error('接続エラー:', error);
-            clearTimeout(connectionTimer);
-            retryConnection(gameId, playerName);
-        });
-        
-        conn.on('close', () => {
-            console.log('接続が閉じられました');
-            clearTimeout(connectionTimer);
-            
-            if (!connections[gameId]) {
-                retryConnection(gameId, playerName);
-            }
-        });
-    } catch (e) {
-        console.error('接続エラー:', e);
-        clearTimeout(connectionTimer);
-        retryConnection(gameId, playerName);
-    }
-};
-
-// 接続を再試行する関数
-const retryConnection = (gameId, playerName) => {
-    console.log('接続を再試行しています...');
-    setTimeout(() => attemptConnection(gameId, playerName), 2000);
-};
-
-// ピアエラーを処理する関数
-const handlePeerError = (error) => {
-    console.error('ピアエラー:', error);
-    
-    if (!error) return;
-    
-    if (error.message) {
-        console.log('詳細エラーメッセージ:', error.message);
-    }
-    
-    if (error.type === 'network' || error.type === 'server-error') {
-        if (!isConnecting) {
-            alert('ネットワークエラーが発生しました。再接続を試みます。');
-            setTimeout(() => {
-                initializePeer({
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    },
-                    debug: 1
-                });
-            }, 2000);
-        }
-    } else if (error.type === 'peer-unavailable') {
-        connectionAttempts = MAX_CONNECTION_ATTEMPTS;
-        isConnecting = false;
-        alert(`指定されたゲームIDが見つかりません。ゲームIDを正確にコピー＆ペーストして再試行してください。`);
-    } else if (error.type === 'browser-incompatible') {
-        alert('お使いのブラウザはWebRTCに対応していません。Chrome、Firefox、またはEdgeの最新版をお試しください。');
-    } else if (error.type === 'disconnected') {
-        console.log('切断エラーが発生しました。再接続を試みます。');
-    } else {
-        if (!isConnecting) {
-            alert('エラーが発生しました: ' + (error.message || 'Unknown error'));
-        }
-    }
-};
-
-// プレイヤー切断を処理する関数
-const handlePlayerDisconnection = (peerId) => {
-    console.log('プレイヤーが切断しました:', peerId);
-    window.removePlayer(peerId);
-    broadcastGameState(window.getGameState());
-};
-
-// 接続エラーを処理する関数
-const handleConnectionError = (error, peerId) => {
-    console.error('接続エラー、ピア:', peerId, error);
-    delete connections[peerId];
-    handlePlayerDisconnection(peerId);
-};
-
-// ゲーム作成を続行する関数
-const continueCreateGame = (playerName) => {
-    isHost = true;
-    gameId = peer.id;
-    
-    const newPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
-    window.addPlayer(newPlayer);
-    window.updateGameState({ 
-        currentPlayerId: peer.id, 
-        gameId: gameId,
-        phase: '待機中'
-    });
-    
-    console.log('ゲームを作成しました、ID:', gameId);
-    return gameId;
-};
-
-// ゲーム参加を続行する関数
-const continueJoinGame = (gameId, playerName) => {
-    console.log('ゲームに参加しています:', gameId, 'プレイヤー名:', playerName);
-    connectionAttempts = 0;
-    isConnecting = true;
-    window.gameId = gameId;
-    attemptConnection(gameId, playerName);
-    return true;
-};
-
-// === 公開関数 ===
-
-// ネットワークセットアップ関数
-window.setupNetwork = () => {
-    console.log('ネットワークをセットアップしています...');
+    // 新しいピアを作成
     const peerOptions = {
         config: {
             'iceServers': [
@@ -693,187 +23,311 @@ window.setupNetwork = () => {
         },
         debug: 1
     };
-
-    initializePeer(peerOptions);
-    return peer ? peer.id : null;
-
-    // 定期的な同期処理を設定
-setupPeriodicSync();
-};
-
-// 定期的なゲーム状態同期機能
-const setupPeriodicSync = () => {
-    if (window.syncInterval) {
-        clearInterval(window.syncInterval);
-    }
     
-    // 10秒ごとに全接続に対して状態を同期
-    window.syncInterval = setInterval(() => {
-        if (isHost && Object.keys(connections).length > 0) {
-            console.log('定期同期: 完全なゲーム状態を全クライアントに送信中...');
-            const fullState = window.getGameState();
-            Object.values(connections).forEach(conn => {
-                if (conn && conn.open) {
-                    try {
-                        conn.send({ 
-                            type: 'fullGameState', 
-                            state: fullState 
-                        });
-                    } catch (e) {
-                        console.error('定期同期中のエラー:', e);
-                    }
-                }
-            });
-        }
-    }, 10000); // 10秒ごと
+    peer = new Peer(window.generateId(), peerOptions);
     
-    console.log('定期的な同期機能を設定しました');
-};
-
-// ゲーム作成関数
-window.createGame = (playerName) => {
-    if (!playerName || playerName.trim() === '') {
-        console.error('プレイヤー名が必要です');
-        return null;
-    }
-
-    if (!peer || !peer.open) {
-        const peerOptions = {
-            config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
-            },
-            debug: 1
-        };
-        initializePeer(peerOptions);
-        
-        alert('接続を初期化しています。少々お待ちください...');
-        setTimeout(() => {
-            continueCreateGame(playerName);
-        }, 2000);
-        return 'connecting...';
-    } else {
-        return continueCreateGame(playerName);
-    }
-};
-
-// ゲーム参加関数
-window.joinGame = (gameId, playerName) => {
-    if (!gameId || !playerName || playerName.trim() === '') {
-        console.error('ゲームIDとプレイヤー名が必要です');
-        return false;
-    }
+    // イベントハンドラ
+    peer.on('open', (id) => {
+        console.log('ピアID取得:', id);
+        window.updateGameState({ currentPlayerId: id });
+    });
     
-    if (isConnecting) {
-        alert('接続処理中です。しばらくお待ちください。');
-        return false;
-    }
+    peer.on('connection', handleNewConnection);
     
-    if (!peer || peer.destroyed || peer.disconnected) {
-        console.log('ピア接続が無効です。再初期化します。');
-        const peerOptions = {
-            config: {
-                'iceServers': [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
-                ]
-            },
-            debug: 1
-        };
-        initializePeer(peerOptions);
-        
-        alert('接続を初期化しています。少々お待ちください...');
-        setTimeout(() => {
-            continueJoinGame(gameId, playerName);
-        }, 2000);
-        return true;
-    }
+    peer.on('error', (error) => {
+        console.error('PeerJSエラー:', error);
+        handlePeerError(error);
+    });
     
-    return continueJoinGame(gameId, playerName);
-};
-
-// 全プレイヤーにデータを送信する関数
-window.sendToAll = (data, excludeConnections = []) => {
-    if (!data || typeof data !== 'object') {
-        console.warn('無効なデータ形式:', data);
-        return;
-    }
-    
-    console.log('全員にデータを送信:', data.type);
-    Object.values(connections).forEach(conn => {
-        if (conn.open && !excludeConnections.includes(conn)) {
-            try {
-                conn.send(data);
-            } catch (e) {
-                console.error('データ送信エラー:', e);
-            }
-        }
+    peer.on('disconnected', () => {
+        console.log('PeerJS切断。再接続中...');
+        setTimeout(() => peer.reconnect(), 1000);
     });
 };
 
-// ホストかどうかを確認する関数
-window.isHostPlayer = () => isHost;
-
-// デバッグ用の接続情報表示関数
-window.debugConnections = () => {
-    console.log('ホスト:', isHost);
-    console.log('ゲームID:', gameId);
-    console.log('ピアID:', peer ? peer.id : 'Not connected');
-    console.log('接続数:', Object.keys(connections).length);
-    console.log('PeerJS接続状態:', peer ? (peer.open ? 'オープン' : (peer.disconnected ? '切断' : '接続中')) : 'Not initialized');
+// 新規接続の処理
+const handleNewConnection = (conn) => {
+    console.log('新規接続:', conn.peer);
     
-    Object.entries(connections).forEach(([id, conn]) => {
-        console.log(`- 接続 ${id}: ${conn.open ? 'オープン' : '閉じられています'}`);
+    // 既存接続の確認と交換
+    if (connections[conn.peer]) {
+        try { connections[conn.peer].close(); } catch (e) { console.warn('接続クローズエラー:', e); }
+    }
+    
+    // 接続を保存
+    connections[conn.peer] = conn;
+    
+    // イベント設定
+    conn.on('open', () => {
+        console.log('接続確立:', conn.peer);
+        
+        // ホストならゲーム状態を送信
+        if (isHost) {
+            setTimeout(() => sendGameState(conn), 500);
+        }
+        
+        // データ受信ハンドラ
+        conn.on('data', (data) => handleData(data, conn));
+    });
+    
+    // 切断処理
+    conn.on('close', () => {
+        console.log('接続切断:', conn.peer);
+        delete connections[conn.peer];
+        
+        // プレイヤー切断処理
+        if (isHost) {
+            removeDisconnectedPlayer(conn.peer);
+        }
+    });
+    
+    // エラー処理
+    conn.on('error', (error) => {
+        console.error('接続エラー:', error);
+        delete connections[conn.peer];
     });
 };
 
-// ページ読み込み時に接続状態をリセット
-window.addEventListener('beforeunload', () => {
-    isConnecting = false;
-});
-
-// 強制的にゲーム状態を全員に同期する関数
-window.forceStateSync = () => {
-    console.log('強制同期を実行します');
+// データ受信処理
+const handleData = (data, conn) => {
+    console.log('データ受信:', data?.type || 'unknown');
     
-    // 接続が存在するか確認
-    if (Object.keys(connections).length === 0) {
-        console.log('接続がありません。同期できません。');
-        return false;
-    }
+    if (!data || typeof data !== 'object') return;
     
-    // ゲーム状態を取得
+    // 現在の状態とプレイヤーIDを取得
     const currentState = window.getGameState();
+    const myId = currentState.currentPlayerId;
     
-    // プレイヤー情報を整理（自分自身を含む完全なリスト）
-    console.log('自分自身を含むプレイヤーリスト:', currentState.players);
+    switch(data.type) {
+        // ゲーム状態の更新
+        case 'gameState':
+            if (data.state && !isHost) {
+                // 自分のIDだけ保持して状態を更新
+                const newState = { ...data.state, currentPlayerId: myId };
+                window.updateGameState(newState);
+            }
+            break;
+        
+        // プレイヤー参加通知
+        case 'playerJoin':
+            if (data.player && isHost) {
+                // ホストなら、参加を処理して全員に通知
+                window.addPlayer(data.player);
+                broadcastGameState();
+            }
+            break;
+        
+        // ゲーム状態リクエスト
+        case 'requestState':
+            if (isHost) {
+                sendGameState(conn);
+            }
+            break;
+        
+        // アクション通知
+        case 'playerAction':
+            if (isHost && data.action) {
+                // ホストがアクションを処理
+                handlePlayerAction(data.action);
+                // 全員に更新を送信
+                broadcastGameState();
+            }
+            break;
+    }
+};
+
+// ゲーム状態の送信
+const sendGameState = (conn) => {
+    if (!conn || !conn.open) return;
     
-    // 全接続に送信
+    const state = window.getGameState();
+    conn.send({ type: 'gameState', state: state });
+};
+
+// 全接続にゲーム状態を送信
+const broadcastGameState = () => {
+    const state = window.getGameState();
+    
     Object.values(connections).forEach(conn => {
         if (conn && conn.open) {
             try {
-                // まずプレイヤー情報だけを送信
-                conn.send({
-                    type: 'forcePlayersList',
-                    players: currentState.players
-                });
-                
-                // 少し遅延させてからゲーム状態も送信
-                setTimeout(() => {
-                    conn.send({
-                        type: 'fullGameState',
-                        state: currentState
-                    });
-                }, 500);
-                
-                console.log(`強制同期データを送信: ${conn.peer}`);
+                conn.send({ type: 'gameState', state: state });
             } catch (e) {
-                console.error('強制同期中のエラー:', e);
+                console.error('状態送信エラー:', e);
             }
         }
     });
+};
+
+// ホストへのアクション送信
+const sendActionToHost = (action) => {
+    if (isHost) {
+        // ホスト自身のアクション
+        handlePlayerAction(action);
+        broadcastGameState();
+        return;
+    }
     
+    // ホストへの接続を探す
+    const hostConn = connections[gameId];
+    if (hostConn && hostConn.open) {
+        hostConn.send({ type: 'playerAction', action: action });
+    } else {
+        console.error('ホストに接続できません');
+    }
+};
+
+// プレイヤーアクション処理
+const handlePlayerAction = (action) => {
+    if (!action || !action.type) return;
+    
+    // アクションタイプに応じた処理
+    switch(action.type) {
+        case 'vote':
+            window.castVote(action.playerId, action.targetId);
+            break;
+        case 'useAbility':
+            window.performAction(action.playerId, action.abilityType, action.target);
+            break;
+        case 'nextPhase':
+            window.nextPhase();
+            break;
+    }
+};
+
+// 切断したプレイヤーの削除
+const removeDisconnectedPlayer = (playerId) => {
+    window.removePlayer(playerId);
+    broadcastGameState();
+};
+
+// エラー処理
+const handlePeerError = (error) => {
+    console.error('PeerJSエラー:', error);
+    
+    if (error.type === 'peer-unavailable') {
+        alert('指定されたゲームIDが見つかりません。IDを確認してください。');
+    } else if (error.type === 'network' || error.type === 'server-error') {
+        alert('ネットワークエラーが発生しました。');
+    }
+};
+
+// ゲーム作成
+window.createGame = (playerName) => {
+    if (!playerName || playerName.trim() === '') {
+        alert('プレイヤー名を入力してください');
+        return null;
+    }
+    
+    initializePeer();
+    
+    // ピア接続後に実行
+    const waitForPeerOpen = () => {
+        if (!peer || !peer.id) {
+            setTimeout(waitForPeerOpen, 100);
+            return;
+        }
+        
+        isHost = true;
+        gameId = peer.id;
+        
+        // 自分をプレイヤーとして追加
+        const myPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
+        window.addPlayer(myPlayer);
+        
+        window.updateGameState({ 
+            currentPlayerId: peer.id, 
+            gameId: gameId
+        });
+        
+        return gameId;
+    };
+    
+    return waitForPeerOpen();
+};
+
+// ゲーム参加
+window.joinGame = (gameId, playerName) => {
+    if (!gameId || !playerName || playerName.trim() === '') {
+        alert('ゲームIDとプレイヤー名を入力してください');
+        return false;
+    }
+    
+    initializePeer();
+    
+    // ピア接続後に実行
+    const waitForPeerOpen = () => {
+        if (!peer || !peer.id) {
+            setTimeout(waitForPeerOpen, 100);
+            return;
+        }
+        
+        try {
+            // ホストに接続
+            const conn = peer.connect(gameId, { reliable: true });
+            window.gameId = gameId;
+            
+            conn.on('open', () => {
+                connections[gameId] = conn;
+                
+                // 自分のプレイヤー情報
+                const myPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
+                window.addPlayer(myPlayer);
+                
+                // 自分の参加をホストに通知
+                conn.send({ type: 'playerJoin', player: myPlayer });
+                
+                // ゲーム状態をリクエスト
+                conn.send({ type: 'requestState' });
+            });
+            
+            conn.on('error', (error) => {
+                console.error('接続エラー:', error);
+                alert('ゲームへの接続に失敗しました');
+            });
+            
+            return true;
+        } catch (e) {
+            console.error('接続エラー:', e);
+            alert('ゲームへの接続に失敗しました');
+            return false;
+        }
+    };
+    
+    waitForPeerOpen();
     return true;
 };
+
+// アクション実行
+window.executeAction = (actionType, params) => {
+    const playerId = window.getGameState().currentPlayerId;
+    const action = { 
+        type: actionType, 
+        playerId: playerId, 
+        ...params 
+    };
+    
+    sendActionToHost(action);
+};
+
+// ネットワークセットアップ
+window.setupNetwork = () => {
+    console.log('ネットワークセットアップ');
+    initializePeer();
+    return peer ? peer.id : null;
+};
+
+// 強制同期
+window.forceStateSync = () => {
+    if (!isHost) return false;
+    broadcastGameState();
+    return true;
+};
+
+// プレイヤーが接続中かチェック
+window.isPlayerConnected = (playerId) => {
+    return !!connections[playerId]?.open;
+};
+
+// ホストかどうか
+window.isGameHost = () => isHost;
