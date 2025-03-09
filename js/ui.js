@@ -233,7 +233,46 @@ React.createElement('div', { className: "action-area" },
 )
   );
 };
-
+React.createElement('button', {
+  onClick: () => {
+    // 現在のゲーム状態を取得
+    const currentState = window.getGameState();
+    
+    // ホストIDを取得（ゲームIDと同じ）
+    const hostId = currentState.gameId;
+    
+    if (!hostId) {
+      alert("ホストIDが取得できません");
+      return;
+    }
+    
+    // ホストプレイヤーが既にリストにあるか確認
+    const existingHostIndex = currentState.players.findIndex(p => p.id === hostId);
+    
+    if (existingHostIndex !== -1) {
+      alert("ホストプレイヤーは既にリストに存在します");
+      return;
+    }
+    
+    // ホストプレイヤーを手動で追加
+    const hostPlayer = {
+      id: hostId,
+      name: "ホストプレイヤー",
+      role: null,
+      points: 0
+    };
+    
+    // プレイヤーリストに追加
+    const updatedPlayers = [...currentState.players, hostPlayer];
+    window.updateGameState({ players: updatedPlayers });
+    
+    alert("ホストプレイヤーを手動で追加しました");
+  },
+  style: {
+    backgroundColor: '#ff5500',
+    margin: '10px 0'
+  }
+}, 'ホストプレイヤーを手動追加'),
 const GameIdModal = ({ gameId, onClose }) => {
   if (!gameId) return null;
 
