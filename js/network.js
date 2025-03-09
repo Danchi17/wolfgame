@@ -117,6 +117,7 @@ const setupConnection = (conn) => {
 };
 
 // 受信データを処理する関数
+// 受信データを処理する関数
 const handleReceivedData = (data, conn) => {
     console.log('データを受信:', data ? (typeof data === 'object' ? data.type : 'non-object data') : 'null');
     
@@ -141,6 +142,21 @@ const handleReceivedData = (data, conn) => {
                     window.updateGameState(updatedState);
                     console.log('完全なゲーム状態を受信し更新しました', updatedState);
                 }
+                break;
+                
+            // 追加：playerJoined ケースを処理
+            case 'playerJoined':
+                if (data.player && typeof data.player === 'object') {
+                    console.log('新しいプレイヤーが参加しました:', data.player);
+                    handlePlayerJoined(data.player, conn);
+                }
+                break;
+                
+            case 'requestFullState':
+                console.log('完全なゲーム状態のリクエストを受信しました');
+                setTimeout(() => {
+                    sendFullGameState(conn);
+                }, 300);
                 break;
                 
             // 他のケース...
