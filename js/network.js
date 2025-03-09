@@ -6,27 +6,27 @@ let gameId = null;
 let isHost = false;
 let connectionAttempts = 0;
 const MAX_CONNECTION_ATTEMPTS = 5;
-const CONNECTION_TIMEOUT = 15000; // 15 seconds
+const CONNECTION_TIMEOUT = 30000; // 30 seconds
 let connectionTimer;
 
 window.setupNetwork = () => {
     const peerOptions = {
-        config: {
-            'iceServers': [
-                { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'stun:stun1.l.google.com:19302' },
-                { urls: 'stun:stun2.l.google.com:19302' },
-                { urls: 'stun:stun3.l.google.com:19302' },
-                { urls: 'stun:stun4.l.google.com:19302' },
-                {
-                    urls: 'turn:numb.viagenie.ca',
-                    credential: 'muazkh',
-                    username: 'webrtc@live.com'
-                }
-            ]
-        },
-        debug: 3
-    };
+    config: {
+        'iceServers': [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'stun:stun3.l.google.com:19302' },
+            { urls: 'stun:stun4.l.google.com:19302' },
+            {
+                urls: 'turn:global.turn.twilio.com:3478?transport=udp',
+                username: 'f4b4035eaa76f4a55de5f4351567653ee4ff6fa97b50b6b334fcc1be9c27212d',
+                credential: 'w1uxM/+ztiAcBgE6fW+hVDBJmtgbnWS/GJph6VOJd6g='
+            }
+        ]
+    },
+    debug: 3
+};
 
     peer = new Peer(generateId(), peerOptions);
     
@@ -159,31 +159,41 @@ const attemptConnection = (gameId, playerName) => {
     connectionAttempts++;
     console.log(`Connection attempt ${connectionAttempts} of ${MAX_CONNECTION_ATTEMPTS}`);
 
-    const conn = peer.connect(gameId, { reliable: true });
-    
-    connectionTimer = setTimeout(() => {
-        console.log('Connection attempt timed out');
-        conn.close();
-        retryConnection(gameId, playerName);
-    }, CONNECTION_TIMEOUT);
+    try {
+        const conn = peer.connect(gameId, { 
+            reliable: true,
+            serialization: 'json',
+            metadata: { playerName }
+        });
+        
+        connectionTimer = setTimeout(() => {
+            console.log('Connection attempt timed out');
+            if (conn.open) conn.close();
+            retryConnection(gameId, playerName);
+        }, CONNECTION_TIMEOUT);
 
-    conn.on('open', () => {
-        clearTimeout(connectionTimer);
-        console.log('Connected to host. Sending player info.');
-        setupConnection(conn);
-        const newPlayer = { id: peer.id, name: playerName };
-        conn.send({ type: 'playerJoined', player: newPlayer });
-        window.addPlayer(newPlayer);
-        window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
-        console.log('Updated game state after joining:', window.getGameState());
-        window.dispatchEvent(new Event('gameStateUpdated'));
-    });
+        conn.on('open', () => {
+            clearTimeout(connectionTimer);
+            console.log('Connected to host. Sending player info.');
+            setupConnection(conn);
+            const newPlayer = { id: peer.id, name: playerName };
+            conn.send({ type: 'playerJoined', player: newPlayer });
+            window.addPlayer(newPlayer);
+            window.updateGameState({ currentPlayerId: peer.id, gameId: gameId });
+            console.log('Updated game state after joining:', window.getGameState());
+            window.dispatchEvent(new Event('gameStateUpdated'));
+        });
 
-    conn.on('error', (error) => {
-        console.error('Connection error:', error);
+        conn.on('error', (error) => {
+            console.error('Connection error:', error);
+            clearTimeout(connectionTimer);
+            retryConnection(gameId, playerName);
+        });
+    } catch (e) {
+        console.error('Connection error:', e);
         clearTimeout(connectionTimer);
         retryConnection(gameId, playerName);
-    });
+    }
 };
 
 const retryConnection = (gameId, playerName) => {
