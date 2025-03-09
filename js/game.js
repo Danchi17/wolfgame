@@ -1,1 +1,473 @@
+// js/game.js
+import { db, auth, updateGameStatus } from './firebase.js';
+import { ref, update, get } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js';
+import { getRandomRoles, isWerewolfTeam } from './roles.js';
 
+let currentGame = null;
+let currentPlayer = null;
+
+// ゲームの初期化
+function initGame(gameData, playerId) {
+  currentGame = gameData;
+  currentPlayer = {
+    id: playerId,
+    data: gameData.players[playerId]
+  };
+}
+
+// ゲーム開始処理
+async function startGame(gameId) {
+  try {
+    // カードの配布処理
+    await distributeRoles(gameId);
+    
+    // ゲームステータスを夜に変更
+    await updateGameStatus(gameId, 'night');
+    await updateGamePhase(gameId, 'seer');
+  } catch (error) {
+    console.error("ゲーム開始エラー:", error);
+    alert("ゲーム開始に失敗しました。");
+  }
+}
+
+// 役職の配布
+async function distributeRoles(gameId) {
+  const gameRef = ref(db, `games/${gameId}`);
+  const snapshot = await get(gameRef);
+  const gameData = snapshot.val();
+  
+  if (!gameData || !gameData.players) return;
+  
+  const playerIds = Object.keys(gameData.players);
+  if (playerIds.length < 4) return;
+  
+  // 役職の選択
+  const selectedRoles = getRandomRoles(playerIds.length);
+  
+  // プレイヤーに役職を割り当て
+  const playerRoles = selectedRoles.slice(0, playerIds.length);
+  const fieldCards = selectedRoles.slice(playerIds.length, playerIds.length + 2);
+  
+  const shuffledPlayerIds = [...playerIds].sort(() => 0.5 - Math.random());
+  
+  // プレイヤーごとに役職を更新
+  const updates = {};
+  for (let i = 0; i < shuffledPlayerIds.length; i++) {
+    const playerId = shuffledPlayerIds[i];
+    updates[`players/${playerId}/role`] = playerRoles[i];
+  }
+  
+  // 場札を設定
+  updates.field_cards = fieldCards;
+  
+  // データベース更新
+  await update(gameRef, updates);
+}
+
+// フェーズの処理
+function handlePhase(phase, gameData) {
+  switch (phase) {
+    case 'night':
+      handleNightPhase(gameData);
+      break;
+    case 'day':
+      handleDayPhase(gameData);
+      break;
+    case 'voting':
+      handleVotingPhase(gameData);
+      break;
+    case 'result':
+      handleResultPhase(gameData);
+      break;
+  }
+}
+
+// 夜フェーズの処理
+function handleNightPhase(gameData) {
+  // 役職に応じた能力UIの表示
+  const currentPhase = gameData.current_phase;
+  
+  // 各役職のターン処理
+  if (currentPhase === 'seer') {
+    // 占い師系の処理
+    showSeerUI(gameData);
+    
+    // ホストの場合、一定時間後に次のフェーズへ
+    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      setTimeout(() => {
+        updateGamePhase(gameData.id || getGameId(gameData), 'werewolf');
+      }, 30000); // 30秒後
+    }
+  } else if (currentPhase === 'werewolf') {
+    // 人狼系の処理
+    showWerewolfUI(gameData);
+    
+    // ホストの場合、一定時間後に次のフェーズへ
+    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      setTimeout(() => {
+        updateGamePhase(gameData.id || getGameId(gameData), 'thief');
+      }, 30000); // 30秒後
+    }
+  } else if (currentPhase === 'thief') {
+    // 怪盗の処理
+    showThiefUI(gameData);
+    
+    // ホストの場合、一定時間後に日中フェーズへ
+    if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      setTimeout(() => {
+        updateGameStatus(gameData.id || getGameId(gameData), 'day');
+      }, 30000); // 30秒後
+    }
+  }
+}
+
+// 日中フェーズの処理
+function handleDayPhase(gameData) {
+  // 議論タイマーの表示
+  const gameContainer = document.getElementById('gameStatus');
+  gameContainer.innerHTML = `
+    <h3>議論フェーズ</h3>
+    <p>外部のボイスチャットを使って議論してください。</p>
+    <div class="timer">残り時間: <span id="timerDisplay">3:00</span></div>
+    ${currentPlayer.data.isHost ? 
+      `<button id="skipTimer" class="btn primary">スキップ</button>` : ''}
+  `;
+  
+  // タイマー処理
+  startTimer(180, () => {
+    const gameId = gameData.id || getGameId(gameData);
+    updateGameStatus(gameId, 'voting');
+  });
+  
+  // スキップボタンの処理（ホストのみ）
+  if (currentPlayer.data.isHost) {
+    document.getElementById('skipTimer').addEventListener('click', () => {
+      stopTimer();
+      const gameId = gameData.id || getGameId(gameData);
+      updateGameStatus(gameId, 'voting');
+    });
+  }
+}
+
+// 投票フェーズの処理
+function handleVotingPhase(gameData) {
+  // 投票UI表示
+  const gameContainer = document.getElementById('gameStatus');
+  gameContainer.innerHTML = `
+    <h3>投票フェーズ</h3>
+    <p>処刑するプレイヤーを選択してください：</p>
+    <div id="votingOptions" class="voting-options"></div>
+  `;
+  
+  // 投票オプション生成
+  const votingOptions = document.getElementById('votingOptions');
+  
+  // 自分以外のプレイヤーを表示
+  Object.entries(gameData.players).forEach(([id, player]) => {
+    if (id !== currentPlayer.id) {
+      const btn = document.createElement('button');
+      btn.className = 'btn vote-btn';
+      btn.textContent = player.name;
+      btn.addEventListener('click', () => {
+        voteForPlayer(gameData.id || getGameId(gameData), id);
+      });
+      votingOptions.appendChild(btn);
+    }
+  });
+}
+
+// 投票処理
+function voteForPlayer(gameId, targetId) {
+  const voteRef = ref(db, `games/${gameId}/votes/${currentPlayer.id}`);
+  update(voteRef, { target: targetId })
+    .then(() => {
+      // 投票後UI更新
+      const votingOptions = document.getElementById('votingOptions');
+      votingOptions.innerHTML = '<p>投票が完了しました。他のプレイヤーの投票を待っています...</p>';
+      
+      // 全プレイヤーが投票したか確認
+      checkAllVoted(gameId);
+    })
+    .catch(error => {
+      console.error('投票エラー:', error);
+    });
+}
+
+// 全プレイヤーの投票確認
+async function checkAllVoted(gameId) {
+  const gameRef = ref(db, `games/${gameId}`);
+  const snapshot = await get(gameRef);
+  const gameData = snapshot.val();
+  
+  if (!gameData) return;
+  
+  const playerCount = Object.keys(gameData.players).length;
+  const voteCount = Object.keys(gameData.votes || {}).length;
+  
+  // 全員投票したら結果フェーズへ
+  if (voteCount >= playerCount && currentPlayer.data.isHost) {
+    // 票の集計
+    const votes = {};
+    Object.values(gameData.votes).forEach(vote => {
+      votes[vote.target] = (votes[vote.target] || 0) + 1;
+    });
+    
+    // 最多票のプレイヤーを特定
+    let maxVote = 0;
+    let executedPlayers = [];
+    
+    Object.entries(votes).forEach(([playerId, count]) => {
+      if (count > maxVote) {
+        maxVote = count;
+        executedPlayers = [playerId];
+      } else if (count === maxVote) {
+        executedPlayers.push(playerId);
+      }
+    });
+    
+    // 勝敗判定
+    let werewolfExecuted = false;
+    executedPlayers.forEach(id => {
+      if (isWerewolfTeam(gameData.players[id].role)) {
+        werewolfExecuted = true;
+      }
+    });
+    
+    // 結果更新
+    update(ref(db, `games/${gameId}`), {
+      status: 'result',
+      executed_players: executedPlayers,
+      winning_team: werewolfExecuted ? 'village' : 'werewolf'
+    });
+  }
+}
+
+// 結果フェーズの処理
+function handleResultPhase(gameData) {
+  // 勝敗結果表示
+  const gameContainer = document.getElementById('gameStatus');
+  
+  const executedPlayers = gameData.executed_players || [];
+  const executedNames = executedPlayers.map(id => gameData.players[id].name).join('、');
+  
+  gameContainer.innerHTML = `
+    <h3>ゲーム結果</h3>
+    <p>処刑されたプレイヤー: ${executedNames}</p>
+    <p class="result-text">${gameData.winning_team === 'village' ? '市民陣営' : '人狼陣営'}の勝利です！</p>
+    
+    <div class="all-roles">
+      <h4>全プレイヤーの役職:</h4>
+      <ul>
+        ${Object.entries(gameData.players).map(([id, player]) => {
+          return `<li>${player.name}: ${player.role ? player.role.name : '役職なし'} (${player.role ? (player.role.team === 'village' ? '市民陣営' : '人狼陣営') : ''})</li>`;
+        }).join('')}
+      </ul>
+    </div>
+    
+    ${currentPlayer.data.isHost ? `
+      <button id="nextGameBtn" class="btn primary">次のゲームへ</button>
+    ` : ''}
+  `;
+  
+  // 次のゲームボタン
+  if (currentPlayer.data.isHost) {
+    document.getElementById('nextGameBtn').addEventListener('click', () => {
+      resetGame(gameData.id || getGameId(gameData));
+    });
+  }
+  
+  // 持ち点の更新
+  updatePlayerPoints(gameData);
+}
+
+// 持ち点の更新
+function updatePlayerPoints(gameData) {
+  const gameId = gameData.id || getGameId(gameData);
+  const winningTeam = gameData.winning_team;
+  
+  if (!winningTeam) return;
+  
+  const updates = {};
+  
+  // 敗北チームのプレイヤー持ち点を減らす
+  Object.entries(gameData.players).forEach(([id, player]) => {
+    if (player.role && player.role.team !== winningTeam) {
+      const newPoints = player.points - player.role.cost;
+      updates[`players/${id}/points`] = newPoints;
+    }
+  });
+  
+  // 更新実行
+  if (Object.keys(updates).length > 0) {
+    update(ref(db, `games/${gameId}`), updates);
+  }
+}
+
+// 次のゲームのリセット
+function resetGame(gameId) {
+  // ゲーム終了条件の確認
+  const anyPlayerLost = Object.values(currentGame.players).some(player => player.points <= 0);
+  
+  if (anyPlayerLost) {
+    // ゲーム終了処理
+    showGameOver();
+  } else {
+    // 次のゲームへリセット
+    const resetData = {
+      status: 'waiting',
+      current_phase: null,
+      field_cards: [],
+      votes: {},
+      executed_players: null,
+      winning_team: null
+    };
+    
+    // プレイヤーの準備状態をリセット
+    Object.keys(currentGame.players).forEach(id => {
+      resetData[`players/${id}/role`] = null;
+      resetData[`players/${id}/ready`] = false;
+    });
+    
+    update(ref(db, `games/${gameId}`), resetData);
+  }
+}
+
+// ゲーム終了表示
+function showGameOver() {
+  // プレイヤーを持ち点順にソート
+  const sortedPlayers = Object.entries(currentGame.players)
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => b.points - a.points);
+  
+  const gameContainer = document.getElementById('gameStatus');
+  gameContainer.innerHTML = `
+    <h3>ゲーム終了</h3>
+    <p>いずれかのプレイヤーの持ち点が0以下になりました。</p>
+    
+    <div class="final-ranking">
+      <h4>最終ランキング:</h4>
+      <ol>
+        ${sortedPlayers.map(player => `
+          <li>${player.name}: ${player.points}点</li>
+        `).join('')}
+      </ol>
+    </div>
+    
+    <p>勝者: ${sortedPlayers[0].name}!</p>
+    <button id="returnHomeBtn" class="btn primary">ホームに戻る</button>
+  `;
+  
+  document.getElementById('returnHomeBtn').addEventListener('click', () => {
+    window.location.reload();
+  });
+}
+
+// 占い師UIの表示
+function showSeerUI(gameData) {
+  const role = currentPlayer.data.role;
+  if (!role) return;
+  
+  // 占い系の役職の場合のみUI表示
+  if (role.name === '占い師' || role.name === '占い師の弟子' || role.name === '占い人狼') {
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>占いフェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>占う対象を選択してください:</p>
+      <div class="action-targets">
+        ${role.name === '占い師' || role.name === '占い人狼' ? 
+          `<button id="checkFieldCards" class="btn action">場札を占う</button>` : ''}
+        <div class="player-targets">
+          ${Object.entries(gameData.players).map(([id, player]) => {
+            if (id !== currentPlayer.id) {
+              return `<button class="btn player-target" data-id="${id}">${player.name}を占う</button>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      </div>
+    `;
+    
+    // 場札占いボタンのイベント
+    const checkFieldBtn = document.getElementById('checkFieldCards');
+    if (checkFieldBtn) {
+      checkFieldBtn.addEventListener('click', () => {
+        // 場札確認表示
+        const fieldCards = gameData.field_cards || [];
+        alert(`場札の役職:\n1枚目: ${fieldCards[0].name}\n2枚目: ${fieldCards[1].name}`);
+      });
+    }
+    
+    // プレイヤー占いボタンのイベント
+    document.querySelectorAll('.player-target').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const targetId = e.target.dataset.id;
+        const targetPlayer = gameData.players[targetId];
+        alert(`${targetPlayer.name}の役職: ${targetPlayer.role.name}`);
+      });
+    });
+  } else {
+    // 占い系役職でない場合
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>占いフェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>占い系の役職のプレイヤーがいれば、能力を使用しています。</p>
+    `;
+  }
+}
+
+// 人狼UIの表示
+function showWerewolfUI(gameData) {
+  // 略（同様の実装）
+}
+
+// 怪盗UIの表示
+function showThiefUI(gameData) {
+  // 略（同様の実装）
+}
+
+// フェーズの更新
+function updateGamePhase(gameId, phase) {
+  return update(ref(db, `games/${gameId}`), {
+    current_phase: phase
+  });
+}
+
+// タイマー関連
+let timerInterval;
+
+function startTimer(seconds, callback) {
+  const timerDisplay = document.getElementById('timerDisplay');
+  if (!timerDisplay) return;
+  
+  let remainingTime = seconds;
+  
+  timerInterval = setInterval(() => {
+    remainingTime--;
+    
+    // 時間表示の更新
+    const minutes = Math.floor(remainingTime / 60);
+    const secs = remainingTime % 60;
+    timerDisplay.textContent = `${minutes}:${secs.toString().padStart(2, '0')}`;
+    
+    if (remainingTime <= 0) {
+      clearInterval(timerInterval);
+      if (callback) callback();
+    }
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+}
+
+// ゲームIDの取得
+function getGameId(gameData) {
+  // Firebaseのデータ構造から適切にIDを取得
+  return gameData.id;
+}
+
+export { initGame, startGame, handlePhase };
