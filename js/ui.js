@@ -24,9 +24,66 @@ const LobbyScreen = ({ onCreateGame, onJoinGame }) => {
 };
 
 const renderRoleImage = (role) => {
-  const [imageSrc, setImageSrc] = React.useState(`images/roles/${role}.jpg`);
+  // roleがnullまたは未定義の場合は'unknown'を使用
+  const roleName = role ? role : 'unknown';
+  const [imageSrc, setImageSrc] = React.useState(`images/roles/${roleName}.jpg`);
   const [retryCount, setRetryCount] = React.useState(0);
   const maxRetries = 2;
+
+  React.useEffect(() => {
+    const checkImage = (src) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+      });
+    };
+
+    const loadImage = async () => {
+      try {
+        // roleがnullまたは未定義の場合は直接unknownを使用
+        if (!role) {
+          setImageSrc('images/roles/unknown.jpg');
+          return;
+        }
+
+        const cachedStatus = localStorage.getItem(`imageExists_${roleName}`);
+        if (cachedStatus === 'false') {
+          setImageSrc('images/roles/unknown.jpg');
+          return;
+        }
+
+        const exists = await checkImage(imageSrc);
+        if (!exists && retryCount < maxRetries) {
+          setRetryCount(prevCount => prevCount + 1);
+          setImageSrc(`images/roles/${roleName}.jpg?retry=${retryCount + 1}`);
+        } else if (!exists) {
+          setImageSrc('images/roles/unknown.jpg');
+          localStorage.setItem(`imageExists_${roleName}`, 'false');
+        } else {
+          localStorage.setItem(`imageExists_${roleName}`, 'true');
+        }
+      } catch (error) {
+        console.error('画像読み込みエラー:', error);
+        setImageSrc('images/roles/unknown.jpg');
+      }
+    };
+
+    loadImage();
+  }, [role, imageSrc, retryCount]);
+
+  return React.createElement('img', {
+    src: imageSrc,
+    alt: role || 'unknown',
+    className: "role-image",
+    onError: (e) => {
+      // 画像読み込みエラー時の直接的なフォールバック
+      e.target.onerror = null; // 無限ループ防止
+      e.target.src = 'images/roles/unknown.jpg';
+    }
+  });
+};
 
   React.useEffect(() => {
     const checkImage = (src) => {
