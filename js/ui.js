@@ -174,17 +174,47 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
 const GameIdModal = ({ gameId, onClose }) => {
   if (!gameId) return null;
 
+  const copyToClipboard = () => {
+    try {
+      // テキストエリアを作成してコピー
+      const textArea = document.createElement('textarea');
+      textArea.value = gameId;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      alert('ゲームIDがクリップボードにコピーされました');
+    } catch (err) {
+      console.error('コピーに失敗しました:', err);
+      // Fallback: 選択できるようにして手動コピーを促す
+      alert('自動コピーに失敗しました。ゲームIDを選択してコピーしてください: ' + gameId);
+    }
+  };
+
   return React.createElement('div', { className: 'modal', style: { display: 'block' } },
     React.createElement('div', { className: 'modal-content' },
       React.createElement('span', { className: 'close-button', onClick: onClose }, '×'),
       React.createElement('h2', null, 'ゲームが作成されました'),
       React.createElement('p', null, '以下のゲームIDを他のプレイヤーに共有してください：'),
-      React.createElement('p', { id: 'game-id-display' }, gameId),
-      React.createElement('button', { onClick: () => {
-        navigator.clipboard.writeText(gameId).then(() => {
-          alert('ゲームIDがクリップボードにコピーされました');
-        });
-      }}, 'ゲームIDをコピー')
+      React.createElement('p', { id: 'game-id-display', style: { 
+        padding: '10px', 
+        border: '2px dashed #007bff', 
+        borderRadius: '5px',
+        backgroundColor: '#f0f8ff',
+        fontSize: '20px',
+        fontWeight: 'bold',
+        wordBreak: 'break-all'
+      }}, gameId),
+      React.createElement('button', { 
+        onClick: copyToClipboard,
+        style: { 
+          marginTop: '15px', 
+          padding: '10px 20px', 
+          fontSize: '16px'
+        }
+      }, 'ゲームIDをコピー'),
+      React.createElement('p', { style: { marginTop: '15px', color: 'red' } }, 
+        '注意: このIDを正確にコピーしてください。手動入力するとエラーが発生しやすいです。')
     )
   );
 };
