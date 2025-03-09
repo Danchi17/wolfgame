@@ -123,17 +123,26 @@ const handleReceivedData = (data, conn) => {
         switch (data.type) {
             case 'fullGameState':
                 if (data.state && typeof data.state === 'object') {
-                    // 重要な変更: 現在のプレイヤーID情報を保持
-                    const currentPlayerId = window.getGameState().currentPlayerId;
+                    // 現在の状態を取得
+                    const currentState = window.getGameState();
                     
-                    // ゲーム状態を更新するが、currentPlayerIdは保持する
+                    // 重要: 現在のプレイヤーIDとプレイヤー情報を保持
+                    const currentPlayerId = currentState.currentPlayerId;
+                    
+                    // プレイヤー配列のマージを確保する
+                    // 既存のプレイヤーと新しいプレイヤーをマージ
+                    const mergedPlayers = mergePlayersArray(currentState.players || [], data.state.players || []);
+                    
+                    // ゲーム状態を更新
                     const updatedState = {
                         ...data.state,
-                        currentPlayerId: currentPlayerId
+                        currentPlayerId: currentPlayerId,
+                        players: mergedPlayers // プレイヤー配列を明示的にマージしたものを使用
                     };
                     
                     window.updateGameState(updatedState);
                     console.log('完全なゲーム状態を受信し更新しました', updatedState);
+                    console.log('マージ後のプレイヤー:', updatedState.players);
                 }
                 break;
                 
