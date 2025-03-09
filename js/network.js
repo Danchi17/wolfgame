@@ -124,12 +124,106 @@ const sendFullGameState = (conn) => {
 };
 
 const handleReceivedData = (data, conn) => {
-    console.log('データを受信:', data ? data.type : 'null');
+    console.log('データを受信:', data ? (typeof data === 'object' ? data.type : 'non-object data') : 'null');
+    
     try {
-        if (!data || typeof data !== 'object') {
-            console.warn('無効なデータ形式を受信:', data);
+        // データ検証
+        if (!data) {
+            console.warn('受信データが null または undefined です');
             return;
         }
+        
+        if (typeof data !== 'object') {
+            console.warn(`受信データが object ではありません: ${typeof data}`);
+            return;
+        }
+        
+        // データタイプに基づく処理
+        switch (data.type) {
+            case 'fullGameState':
+                if (data.state) {
+                    try {
+                        // stateが有効なオブジェクトか確認
+                        if (typeof data.state !== 'object') {
+                            console.warn('受信した state が無効です');
+                            return;
+                        }
+                        
+                        window.updateGameState(data.state);
+                        console.log('ゲーム状態を更新しました');
+                    } catch (e) {
+                        console.error('ゲーム状態更新エラー:', e);
+                    }
+                }
+                break;
+                
+            case 'playerJoined':
+                if (data.player) {
+                    try {
+                        handlePlayerJoined(data.player, conn);
+                    } catch (e) {
+                        console.error('プレイヤー参加処理エラー:', e);
+                    }
+                }
+                break;
+                
+            case 'gameState':
+                if (data.state) {
+                    try {
+                        // stateが有効なオブジェクトか確認
+                        if (typeof data.state !== 'object') {
+                            console.warn('受信した state が無効です');
+                            return;
+                        }
+                        
+                        window.updateGameState(data.state);
+                        broadcastGameState(data.state, conn);
+                    } catch (e) {
+                        console.error('ゲーム状態更新エラー:', e);
+                    }
+                }
+                break;
+                
+            case 'action':
+                if (data.playerId && data.action) {
+                    try {
+                        const result = window.performAction(data.playerId, data.action, data.target);
+                        if (typeof window.processActionResult === 'function') {
+                            window.processActionResult(data.action, result);
+                        }
+                        broadcastGameState(window.getGameState(), conn);
+                    } catch (e) {
+                        console.error('アクション処理エラー:', e);
+                    }
+                }
+                break;
+                
+            case 'vote':
+                if (data.voterId && data.targetId) {
+                    try {
+                        window.castVote(data.voterId, data.targetId);
+                        broadcastGameState(window.getGameState(), conn);
+                    } catch (e) {
+                        console.error('投票処理エラー:', e);
+                    }
+                }
+                break;
+                
+            default:
+                console.warn('不明なデータタイプ:', data.type);
+        }
+        
+        // UIの更新イベントを発火
+        try {
+            window.dispatchEvent(new Event('gameStateUpdated'));
+        } catch (e) {
+            console.error('イベント発火エラー:', e);
+        }
+        
+    } catch (error) {
+        console.error('データ処理エラー:', error);
+    }
+};
 
         switch (data.type) {
             case 'fullGameState':
