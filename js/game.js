@@ -138,7 +138,35 @@ function handleNightPhase(gameData) {
     }
   }
 }
-
+// フェーズをスキップするボタンを追加（デバッグ用）
+function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = false) {
+  const gameStatus = document.getElementById('gameStatus');
+  if (!gameStatus) return;
+  
+  // 既存のスキップボタンを削除
+  const existingBtn = document.getElementById('phaseSkipBtn');
+  if (existingBtn) {
+    existingBtn.remove();
+  }
+  
+  // スキップボタンの追加
+  const skipBtn = document.createElement('button');
+  skipBtn.id = 'phaseSkipBtn';
+  skipBtn.className = 'btn secondary';
+  skipBtn.textContent = buttonText;
+  skipBtn.style.marginTop = '10px';
+  
+  skipBtn.addEventListener('click', () => {
+    console.log(`手動でフェーズを進めます: ${nextPhase || '日中フェーズ'}`);
+    if (isStatusChange) {
+      updateGameStatus(gameId, 'day');
+    } else {
+      updateGamePhase(gameId, nextPhase);
+    }
+  });
+  
+  gameStatus.appendChild(skipBtn);
+}
 // 日中フェーズの処理
 function handleDayPhase(gameData) {
   // 議論タイマーの表示
