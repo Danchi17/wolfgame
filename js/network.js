@@ -55,21 +55,28 @@ const initializePeer = (peerOptions) => {
     });
 };
 
-// 完全なゲーム状態を送信する関数
 const sendFullGameState = (conn) => {
     try {
+        // ゲーム状態を取得
         const fullState = window.getGameState();
-        console.log('完全なゲーム状態の送信:', JSON.stringify(fullState).substring(0, 100) + '...');
         
-        if (conn && conn.open) {
-            conn.send({ 
-                type: 'fullGameState', 
-                state: fullState 
-            });
-            console.log('状態送信完了: プレイヤー数', fullState.players.length);
-        } else {
+        // 接続先を確認
+        if (!conn || !conn.open) {
             console.warn('接続が閉じられているか無効です');
+            return;
         }
+        
+        // 重要：デバッグ用にプレイヤー情報を表示
+        console.log('送信する状態のプレイヤー情報:', 
+            fullState.players ? fullState.players.map(p => p.name).join(', ') : 'なし');
+        
+        // ゲーム状態を送信
+        conn.send({ 
+            type: 'fullGameState', 
+            state: fullState 
+        });
+        
+        console.log('完全なゲーム状態を送信しました');
     } catch (e) {
         console.error('ゲーム状態の送信エラー:', e);
     }
