@@ -1,9 +1,25 @@
 'use strict';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const gameState = window.initializeGame();
-    window.setupNetwork(gameState);
-    window.renderUI(gameState);
+    try {
+        const gameState = window.initializeGame();
+        if (typeof window.setupNetwork === 'function') {
+            window.setupNetwork();
+            console.log('ネットワーク設定が完了しました');
+        } else {
+            console.error('setupNetwork関数が見つかりません');
+        }
+        
+        if (typeof window.renderUI === 'function') {
+            window.renderUI(gameState);
+            console.log('UIのレンダリングが完了しました');
+        } else {
+            console.warn('renderUI関数が見つかりません');
+        }
+    } catch (error) {
+        console.error('初期化エラー:', error);
+        alert('ゲームの初期化中にエラーが発生しました。ページをリロードしてください。');
+    }
 });
 
 // ゲーム状態が更新されたときに発火するカスタムイベント
