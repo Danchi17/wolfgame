@@ -41,12 +41,14 @@ const initializePeer = (peerOptions) => {
     });
 
     peer.on('disconnected', () => {
-    console.log('PeerJSサーバーから切断されました。再接続を試みます...');
-    setTimeout(() => {
-        peer.reconnect();
-    }, 1000);
-});
+        console.log('PeerJSサーバーから切断されました。再接続を試みます...');
+        setTimeout(() => {
+            peer.reconnect();
+        }, 1000);
+    });
+};
 
+// 完全なゲーム状態を送信する関数
 const sendFullGameState = (conn) => {
     try {
         // ゲーム状態を取得
@@ -58,7 +60,7 @@ const sendFullGameState = (conn) => {
             return;
         }
         
-        // ★★★ 重要：デバッグ用にプレイヤー情報を表示 ★★★
+        // デバッグ用にプレイヤー情報を表示
         console.log('送信する状態のプレイヤー情報:', 
             fullState.players ? fullState.players.map(p => p.name).join(', ') : 'なし');
         
@@ -206,7 +208,7 @@ const handlePlayerJoined = (player, conn) => {
         console.log('プレイヤーは既に参加しています:', player.name);
     }
     
-    // ★★★ ここを変更：タイムアウトを増やして常に状態を送信する ★★★
+    // タイムアウトを増やして常に状態を送信する
     setTimeout(() => {
         sendFullGameState(conn);
     }, 800);
