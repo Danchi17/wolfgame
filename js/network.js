@@ -159,16 +159,48 @@ const handleReceivedData = (data, conn) => {
                     // 既存のプレイヤーと新しいプレイヤーをマージ
                     const mergedPlayers = mergePlayersArray(currentState.players || [], data.state.players || []);
                     
+                    // 役職情報とアクションのマージ
+                    const mergedAssignedRoles = {
+                        ...(currentState.assignedRoles || {}),
+                        ...(data.state.assignedRoles || {})
+                    };
+                    
+                    // アクション情報のマージ
+                    const mergedActions = {
+                        ...(currentState.actions || {}),
+                        ...(data.state.actions || {})
+                    };
+                    
+                    // 投票情報のマージ
+                    const mergedVotes = {
+                        ...(currentState.votes || {}),
+                        ...(data.state.votes || {})
+                    };
+                    
+                    // centerCardsの処理（送信元の情報を優先）
+                    const mergedCenterCards = data.state.centerCards && data.state.centerCards.length > 0
+                        ? data.state.centerCards
+                        : currentState.centerCards || [];
+                    
+                    // ゲーム状態を更新（フェーズは送信元を優先）
+                    const phase = data.state.phase !== '待機中' ? data.state.phase : currentState.phase;
+                    
                     // ゲーム状態を更新
                     const updatedState = {
                         ...data.state,
                         currentPlayerId: currentPlayerId,
-                        players: mergedPlayers // プレイヤー配列を明示的にマージしたものを使用
+                        players: mergedPlayers,
+                        assignedRoles: mergedAssignedRoles,
+                        actions: mergedActions,
+                        votes: mergedVotes,
+                        centerCards: mergedCenterCards,
+                        phase: phase
                     };
                     
                     window.updateGameState(updatedState);
                     console.log('完全なゲーム状態を受信し更新しました', updatedState);
                     console.log('マージ後のプレイヤー:', updatedState.players);
+                    console.log('マージ後の役職情報:', updatedState.assignedRoles);
                 }
                 break;
                 
@@ -189,13 +221,47 @@ const handleReceivedData = (data, conn) => {
                 
             case 'gameState':
                 if (data.state && typeof data.state === 'object') {
-                    // プレイヤーID情報を保持
-                    const currentId = window.getGameState().currentPlayerId;
+                    // 現在の状態を取得
+                    const currentState = window.getGameState();
+                    const currentId = currentState.currentPlayerId;
+                    
+                    // プレイヤー配列のマージ
+                    const mergedPlayers = mergePlayersArray(currentState.players || [], data.state.players || []);
+                    
+                    // 役職情報のマージ
+                    const mergedAssignedRoles = {
+                        ...(currentState.assignedRoles || {}),
+                        ...(data.state.assignedRoles || {})
+                    };
+                    
+                    // アクション情報のマージ
+                    const mergedActions = {
+                        ...(currentState.actions || {}),
+                        ...(data.state.actions || {})
+                    };
+                    
+                    // 投票情報のマージ
+                    const mergedVotes = {
+                        ...(currentState.votes || {}),
+                        ...(data.state.votes || {})
+                    };
+                    
+                    // フェーズ情報（送信元を優先）
+                    const phase = data.state.phase !== '待機中' ? data.state.phase : currentState.phase;
+                    
+                    // 更新されたゲーム状態
                     const updatedState = {
                         ...data.state,
-                        currentPlayerId: currentId
+                        currentPlayerId: currentId,
+                        players: mergedPlayers,
+                        assignedRoles: mergedAssignedRoles,
+                        actions: mergedActions,
+                        votes: mergedVotes,
+                        phase: phase
                     };
+                    
                     window.updateGameState(updatedState);
+                    console.log('ゲーム状態を更新しました:', updatedState);
                 }
                 break;
                 
