@@ -192,13 +192,7 @@ function handleNightPhase(gameData) {
   }
 }
 
-// タイマー停止関数
-function stopTimer() {
-  if (window.currentPhaseTimer) {
-    clearInterval(window.currentPhaseTimer);
-    window.currentPhaseTimer = null;
-  }
-}
+
 // フェーズをスキップするボタンを追加（デバッグ用）
 function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = false) {
   const gameStatus = document.getElementById('gameStatus');
