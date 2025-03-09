@@ -663,6 +663,7 @@ function updateGamePhase(gameId, phase) {
 
 // タイマー関連
 let timerInterval;
+let currentPhaseTimer;
 
 function startTimer(seconds, callback) {
   const timerDisplay = document.getElementById('timerDisplay');
@@ -683,6 +684,20 @@ function startTimer(seconds, callback) {
       if (callback) callback();
     }
   }, 1000);
+}
+
+function stopTimer() {
+  // 議論フェーズのタイマー停止
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  
+  // 夜フェーズのタイマー停止
+  if (currentPhaseTimer) {
+    clearInterval(currentPhaseTimer);
+    currentPhaseTimer = null;
+  }
 }
 
 // タイマー停止関数（複数タイプのタイマーに対応）
