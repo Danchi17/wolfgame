@@ -28,7 +28,23 @@ window.setupNetwork = () => {
     debug: 3
 };
 
-    peer = new Peer(generateId(), peerOptions);
+   peer = new Peer(generateId(), {
+  host: 'peerjs-server.herokuapp.com',
+  secure: true,
+  port: 443,
+  config: {
+    'iceServers': [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { 
+        urls: 'turn:relay.backups.cz?transport=tcp',
+        credential: 'webrtc',
+        username: 'webrtc'
+      }
+    ]
+  },
+  debug: 3
+});
     
     peer.on('open', (id) => {
         console.log('My peer ID is: ' + id);
