@@ -164,8 +164,29 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
         )
       ))
     ),
-    React.createElement('div', { className: "players-container" },
-      state.players.map((player, index) => (
+React.createElement('div', { className: "players-container" },
+  // プレイヤー情報のデバッグ表示
+  React.createElement('div', { 
+    style: { 
+      position: 'absolute', 
+      top: '10px', 
+      right: '10px', 
+      background: '#f0f0f0', 
+      padding: '10px', 
+      border: '1px solid #ccc',
+      borderRadius: '5px',
+      fontSize: '12px',
+      maxWidth: '300px',
+      zIndex: 1000
+    } 
+  }, 
+    React.createElement('strong', null, 'プレイヤー情報:'),
+    React.createElement('pre', null, JSON.stringify(state.players, null, 2))
+  ),
+  
+  // 通常のプレイヤー表示
+  (state.players && state.players.length > 0) 
+    ? state.players.map((player, index) => (
         React.createElement(PlayerCard, { 
           key: player.id, 
           player: player, 
@@ -175,12 +196,21 @@ const GameScreen = ({ state, currentPhase, setCurrentPhase, onAction, onVote, on
           onSpyReport: onSpyReport,
           isCurrentPlayer: player.id === state.currentPlayerId
         })
-      )),
-      React.createElement('div', { className: "center-cards" },
-        React.createElement(CenterCard, { cardNumber: 1, role: state.centerCards[0], isRevealed: currentPhase === '結果' }),
-        React.createElement(CenterCard, { cardNumber: 2, role: state.centerCards[1], isRevealed: currentPhase === '結果' })
-      )
-    ),
+      ))
+    : React.createElement('div', { 
+        style: { 
+          gridColumn: 'span 2', 
+          textAlign: 'center', 
+          padding: '20px',
+          background: '#ffeeee'
+        } 
+      }, 'プレイヤーが表示されていません。他のプレイヤーを待っています...'),
+  
+  React.createElement('div', { className: "center-cards" },
+    React.createElement(CenterCard, { cardNumber: 1, role: state.centerCards[0], isRevealed: currentPhase === '結果' }),
+    React.createElement(CenterCard, { cardNumber: 2, role: state.centerCards[1], isRevealed: currentPhase === '結果' })
+  )
+),
 React.createElement('div', { className: "action-area" },
   React.createElement('h2', null, 'アクションエリア'),
   React.createElement('p', null, `現在のフェーズ: ${currentPhase}`),
