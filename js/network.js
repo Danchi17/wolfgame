@@ -11,6 +11,32 @@ const CONNECTION_TIMEOUT = 30000; // 30秒
 let connectionTimer;
 let isConnecting = false;
 
+// プレイヤー配列をマージする関数
+const mergePlayersArray = (currentPlayers, newPlayers) => {
+    if (!Array.isArray(currentPlayers)) currentPlayers = [];
+    if (!Array.isArray(newPlayers)) newPlayers = [];
+    
+    // プレイヤーIDをキーとした辞書を作成
+    const playerMap = {};
+    
+    // 現在のプレイヤーをマップに追加
+    currentPlayers.forEach(player => {
+        if (player && player.id) {
+            playerMap[player.id] = player;
+        }
+    });
+    
+    // 新しいプレイヤーでマップを更新（既存のプレイヤーは上書き）
+    newPlayers.forEach(player => {
+        if (player && player.id) {
+            playerMap[player.id] = player;
+        }
+    });
+    
+    // マップの値を配列に変換
+    return Object.values(playerMap);
+};
+
 // PeerJSの初期化を行う関数
 const initializePeer = (peerOptions) => {
     // 既存のピアがある場合は破棄
