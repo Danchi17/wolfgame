@@ -575,6 +575,35 @@ window.setupNetwork = () => {
     return peer ? peer.id : null;
 };
 
+// 定期的なゲーム状態同期機能
+const setupPeriodicSync = () => {
+    if (window.syncInterval) {
+        clearInterval(window.syncInterval);
+    }
+    
+    // 10秒ごとに全接続に対して状態を同期
+    window.syncInterval = setInterval(() => {
+        if (isHost && Object.keys(connections).length > 0) {
+            console.log('定期同期: 完全なゲーム状態を全クライアントに送信中...');
+            const fullState = window.getGameState();
+            Object.values(connections).forEach(conn => {
+                if (conn && conn.open) {
+                    try {
+                        conn.send({ 
+                            type: 'fullGameState', 
+                            state: fullState 
+                        });
+                    } catch (e) {
+                        console.error('定期同期中のエラー:', e);
+                    }
+                }
+            });
+        }
+    }, 10000); // 10秒ごと
+    
+    console.log('定期的な同期機能を設定しました');
+};
+
 // ゲーム作成関数
 window.createGame = (playerName) => {
     if (!playerName || playerName.trim() === '') {
