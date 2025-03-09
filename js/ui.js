@@ -85,45 +85,6 @@ const renderRoleImage = (role) => {
   });
 };
 
-  React.useEffect(() => {
-    const checkImage = (src) => {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-        img.src = src;
-      });
-    };
-
-    const loadImage = async () => {
-      const cachedStatus = localStorage.getItem(`imageExists_${role}`);
-      if (cachedStatus === 'false') {
-        setImageSrc('images/roles/unknown.jpg');
-        return;
-      }
-
-      const exists = await checkImage(imageSrc);
-      if (!exists && retryCount < maxRetries) {
-        setRetryCount(prevCount => prevCount + 1);
-        setImageSrc(`images/roles/${role}.jpg?retry=${retryCount + 1}`);
-      } else if (!exists) {
-        setImageSrc('images/roles/unknown.jpg');
-        localStorage.setItem(`imageExists_${role}`, 'false');
-      } else {
-        localStorage.setItem(`imageExists_${role}`, 'true');
-      }
-    };
-
-    loadImage();
-  }, [role, imageSrc, retryCount]);
-
-  return React.createElement('img', {
-    src: imageSrc,
-    alt: role,
-    className: "role-image",
-  });
-};
-
 const PlayerCard = ({ player, currentPhase, onAction, onVote, onSpyReport, isCurrentPlayer }) => {
   const isRoleRevealed = currentPhase === '役職確認' || currentPhase === '結果';
   
