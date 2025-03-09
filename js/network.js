@@ -573,6 +573,9 @@ window.setupNetwork = () => {
 
     initializePeer(peerOptions);
     return peer ? peer.id : null;
+
+    // 定期的な同期処理を設定
+setupPeriodicSync();
 };
 
 // 定期的なゲーム状態同期機能
