@@ -371,8 +371,8 @@ const EnhancedGameUI = () => {
     const updateState = () => {
       const newState = window.getGameState();
       setState(newState);
-      console.log('Game state updated:', newState);
-      if (newState.players.length > 0) {
+      setCurrentPhase(newState.phase || '待機中');
+      if (newState.players && newState.players.length > 0) {
         setIsInLobby(false);
       }
     };
@@ -382,62 +382,95 @@ const EnhancedGameUI = () => {
     };
   }, []);
 
-  React.useEffect(() => {
-    console.log('Current game state:', state);
-    console.log('Current players:', state.players);
-  }, [state]);
-
-const handleCreateGame = (playerName) => {
-  try {
-    const gameId = window.createGame(playerName);
-    if (gameId) {
-      setGameIdToShow(gameId);
-      setIsInLobby(false);
-      console.log('Game created with ID:', gameId);
+  const handleCreateGame = async (playerName) => {
+    try {
+      const gameId = await window.createGame(playerName);
+      if (gameId) {
+        setGameIdToShow(gameId);
+        setIsInLobby(false);
+        console.log('Game created with ID:', gameId);
+        
+        // アクション処理を設定（ホストのみ）
+        window.setupActionProcessor();
+      }
+    } catch (error) {
+      console.error('Error creating game:', error);
+      alert('ゲームの作成中にエラーが発生しました。');
+      throw error;
     }
-  } catch (error) {
-    console.error('Error creating game:', error);
-    alert('ゲームの作成中にエラーが発生しました。');
-  }
-};
+  };
 
-const handleJoinGame = (playerName, gameId) => {
-  try {
-    console.log('Joining game with name:', playerName, 'and gameId:', gameId);
-    const result = window.joinGame(gameId, playerName);
-    if (result) {
-      setIsInLobby(false);
+  const handleJoinGame = async (playerName, gameId) => {
+    try {
+      const success = await window.joinGame(gameId, playerName);
+      if (success) {
+        setIsInLobby(false);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error joining game:', error);
+      alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認してください。');
+      throw error;
     }
-  } catch (error) {
-    console.error('Error joining game:', error);
-    alert('ゲームへの参加中にエラーが発生しました。ゲームIDを確認してください。');
-  }
-};
+  };
 
   const handleAction = (actionType, targetId) => {
-    const result = window.performAction(state.currentPlayerId, actionType, targetId);
-    alert(result);
+    if (window.isGameHost()) {
+      // ホストの場合は直接実行
+      const result = window.performAction(state.currentPlayerId, actionType, targetId);
+      alert(result);
+    } else {
+      // ゲストの場合はアクションを送信
+      window.executeAction('useAbility', {
+        abilityType: actionType,
+        target: targetId
+      });
+      alert('アクションを送信しました');
+    }
   };
 
   const handleVote = (targetId) => {
-    const result = window.castVote(state.currentPlayerId, targetId);
-    if (result) {
-      alert(result);
+    if (window.isGameHost()) {
+      // ホストの場合は直接投票
+      const result = window.castVote(state.currentPlayerId, targetId);
+      if (result) {
+        alert(result);
+      }
+    } else {
+      // ゲストの場合は投票を送信
+      window.executeAction('vote', { targetId });
+      alert('投票を送信しました');
     }
   };
 
   const handleSpyReport = (suspectedSpyId) => {
-    const result = window.reportSpy(state.currentPlayerId, suspectedSpyId);
-    alert(result);
+    if (window.isGameHost()) {
+      const result = window.reportSpy(state.currentPlayerId, suspectedSpyId);
+      alert(result);
+    } else {
+      window.executeAction('useAbility', {
+        abilityType: 'reportSpy',
+        target: suspectedSpyId
+      });
+      alert('スパイ通報を送信しました');
+    }
   };
 
   const handleNextPhase = (newPhase) => {
     setCurrentPhase(newPhase);
-    window.nextPhase();
+    if (window.isGameHost()) {
+      window.nextPhase();
+    } else {
+      window.executeAction('nextPhase', { phase: newPhase });
+    }
   };
 
   if (isInLobby) {
-    return React.createElement(LobbyScreen, { onCreateGame: handleCreateGame, onJoinGame: handleJoinGame });
+    return React.createElement(LobbyScreen, { 
+      onCreateGame: handleCreateGame, 
+      onJoinGame: handleJoinGame 
+    });
   } else {
     return React.createElement(React.Fragment, null,
       React.createElement(GameScreen, { 
@@ -449,20 +482,12 @@ const handleJoinGame = (playerName, gameId) => {
         onSpyReport: handleSpyReport,
         onNextPhase: handleNextPhase
       }),
-      React.createElement(GameIdModal, { gameId: gameIdToShow, onClose: () => setGameIdToShow(null) })
+      React.createElement(GameIdModal, { 
+        gameId: gameIdToShow, 
+        onClose: () => setGameIdToShow(null) 
+      })
     );
   }
 };
-
-const renderUI = () => {
-  ReactDOM.render(React.createElement(EnhancedGameUI), document.getElementById('app'));
-};
-
-document.addEventListener('DOMContentLoaded', renderUI);
-
-window.addEventListener('error', (event) => {
-  console.error('Uncaught error:', event.error);
-  alert('予期せぬエラーが発生しました。ページをリロードしてください。');
-});
 
 window.renderUI = renderUI;
