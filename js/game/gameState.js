@@ -32,6 +32,10 @@ window.addPlayer = (player) => {
 
 // updateGameState関数を修正して、プレイヤー配列を正しくマージするようにする
 window.updateGameState = (newState) => {
+    // デバッグログの追加
+    console.log('updateGameState 呼び出し前の状態:', {...gameState});
+    console.log('新しく適用する状態:', newState);
+    
     // 特別な処理が必要な配列プロパティを処理
     const updatedPlayers = newState.players 
         ? mergePlayersArrays(gameState.players || [], newState.players)
@@ -46,7 +50,9 @@ window.updateGameState = (newState) => {
     };
     
     console.log('Game state updated:', gameState);
+    console.log('更新後のプレイヤー:', gameState.players);
     window.dispatchEvent(new Event('gameStateUpdated'));
+    return {...gameState}; // 更新された状態のコピーを返す
 };
 
 // プレイヤー配列を重複なくマージする関数
