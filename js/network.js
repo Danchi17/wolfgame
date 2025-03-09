@@ -225,48 +225,6 @@ const handleReceivedData = (data, conn) => {
     }
 };
 
-        switch (data.type) {
-            case 'fullGameState':
-                if (data.state) {
-                    window.updateGameState(data.state);
-                    console.log('ゲーム状態を更新しました');
-                }
-                break;
-            case 'playerJoined':
-                if (data.player) {
-                    handlePlayerJoined(data.player, conn);
-                }
-                break;
-            case 'gameState':
-                if (data.state) {
-                    window.updateGameState(data.state);
-                    broadcastGameState(data.state, conn);
-                }
-                break;
-            case 'action':
-                if (data.playerId && data.action) {
-                    const result = window.performAction(data.playerId, data.action, data.target);
-                    window.processActionResult(data.action, result);
-                    broadcastGameState(window.getGameState(), conn);
-                }
-                break;
-            case 'vote':
-                if (data.voterId && data.targetId) {
-                    window.castVote(data.voterId, data.targetId);
-                    broadcastGameState(window.getGameState(), conn);
-                }
-                break;
-            default:
-                console.warn('不明なデータタイプ:', data.type);
-        }
-        
-        // UIの更新イベントを発火
-        window.dispatchEvent(new Event('gameStateUpdated'));
-    } catch (error) {
-        console.error('データ処理エラー:', error);
-    }
-};
-
 const handlePlayerJoined = (player, conn) => {
     if (!player || !player.id) {
         console.warn('無効なプレイヤーデータ:', player);
