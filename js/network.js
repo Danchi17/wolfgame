@@ -57,7 +57,7 @@ const sendFullGameState = (conn) => {
             return;
         }
         
-        // 重要：デバッグ用にプレイヤー情報を表示
+        // ★★★ 重要：デバッグ用にプレイヤー情報を表示 ★★★
         console.log('送信する状態のプレイヤー情報:', 
             fullState.players ? fullState.players.map(p => p.name).join(', ') : 'なし');
         
