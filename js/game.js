@@ -86,6 +86,9 @@ function handlePhase(phase, gameData) {
 function handleNightPhase(gameData) {
   // 役職に応じた能力UIの表示
   const currentPhase = gameData.current_phase;
+  const gameId = gameData.gameId; // 追加したプロパティを使用
+  
+  console.log(`夜フェーズ処理中: 現在のフェーズ=${currentPhase}, ゲームID=${gameId}`);
   
   // 各役職のターン処理
   if (currentPhase === 'seer') {
@@ -94,9 +97,14 @@ function handleNightPhase(gameData) {
     
     // ホストの場合、一定時間後に次のフェーズへ
     if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      console.log(`占い師フェーズ終了まで15秒カウントダウン開始`);
+      // 手動でフェーズを進めるボタンを追加（デバッグ用）
+      addPhaseSkipButton(gameId, 'werewolf', '人狼フェーズへ');
+      
       setTimeout(() => {
-        updateGamePhase(gameData.id || getGameId(gameData), 'werewolf');
-      }, 30000); // 30秒後
+        console.log(`占い師フェーズ終了、人狼フェーズへ移行します (${gameId})`);
+        updateGamePhase(gameId, 'werewolf');
+      }, 15000); // 15秒後（短縮）
     }
   } else if (currentPhase === 'werewolf') {
     // 人狼系の処理
@@ -104,9 +112,14 @@ function handleNightPhase(gameData) {
     
     // ホストの場合、一定時間後に次のフェーズへ
     if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      console.log(`人狼フェーズ終了まで15秒カウントダウン開始`);
+      // 手動でフェーズを進めるボタンを追加（デバッグ用）
+      addPhaseSkipButton(gameId, 'thief', '怪盗フェーズへ');
+      
       setTimeout(() => {
-        updateGamePhase(gameData.id || getGameId(gameData), 'thief');
-      }, 30000); // 30秒後
+        console.log(`人狼フェーズ終了、怪盗フェーズへ移行します (${gameId})`);
+        updateGamePhase(gameId, 'thief');
+      }, 15000); // 15秒後（短縮）
     }
   } else if (currentPhase === 'thief') {
     // 怪盗の処理
@@ -114,9 +127,14 @@ function handleNightPhase(gameData) {
     
     // ホストの場合、一定時間後に日中フェーズへ
     if (currentPlayer && currentPlayer.data && currentPlayer.data.isHost) {
+      console.log(`怪盗フェーズ終了まで15秒カウントダウン開始`);
+      // 手動でフェーズを進めるボタンを追加（デバッグ用）
+      addPhaseSkipButton(gameId, null, '日中フェーズへ', true);
+      
       setTimeout(() => {
-        updateGameStatus(gameData.id || getGameId(gameData), 'day');
-      }, 30000); // 30秒後
+        console.log(`怪盗フェーズ終了、日中フェーズへ移行します (${gameId})`);
+        updateGameStatus(gameId, 'day');
+      }, 15000); // 15秒後（短縮）
     }
   }
 }
