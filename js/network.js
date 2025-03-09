@@ -216,13 +216,15 @@ const handlePlayerJoined = (player, conn) => {
         console.warn('無効なプレイヤーデータ:', player);
         return;
     }
+    
+    console.log('参加プレイヤーデータを受信:', player);
 
     const currentState = window.getGameState();
     
     // 既存のプレイヤーかどうかをチェック
-    const existingPlayer = currentState.players.find(p => p.id === player.id);
+    const existingPlayerIndex = currentState.players.findIndex(p => p && p.id === player.id);
     
-    if (!existingPlayer) {
+    if (existingPlayerIndex === -1) {
         // 新しいプレイヤーを追加
         window.addPlayer(player);
         console.log('プレイヤーが参加しました:', player.name);
@@ -235,14 +237,28 @@ const handlePlayerJoined = (player, conn) => {
         );
         console.log('現在のプレイヤー:', updatedState.players.map(p => p.name).join(', '));
         
-        // ブロードキャストする前にも少し待つ
-        setTimeout(() => {
-            broadcastGameState(updatedState);
-        }, 300);
+        // すべての接続に対して完全な状態を送信
+        Object.values(connections).forEach(otherConn => {
+            if (otherConn && otherConn.open && otherConn !== conn) {
+                setTimeout(() => {
+                    sendFullGameState(otherConn);
+                }, 300);
+            }
+        });
+        
+        // ホストの場合、遅延してから状態を再送信
+        if (isHost) {
+            setTimeout(() => {
+                broadcastGameState(window.getGameState());
+            }, 1000);
+        }
     } else {
         console.log('プレイヤーは既に参加しています:', player.name);
+        // プレイヤー情報を更新
+        const updatedPlayers = [...currentState.players];
+        updatedPlayers[existingPlayerIndex] = player;
+        window.updateGameState({ players: updatedPlayers });
     }
-    
     // タイムアウトを増やして常に状態を送信する
     setTimeout(() => {
         sendFullGameState(conn);
