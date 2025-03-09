@@ -71,7 +71,7 @@ const renderRoleImage = (role) => {
     };
 
     loadImage();
-  }, [role, imageSrc, retryCount]);
+  }, [role, imageSrc, retryCount, roleName]);
 
   return React.createElement('img', {
     src: imageSrc,
