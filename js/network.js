@@ -247,6 +247,10 @@ const continueCreateGame = (playerName) => {
     });
     
     console.log('ゲームを作成しました、ID:', gameId);
+    
+    // ゲームIDをアラートで表示（デバッグ用）
+    alert(`ゲームIDをコピーしてください: ${gameId}`);
+    
     return gameId;
 };
 
@@ -428,6 +432,11 @@ const handlePeerError = (error) => {
     
     if (!error) return;
     
+    // エラーのメッセージをログに出力（デバッグ用）
+    if (error.message) {
+        console.log('詳細エラーメッセージ:', error.message);
+    }
+    
     // エラータイプに基づいてメッセージを表示
     if (error.type === 'network' || error.type === 'server-error') {
         if (!isConnecting) {
@@ -451,7 +460,7 @@ const handlePeerError = (error) => {
         // ゲームID不在エラー
         connectionAttempts = MAX_CONNECTION_ATTEMPTS; // これ以上再試行しない
         isConnecting = false;
-        alert('指定されたゲームIDが見つかりません。ゲームIDを確認して再試行してください。');
+        alert(`指定されたゲームID「${gameId}」が見つかりません。ゲームIDを正確にコピー＆ペーストして再試行してください。`);
     } else if (error.type === 'browser-incompatible') {
         alert('お使いのブラウザはWebRTCに対応していません。Chrome、Firefox、またはEdgeの最新版をお試しください。');
     } else if (error.type === 'disconnected') {
