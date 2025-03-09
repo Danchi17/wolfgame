@@ -13,6 +13,7 @@
 </head>
 <body>
     <div id="app"></div>
+    <!-- スクリプトの読み込み順序を修正 -->
     <script src="js/game/gameUtils.js"></script>
     <script src="js/game/gameState.js"></script>
     <script src="js/game/roleLogic.js"></script>
@@ -25,5 +26,18 @@
     <script src="js/network.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/main.js"></script>
+    
+    <!-- エラーハンドリング -->
+    <script>
+        window.addEventListener('error', (event) => {
+            console.error('グローバルエラー:', event.error);
+            // クリティカルなエラーのみユーザーに通知
+            if (event.error && event.error.message && 
+                (event.error.message.includes('is not a function') || 
+                 event.error.message.includes('is not defined'))) {
+                alert('エラーが発生しました。ページをリロードしてください。');
+            }
+        });
+    </script>
 </body>
 </html>
