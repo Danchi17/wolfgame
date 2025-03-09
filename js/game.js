@@ -163,18 +163,23 @@ function handleNightPhase(gameData) {
     // 既存のUI要素の下部に追加
     gameContainer.appendChild(phaseControlDiv);
     
-    // タイマー開始
+ // タイマー開始
     let remainingTime = phaseTime;
     const timerDisplay = document.getElementById('phaseTimer');
     
-    const phaseTimer = setInterval(() => {
+    // 既存のタイマーがあれば停止
+    if (currentPhaseTimer) {
+      clearInterval(currentPhaseTimer);
+    }
+    
+    currentPhaseTimer = setInterval(() => {
       remainingTime--;
       if (timerDisplay) {
         timerDisplay.textContent = `残り時間: ${remainingTime}秒`;
       }
       
       if (remainingTime <= 0) {
-        clearInterval(phaseTimer);
+        clearInterval(currentPhaseTimer);
         console.log(`${phaseTitle}終了、次のフェーズへ移行します (${gameId})`);
         
         if (isStatusChange) {
@@ -184,9 +189,6 @@ function handleNightPhase(gameData) {
         }
       }
     }, 1000);
-    
-    // グローバル変数に保存して必要時に停止できるようにする
-    window.currentPhaseTimer = phaseTimer;
   }
 }
 
