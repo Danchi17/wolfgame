@@ -30,11 +30,45 @@ window.addPlayer = (player) => {
     window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
+// updateGameState関数を修正して、プレイヤー配列を正しくマージするようにする
 window.updateGameState = (newState) => {
-    gameState = { ...gameState, ...newState };
+    // 特別な処理が必要な配列プロパティを処理
+    const updatedPlayers = newState.players 
+        ? mergePlayersArrays(gameState.players || [], newState.players)
+        : gameState.players;
+    
+    // 新しい状態を元の状態とマージ
+    gameState = { 
+        ...gameState, 
+        ...newState,
+        // マージしたプレイヤー配列を使用（newStateに配列がある場合のみ）
+        players: updatedPlayers
+    };
+    
     console.log('Game state updated:', gameState);
     window.dispatchEvent(new Event('gameStateUpdated'));
 };
+
+// プレイヤー配列を重複なくマージする関数
+function mergePlayersArrays(currentPlayers, newPlayers) {
+    // プレイヤーIDをキーとして現在のプレイヤーのマップを作成
+    const playerMap = {};
+    currentPlayers.forEach(player => {
+        if (player && player.id) {
+            playerMap[player.id] = player;
+        }
+    });
+    
+    // 新しいプレイヤーでマップを更新（既存のプレイヤーは上書き）
+    newPlayers.forEach(player => {
+        if (player && player.id) {
+            playerMap[player.id] = player;
+        }
+    });
+    
+    // マップの値を配列に変換して返す
+    return Object.values(playerMap);
+}
 
 window.resetGameState = () => {
     gameState = {
