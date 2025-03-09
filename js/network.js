@@ -8,41 +8,47 @@ let connectionAttempts = 0;
 const MAX_CONNECTION_ATTEMPTS = 5;
 const CONNECTION_TIMEOUT = 30000; // 30秒
 let connectionTimer;
+let isConnecting = false;
 
 window.setupNetwork = () => {
     // PeerJSオプションの設定
     const peerOptions = {
         // クラウドサーバーを使用して安定した接続を確保
-        host: '0.peerjs.com',
-        secure: true,
-        port: 443,
-        path: '/',
+        // peerjs.comのデフォルトサーバーより安定しているstunサーバーを使用
         config: {
             'iceServers': [
                 { urls: 'stun:stun.l.google.com:19302' },
                 { urls: 'stun:stun1.l.google.com:19302' },
                 { urls: 'stun:stun2.l.google.com:19302' },
-                {
-                    urls: 'turn:numb.viagenie.ca',
-                    credential: 'muazkh',
-                    username: 'webrtc@live.com'
-                },
-                {
-                    urls: 'turn:relay.backups.cz',
-                    credential: 'webrtc',
-                    username: 'webrtc'
-                }
+                { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
             ]
         },
-        debug: 2  // デバッグレベルを2に下げる（少なめのログ）
+        debug: 1  // デバッグレベルを下げる
     };
 
     console.log('PeerJSを初期化中...');
+    initializePeer(peerOptions);
+    
+    return peer ? peer.id : null;
+};
+
+// PeerJSの初期化を行う関数（再接続用に分離）
+const initializePeer = (peerOptions) => {
+    // 既存のピアがある場合は破棄
+    if (peer) {
+        try {
+            peer.destroy();
+        } catch (e) {
+            console.log('前回のピア破棄中にエラー:', e);
+        }
+    }
+    
     peer = new Peer(window.generateId(), peerOptions);
     
     peer.on('open', (id) => {
         console.log('ピアIDを取得しました: ' + id);
         window.updateGameState({ currentPlayerId: id });
+        isConnecting = false;
     });
 
     peer.on('connection', (conn) => {
@@ -59,11 +65,17 @@ window.setupNetwork = () => {
         console.log('PeerJSサーバーから切断されました。再接続を試みます...');
         // 再接続を試みる
         setTimeout(() => {
-            peer.reconnect();
+            try {
+                if (peer.disconnected) {
+                    peer.reconnect();
+                }
+            } catch (e) {
+                console.error('再接続エラー:', e);
+                // 再初期化
+                initializePeer(peerOptions);
+            }
         }, 3000);
     });
-
-    return peer.id;
 };
 
 const setupConnection = (conn) => {
@@ -196,8 +208,35 @@ window.createGame = (playerName) => {
         return null;
     }
 
+    // 接続状態が不安定な場合は再初期化
+    if (!peer || !peer.open) {
+        const peerOptions = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+                ]
+            },
+            debug: 1
+        };
+        initializePeer(peerOptions);
+        
+        // PeerJSの接続が確立するまで少し待つ
+        alert('接続を初期化しています。少々お待ちください...');
+        setTimeout(() => {
+            continueCreateGame(playerName);
+        }, 2000);
+        return 'connecting...'; // 一時的な値を返す
+    } else {
+        return continueCreateGame(playerName);
+    }
+};
+
+const continueCreateGame = (playerName) => {
     isHost = true;
-    gameId = window.generateId();
+    gameId = peer.id; // 自身のIDをゲームIDとして使用
     
     const newPlayer = { id: peer.id, name: playerName, role: null, points: 0 };
     window.addPlayer(newPlayer);
@@ -217,14 +256,50 @@ window.joinGame = (gameId, playerName) => {
         return false;
     }
     
+    // 接続中フラグをチェック
+    if (isConnecting) {
+        alert('接続処理中です。しばらくお待ちください。');
+        return false;
+    }
+    
+    // PeerJSの接続状態をチェック
+    if (!peer || peer.destroyed || peer.disconnected) {
+        console.log('ピア接続が無効です。再初期化します。');
+        const peerOptions = {
+            config: {
+                'iceServers': [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+                ]
+            },
+            debug: 1
+        };
+        initializePeer(peerOptions);
+        
+        // 少し待ってから再試行
+        alert('接続を初期化しています。少々お待ちください...');
+        setTimeout(() => {
+            continueJoinGame(gameId, playerName);
+        }, 2000);
+        return true;
+    }
+    
+    return continueJoinGame(gameId, playerName);
+};
+
+const continueJoinGame = (gameId, playerName) => {
     console.log('ゲームに参加しています:', gameId, 'プレイヤー名:', playerName);
     connectionAttempts = 0;
+    isConnecting = true;
     attemptConnection(gameId, playerName);
     return true;
 };
 
 const attemptConnection = (gameId, playerName) => {
     if (connectionAttempts >= MAX_CONNECTION_ATTEMPTS) {
+        isConnecting = false;
         alert('接続を確立できませんでした。ゲームIDを確認して再試行してください。');
         return;
     }
@@ -238,6 +313,52 @@ const attemptConnection = (gameId, playerName) => {
             clearTimeout(connectionTimer);
         }
         
+        // ピアの状態をチェック
+        if (!peer || peer.destroyed) {
+            console.log('ピアが無効です。再初期化します。');
+            initializePeer({
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+                    ]
+                },
+                debug: 1
+            });
+            retryConnection(gameId, playerName);
+            return;
+        }
+        
+        if (peer.disconnected) {
+            console.log('ピアが切断されています。再接続します。');
+            try {
+                peer.reconnect();
+                // 再接続したら少し待ってから再試行
+                setTimeout(() => {
+                    retryConnection(gameId, playerName);
+                }, 2000);
+                return;
+            } catch (e) {
+                console.error('再接続エラー:', e);
+                // 再初期化
+                initializePeer({
+                    config: {
+                        'iceServers': [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' },
+                            { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+                        ]
+                    },
+                    debug: 1
+                });
+                retryConnection(gameId, playerName);
+                return;
+            }
+        }
+        
         // 新しい接続を作成
         console.log('ピアに接続しています:', gameId);
         const conn = peer.connect(gameId, { 
@@ -248,7 +369,7 @@ const attemptConnection = (gameId, playerName) => {
         // タイムアウト設定
         connectionTimer = setTimeout(() => {
             console.log('接続タイムアウト');
-            if (conn.open) conn.close();
+            if (conn && conn.open) conn.close();
             retryConnection(gameId, playerName);
         }, CONNECTION_TIMEOUT);
 
@@ -256,6 +377,7 @@ const attemptConnection = (gameId, playerName) => {
         conn.on('open', () => {
             clearTimeout(connectionTimer);
             console.log('ホストに接続しました。プレイヤー情報を送信します。');
+            isConnecting = false;
             
             // 接続の設定
             setupConnection(conn);
@@ -308,15 +430,37 @@ const handlePeerError = (error) => {
     
     // エラータイプに基づいてメッセージを表示
     if (error.type === 'network' || error.type === 'server-error') {
-        alert('ネットワークエラーが発生しました。ページをリロードして再接続してください。');
+        if (!isConnecting) {
+            alert('ネットワークエラーが発生しました。再接続を試みます。');
+            // 再初期化を試みる
+            setTimeout(() => {
+                initializePeer({
+                    config: {
+                        'iceServers': [
+                            { urls: 'stun:stun.l.google.com:19302' },
+                            { urls: 'stun:stun1.l.google.com:19302' },
+                            { urls: 'stun:stun2.l.google.com:19302' },
+                            { urls: 'turn:numb.viagenie.ca', credential: 'muazkh', username: 'webrtc@live.com' }
+                        ]
+                    },
+                    debug: 1
+                });
+            }, 2000);
+        }
     } else if (error.type === 'peer-unavailable') {
         // ゲームID不在エラー
         connectionAttempts = MAX_CONNECTION_ATTEMPTS; // これ以上再試行しない
+        isConnecting = false;
         alert('指定されたゲームIDが見つかりません。ゲームIDを確認して再試行してください。');
     } else if (error.type === 'browser-incompatible') {
         alert('お使いのブラウザはWebRTCに対応していません。Chrome、Firefox、またはEdgeの最新版をお試しください。');
+    } else if (error.type === 'disconnected') {
+        // 切断エラーは自動再接続を試みる
+        console.log('切断エラーが発生しました。再接続を試みます。');
     } else {
-        alert('エラーが発生しました: ' + (error.message || 'Unknown error'));
+        if (!isConnecting) {
+            alert('エラーが発生しました: ' + (error.message || 'Unknown error'));
+        }
     }
 };
 
@@ -359,10 +503,15 @@ window.debugConnections = () => {
     console.log('ゲームID:', gameId);
     console.log('ピアID:', peer ? peer.id : 'Not connected');
     console.log('接続数:', Object.keys(connections).length);
-    console.log('PeerJS接続状態:', peer ? peer.open : 'Not initialized');
+    console.log('PeerJS接続状態:', peer ? (peer.open ? 'オープン' : (peer.disconnected ? '切断' : '接続中')) : 'Not initialized');
     
     // 各接続の状態を表示
     Object.entries(connections).forEach(([id, conn]) => {
         console.log(`- 接続 ${id}: ${conn.open ? 'オープン' : '閉じられています'}`);
     });
 };
+
+// ページ読み込み時に接続状態をリセット
+window.addEventListener('beforeunload', () => {
+    isConnecting = false;
+});
