@@ -5,13 +5,14 @@ import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/1
 
 // Firebaseの設定
 const firebaseConfig = {
-  apiKey: "AIzaSyBGN2sXbblEZNqhwDCGsgmE2wiL34ZEY", // 画像2で確認したキー
+  apiKey: "AIzaSyBGN2sXbblEZNqhwDCGsgmE2wiL34ZEY",
   authDomain: "wolfgame-274sf.firebaseapp.com",
   projectId: "wolfgame-274sf",
-  databaseURL: "https://wolfgame-274sf-default-rtdb.firebaseio.com", // 新しく追加
+  databaseURL: "https://wolfgame-274sf-default-rtdb.asia-southeast1.firebasedatabase.app",
   storageBucket: "wolfgame-274sf.appspot.com",
   messagingSenderId: "883873633291",
-  appId: "1:883873633291:web:57f19afb2a69e40150f1ce"
+  appId: "1:883873633291:web:57f19afb2a69e40150f1ce",
+  measurementId: "G-0X81NW2924"
 };
 
 // Firebaseの初期化
