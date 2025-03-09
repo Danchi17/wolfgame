@@ -41,10 +41,11 @@ const initializePeer = (peerOptions) => {
     });
 
     peer.on('disconnected', () => {
-        console.log('PeerJSサーバーから切断されました。再接続を試みます...');
-        setTimeout(() => {
-    sendFullGameState(conn);
-}, 800);  // タイムアウトを長く設定
+    console.log('PeerJSサーバーから切断されました。再接続を試みます...');
+    setTimeout(() => {
+        peer.reconnect();
+    }, 1000);
+});
 
 const sendFullGameState = (conn) => {
     try {
