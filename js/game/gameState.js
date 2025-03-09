@@ -30,28 +30,52 @@ window.addPlayer = (player) => {
     window.dispatchEvent(new Event('gameStateUpdated'));
 };
 
-// updateGameState関数を修正して、プレイヤー配列を正しくマージするようにする
+// updateGameState関数を修正して、プレイヤー配列と重要な状態を正しくマージするように
 window.updateGameState = (newState) => {
     // デバッグログの追加
     console.log('updateGameState 呼び出し前の状態:', {...gameState});
     console.log('新しく適用する状態:', newState);
     
-    // 特別な処理が必要な配列プロパティを処理
+    // 特別な処理が必要な配列やオブジェクトを処理
     const updatedPlayers = newState.players 
         ? mergePlayersArrays(gameState.players || [], newState.players)
         : gameState.players;
+        
+    // assignedRoles、votes、actionsは単純に上書きするのではなく、マージする
+    const updatedAssignedRoles = newState.assignedRoles
+        ? { ...(gameState.assignedRoles || {}), ...newState.assignedRoles }
+        : gameState.assignedRoles;
+        
+    const updatedVotes = newState.votes
+        ? { ...(gameState.votes || {}), ...newState.votes }
+        : gameState.votes;
+        
+    const updatedActions = newState.actions
+        ? { ...(gameState.actions || {}), ...newState.actions }
+        : gameState.actions;
+    
+    // centerCardsは上書きする（ただし、newStateにcenterCardsがある場合のみ）
+    const updatedCenterCards = newState.centerCards || gameState.centerCards;
     
     // 新しい状態を元の状態とマージ
     gameState = { 
         ...gameState, 
         ...newState,
-        // マージしたプレイヤー配列を使用（newStateに配列がある場合のみ）
-        players: updatedPlayers
+        // マージしたプロパティを使用
+        players: updatedPlayers,
+        assignedRoles: updatedAssignedRoles,
+        votes: updatedVotes,
+        actions: updatedActions,
+        centerCards: updatedCenterCards
     };
     
     console.log('Game state updated:', gameState);
     console.log('更新後のプレイヤー:', gameState.players);
-    window.dispatchEvent(new Event('gameStateUpdated'));
+    try {
+        window.dispatchEvent(new Event('gameStateUpdated'));
+    } catch (e) {
+        console.error('gameStateUpdatedイベントのディスパッチに失敗:', e);
+    }
     return {...gameState}; // 更新された状態のコピーを返す
 };
 
