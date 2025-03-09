@@ -195,22 +195,20 @@ const handlePlayerJoined = (player, conn) => {
             `プレイヤー追加: 追加前=${currentState.players.length}人, ` +
             `追加後=${updatedState.players.length}人`
         );
+        console.log('現在のプレイヤー:', updatedState.players.map(p => p.name).join(', '));
         
-        // まず自分の状態を更新してから他のプレイヤーに伝える
-        broadcastGameState(updatedState);
-        
-        // 遅延を少し入れてから完全な状態を新しい接続に送信
+        // ブロードキャストする前にも少し待つ
         setTimeout(() => {
-            sendFullGameState(conn);
-        }, 500);
+            broadcastGameState(updatedState);
+        }, 300);
     } else {
         console.log('プレイヤーは既に参加しています:', player.name);
-        
-        // 既存プレイヤーの場合でも最新の状態を送信
-        setTimeout(() => {
-            sendFullGameState(conn);
-        }, 300);
     }
+    
+    // ★★★ ここを変更：タイムアウトを増やして常に状態を送信する ★★★
+    setTimeout(() => {
+        sendFullGameState(conn);
+    }, 800);
 };
 
 // ゲーム状態をブロードキャストする関数
