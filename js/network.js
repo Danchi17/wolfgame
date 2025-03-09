@@ -108,7 +108,11 @@ const setupConnection = (conn) => {
     
     if (connections[conn.peer]) {
         console.log('既存の接続を閉じます:', conn.peer);
-        connections[conn.peer].close();
+        try {
+            connections[conn.peer].close();
+        } catch (e) {
+            console.warn('既存の接続を閉じる際にエラーが発生しました:', e);
+        }
     }
     
     connections[conn.peer] = conn;
@@ -116,12 +120,26 @@ const setupConnection = (conn) => {
     conn.on('open', () => {
         console.log('接続が確立されました:', conn.peer);
         clearTimeout(connectionTimer);
+        isConnecting = false;
+        connectionAttempts = 0;
         
+        // 接続確立後、より長い遅延で状態を共有
         setTimeout(() => {
-            sendFullGameState(conn);
-        }, 500);
+            try {
+                sendFullGameState(conn);
+                console.log('初期状態を送信しました:', conn.peer);
+            } catch (e) {
+                console.error('初期状態の送信に失敗しました:', e);
+            }
+        }, 800);
         
-        conn.on('data', (data) => handleReceivedData(data, conn));
+        conn.on('data', (data) => {
+            try {
+                handleReceivedData(data, conn);
+            } catch (e) {
+                console.error('データ処理エラー:', e);
+            }
+        });
     });
     
     conn.on('close', () => {
