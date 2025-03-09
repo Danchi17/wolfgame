@@ -169,7 +169,7 @@ const handleReceivedData = (data, conn) => {
     }
 };
 
-// プレイヤー参加を処理する関数を修正
+// プレイヤー参加を処理する関数
 const handlePlayerJoined = (player, conn) => {
     if (!player || !player.id) {
         console.warn('無効なプレイヤーデータ:', player);
