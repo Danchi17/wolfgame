@@ -682,21 +682,11 @@ function startTimer(seconds, callback) {
   }, 1000);
 }
 
-function stopTimer() {
-  // 議論フェーズのタイマー停止
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
-  
-  // 夜フェーズのタイマー停止
-  if (currentPhaseTimer) {
-    clearInterval(currentPhaseTimer);
-    currentPhaseTimer = null;
-  }
-}
+// タイマー関連の変数
+let timerInterval;
+let currentPhaseTimer;
 
-// タイマー停止関数（複数タイプのタイマーに対応）
+// タイマー停止関数（すべてのタイマーに対応）
 function stopTimer() {
   // 議論フェーズのタイマー停止
   if (timerInterval) {
@@ -708,6 +698,12 @@ function stopTimer() {
   if (window.currentPhaseTimer) {
     clearInterval(window.currentPhaseTimer);
     window.currentPhaseTimer = null;
+  }
+  
+  // 他のタイマーがある場合はこちらも対応
+  if (currentPhaseTimer) {
+    clearInterval(currentPhaseTimer);
+    currentPhaseTimer = null;
   }
 }
 // ゲームIDの取得
