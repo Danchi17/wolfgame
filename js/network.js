@@ -399,14 +399,59 @@ const handlePlayerJoined = (player, conn) => {
         );
         console.log('現在のプレイヤー:', updatedState.players.map(p => p.name).join(', '));
         
-        // すべての接続に対して完全な状態を送信
-        Object.values(connections).forEach(otherConn => {
-            if (otherConn && otherConn.open && otherConn !== conn) {
-                setTimeout(() => {
-                    sendFullGameState(otherConn);
-                }, 300);
-            }
-        });
+        // ディレイを入れて全接続に強制的にプレイヤーリストを送信
+        setTimeout(() => {
+            Object.values(connections).forEach(otherConn => {
+                if (otherConn && otherConn.open) {
+                    try {
+                        console.log(`接続先にプレイヤーリストを強制送信: ${otherConn.peer}`);
+                        otherConn.send({
+                            type: 'forcePlayersList',
+                            players: updatedState.players
+                        });
+                    } catch (e) {
+                        console.error('プレイヤーリスト送信エラー:', e);
+                    }
+                }
+            });
+        }, 500);
+        
+        // さらに遅延して完全な状態を送信
+        setTimeout(() => {
+            Object.values(connections).forEach(otherConn => {
+                if (otherConn && otherConn.open) {
+                    try {
+                        sendFullGameState(otherConn);
+                    } catch (e) {
+                        console.error('状態送信エラー:', e);
+                    }
+                }
+            });
+        }, 1000);
+    } else {
+        console.log('プレイヤーは既に参加しています:', player.name);
+        // プレイヤー情報を更新
+        const updatedPlayers = [...currentState.players];
+        updatedPlayers[existingPlayerIndex] = player;
+        window.updateGameState({ players: updatedPlayers });
+        
+        // 更新されたプレイヤー情報を全員に配信
+        setTimeout(() => {
+            Object.values(connections).forEach(otherConn => {
+                if (otherConn && otherConn.open) {
+                    try {
+                        otherConn.send({
+                            type: 'forcePlayersList',
+                            players: updatedPlayers
+                        });
+                    } catch (e) {
+                        console.error('更新プレイヤーリスト送信エラー:', e);
+                    }
+                }
+            });
+        }, 300);
+    }
+};
         
         // ホストの場合、遅延してから状態を再送信
         if (isHost) {
