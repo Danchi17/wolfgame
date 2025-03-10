@@ -499,6 +499,8 @@ function updatePlayerPoints(gameData) {
 
 // 次のゲームのリセット
 function resetGame(gameId) {
+  console.log(`リセット処理を開始: ゲームID=${gameId}`);
+  
   // ゲーム終了条件の確認
   const anyPlayerLost = Object.values(currentGame.players).some(player => player.points <= 0);
   
@@ -506,24 +508,34 @@ function resetGame(gameId) {
     // ゲーム終了処理
     showGameOver();
   } else {
-    // 次のゲームへリセット
-    const resetData = {
-      status: 'waiting',
-      current_phase: null,
-      field_cards: [],
-      votes: {},
-      executed_players: null,
-      winning_team: null,
-      points_updated: false // 持ち点更新フラグをリセット
-    };
-    
     // プレイヤーの準備状態をリセット
+    const resetData = {};
+    
+    // ベースとなるゲーム状態のリセット
+    resetData.status = 'waiting';
+    resetData.current_phase = null;
+    resetData.field_cards = [];
+    resetData.votes = {};
+    resetData.executed_players = null;
+    resetData.winning_team = null;
+    resetData.points_updated = false; // 持ち点更新フラグをリセット
+    
+    // プレイヤーごとのデータリセット
     Object.keys(currentGame.players).forEach(id => {
       resetData[`players/${id}/role`] = null;
       resetData[`players/${id}/ready`] = false;
     });
     
-    update(ref(db, `games/${gameId}`), resetData);
+    // 一度にすべての更新を送信
+    console.log('ゲーム状態をリセットします');
+    update(ref(db, `games/${gameId}`), resetData)
+      .then(() => {
+        console.log('ゲーム状態のリセットが完了しました');
+      })
+      .catch(error => {
+        console.error('リセットエラー:', error);
+        alert('次のゲームへの移行に失敗しました。ページを再読み込みしてください。');
+      });
   }
 }
 
