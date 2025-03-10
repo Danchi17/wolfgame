@@ -555,6 +555,481 @@ function reportAsWerewolf(gameId, reportedId) {
   });
 }
 
+// 全プレイヤーの投票確認
+async function checkAllVoted(gameId) {
+  const gameRef = ref(db, `games/${gameId}`);
+  const snapshot = await get(gameRef);
+  const gameData = snapshot.val();
+  
+  if (!gameData) return;
+  
+  const playerCount = Object.keys(gameData.players).length;
+  const voteCount = Object.keys(gameData.votes || {}).length;
+  
+  // 全員投票したら結果フェーズへ
+  if (voteCount >= playerCount && currentPlayer.data.isHost) {
+    // 票の集計（村長の2票を考慮）
+    const votes = {};
+    let totalVotes = 0;
+    
+    Object.entries(gameData.votes || {}).forEach(([voterId, vote]) => {
+      const voteValue = vote.value || 1; // 指定がなければ1票とする
+      votes[vote.target] = (votes[vote.target] || 0) + voteValue;
+      totalVotes += voteValue;
+    });
+    
+    // 最多票のプレイヤーを特定
+    let maxVote = 0;
+    let executedPlayers = [];
+    
+    Object.entries(votes).forEach(([playerId, count]) => {
+      if (count > maxVote) {
+        maxVote = count;
+        executedPlayers = [playerId];
+      } else if (count === maxVote) {
+        executedPlayers.push(playerId);
+      }
+    });
+    
+    // 特殊勝利条件チェック
+    let winningTeam = null;
+    let specialVictory = null;
+    
+    // 蛇女の同数投票特殊勝利チェック
+    const hasSnakeWoman = executedPlayers.some(id => {
+      const player = gameData.players[id];
+      return player && player.role && player.role.name === '蛇女';
+    });
+    
+    if (hasSnakeWoman && executedPlayers.length > 1) {
+      // 蛇女の単独勝利
+      specialVictory = 'snake_woman';
+      
+      // 蛇女のプレイヤーIDを取得
+      const snakeWomanId = executedPlayers.find(id => {
+        const player = gameData.players[id];
+        return player && player.role && player.role.name === '蛇女';
+      });
+      
+      winningTeam = 'snake_woman';
+      executedPlayers = [snakeWomanId]; // 蛇女のみが処刑される
+    } else {
+      // 大熊の特殊勝利チェック
+      const bigBearExecuted = executedPlayers.some(id => {
+        const player = gameData.players[id];
+        return player && player.role && player.role.name === '大熊';
+      });
+      
+      if (bigBearExecuted) {
+        // 人狼陣営の数をカウント
+        let werewolfCount = 0;
+        Object.values(gameData.players).forEach(player => {
+          if (player.role && player.role.team === 'werewolf') {
+            werewolfCount++;
+          }
+        });
+        
+        const playerCount = Object.keys(gameData.players).length;
+        
+        // 人狼陣営が過半数なら強制勝利
+        if (werewolfCount > playerCount / 2) {
+          specialVictory = 'big_bear';
+          winningTeam = 'werewolf';
+        }
+      }
+      
+      // スパイ通報チェック
+      if (gameData.spy_report) {
+        const spyReport = gameData.spy_report;
+        if (spyReport.is_correct) {
+          // 通報が正しい場合、市民陣営強制敗北
+          specialVictory = 'spy_reported';
+          winningTeam = 'werewolf';
+        }
+      }
+      
+      // 博識な子犬の正解チェック
+      if (gameData.puppy_guessed_correct) {
+        specialVictory = 'puppy_correct';
+        winningTeam = 'werewolf';
+      }
+      
+      // 通常の勝敗判定（特殊勝利がない場合）
+      if (!winningTeam) {
+        let werewolfExecuted = false;
+        executedPlayers.forEach(id => {
+          if (isWerewolfTeam(gameData.players[id].role)) {
+            werewolfExecuted = true;
+          }
+        });
+        
+        winningTeam = werewolfExecuted ? 'village' : 'werewolf';
+      }
+    }
+    
+    // 結果更新
+    update(ref(db, `games/${gameId}`), {
+      status: 'result',
+      executed_players: executedPlayers,
+      winning_team: winningTeam,
+      special_victory: specialVictory,
+      points_updated: false // 持ち点更新フラグをリセット
+    });
+  }
+}
+
+// 結果フェーズの処理
+function handleResultPhase(gameData) {
+  // 勝敗結果表示
+  const gameContainer = document.getElementById('gameStatus');
+  
+  const executedPlayers = gameData.executed_players || [];
+  const executedNames = executedPlayers.map(id => gameData.players[id].name).join('、');
+  
+  // 投票情報の整理
+  let voteInfo = '<h4>投票結果:</h4><ul>';
+  if (gameData.votes) {
+    Object.entries(gameData.votes).forEach(([voterId, voteData]) => {
+      const voterName = gameData.players[voterId]?.name || '不明';
+      const targetName = gameData.players[voteData.target]?.name || '不明';
+      const voteValue = voteData.value || 1;
+      voteInfo += `<li>${voterName} → ${targetName} (${voteValue}票)</li>`;
+    });
+  }
+  voteInfo += '</ul>';
+  
+  // 役職交換情報の表示（怪盗が役職交換した場合）
+  let exchangeInfo = '';
+  if (gameData.role_exchanges) {
+    const thiefName = gameData.players[gameData.role_exchanges.thief_id]?.name || '不明';
+    const targetName = gameData.players[gameData.role_exchanges.target_id]?.name || '不明';
+    exchangeInfo = `
+      <div class="role-exchange-info">
+        <h4>役職交換情報:</h4>
+        <p>怪盗 ${thiefName} が ${targetName} の役職「${gameData.role_exchanges.target_role}」を盗みました。</p>
+      </div>
+    `;
+  }
+  
+  // 特殊勝利情報
+  let specialVictoryInfo = '';
+  if (gameData.special_victory) {
+    switch (gameData.special_victory) {
+      case 'snake_woman':
+        specialVictoryInfo = '<p class="special-victory">蛇女の同数投票による単独勝利！</p>';
+        break;
+      case 'big_bear':
+        specialVictoryInfo = '<p class="special-victory">大熊処刑時の人狼陣営過半数による強制勝利！</p>';
+        break;
+      case 'spy_reported':
+        const spyName = gameData.players[gameData.spy_report.reporter]?.name || '不明';
+        const reportedName = gameData.players[gameData.spy_report.reported]?.name || '不明';
+        specialVictoryInfo = `<p class="special-victory">スパイ(${spyName})が人狼(${reportedName})を正しく通報しました！市民陣営強制敗北！</p>`;
+        break;
+      case 'puppy_correct':
+        // 推測した博識な子犬を特定
+        const puppyId = Object.keys(gameData.players).find(id => {
+          const player = gameData.players[id];
+          return player.role && player.role.name === '博識な子犬';
+        });
+        const puppyName = gameData.players[puppyId]?.name || '不明';
+        specialVictoryInfo = `<p class="special-victory">博識な子犬(${puppyName})が正しく役職を推測しました！人狼陣営勝利！</p>`;
+        break;
+    }
+  }
+  
+  // スパイ通報失敗情報
+  let spyReportFailInfo = '';
+  if (gameData.spy_report && !gameData.spy_report.is_correct) {
+    const spyName = gameData.players[gameData.spy_report.reporter]?.name || '不明';
+    const reportedName = gameData.players[gameData.spy_report.reported]?.name || '不明';
+    spyReportFailInfo = `<p class="spy-report-fail">スパイ(${spyName})は誤って${reportedName}を人狼と通報しました。スパイの持ち点が追加で2点減少します。</p>`;
+  }
+  
+  gameContainer.innerHTML = `
+    <h3>ゲーム結果</h3>
+    <p>処刑されたプレイヤー: ${executedNames}</p>
+    ${specialVictoryInfo}
+    <p class="result-text">${gameData.winning_team === 'village' ? '市民陣営' : 
+                             gameData.winning_team === 'snake_woman' ? '蛇女の単独' : '人狼陣営'}の勝利です！</p>
+    
+    ${spyReportFailInfo}
+    
+    <div class="votes-container">
+      ${voteInfo}
+    </div>
+    
+    ${exchangeInfo}
+    
+    <div class="all-roles">
+      <h4>全プレイヤーの役職:</h4>
+      <ul>
+        ${Object.entries(gameData.players).map(([id, player]) => {
+          return `<li>${player.name}: ${player.role ? player.role.name : '役職なし'} (${player.role ? (player.role.team === 'village' ? '市民陣営' : '人狼陣営') : ''})</li>`;
+        }).join('')}
+      </ul>
+    </div>
+    
+    <div class="field-cards-reveal">
+      <h4>場札:</h4>
+      <ul>
+        ${(gameData.field_cards || []).map((card, index) => {
+          return `<li>場札${index + 1}: ${card.name} (${card.team === 'village' ? '市民陣営' : '人狼陣営'})</li>`;
+        }).join('')}
+      </ul>
+    </div>
+    
+    ${currentPlayer.data.isHost ? `
+      <button id="nextGameBtn" class="btn primary">次のゲームへ</button>
+    ` : ''}
+  `;
+  
+  // 次のゲームボタン
+  if (currentPlayer.data.isHost) {
+    document.getElementById('nextGameBtn').addEventListener('click', () => {
+      resetGame(gameData.id || getGameId(gameData));
+    });
+  }
+  
+  // 持ち点の更新と無法者の役職交換処理
+  updatePlayerPoints(gameData);
+}
+
+// 持ち点の更新
+function updatePlayerPoints(gameData) {
+  const gameId = gameData.id || getGameId(gameData);
+  const winningTeam = gameData.winning_team;
+  
+  if (!winningTeam) return;
+  
+  // 既に更新済みかどうかを確認
+  if (gameData.points_updated) {
+    console.log('持ち点は既に更新済みです');
+    return;
+  }
+  
+  const updates = {};
+  
+  // 敗北チームのプレイヤー持ち点を減らす
+  Object.entries(gameData.players).forEach(([id, player]) => {
+    // 蛇女特殊勝利の場合
+    if (winningTeam === 'snake_woman') {
+      // 蛇女以外の全員が敗北
+      if (!(player.role && player.role.name === '蛇女')) {
+        const newPoints = player.points - player.role.cost;
+        updates[`players/${id}/points`] = newPoints;
+      }
+    } 
+    // 通常の勝敗
+    else if (player.role && player.role.team !== winningTeam) {
+      const newPoints = player.points - player.role.cost;
+      updates[`players/${id}/points`] = newPoints;
+    }
+  });
+  
+  // スパイ通報失敗の場合、追加で2点減少
+  if (gameData.spy_report && !gameData.spy_report.is_correct) {
+    const spyId = gameData.spy_report.reporter;
+    const spyPlayer = gameData.players[spyId];
+    const currentPoints = updates[`players/${spyId}/points`] || spyPlayer.points;
+    updates[`players/${spyId}/points`] = currentPoints - 2;
+  }
+  
+  // 無法者の役職交換処理
+  const outlawPlayers = Object.entries(gameData.players).filter(([id, player]) => 
+    player.role && player.role.name === '無法者' && player.role.team !== winningTeam
+  );
+  
+  if (outlawPlayers.length > 0) {
+    // 無法者が敗北した場合、ランダムに他のプレイヤーと役職交換
+    outlawPlayers.forEach(([outlawId, outlawPlayer]) => {
+      // 自分以外のプレイヤーから1人をランダムに選択
+      const otherPlayers = Object.entries(gameData.players).filter(([id]) => id !== outlawId);
+      
+      if (otherPlayers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * otherPlayers.length);
+        const [targetId, targetPlayer] = otherPlayers[randomIndex];
+        
+        // 役職交換の情報を記録
+        updates[`outlaw_exchanges`] = updates[`outlaw_exchanges`] || {};
+        updates[`outlaw_exchanges`][outlawId] = {
+          target_id: targetId,
+          original_outlaw_role: outlawPlayer.role.name,
+          target_role: targetPlayer.role.name
+        };
+        
+        // 持ち点調整（交換した役職のコスト差分を調整）
+        const outlawCost = outlawPlayer.role.cost;
+        const targetCost = targetPlayer.role.cost;
+        
+        // 既に計算されている持ち点を取得
+        const outlawPoints = updates[`players/${outlawId}/points`] || outlawPlayer.points;
+        const targetPoints = updates[`players/${targetId}/points`] || targetPlayer.points;
+        
+        // コスト差分を調整
+        updates[`players/${outlawId}/points`] = outlawPoints + (outlawCost - targetCost);
+        updates[`players/${targetId}/points`] = targetPoints + (targetCost - outlawCost);
+        
+        // アラートでプレイヤーに通知
+        if (currentPlayer.id === outlawId) {
+          setTimeout(() => {
+            alert(`無法者の能力が発動しました！あなたは${targetPlayer.name}と役職を交換し、「${targetPlayer.role.name}」になりました。`);
+          }, 1000);
+        } else if (currentPlayer.id === targetId) {
+          setTimeout(() => {
+            alert(`無法者の能力が発動しました！あなたは${outlawPlayer.name}と役職を交換し、「無法者」になりました。`);
+          }, 1000);
+        }
+      }
+    });
+  }
+  
+  // 更新済みフラグを設定
+  updates.points_updated = true;
+  
+  // 更新実行
+  if (Object.keys(updates).length > 0) {
+    console.log('持ち点を更新します');
+    update(ref(db, `games/${gameId}`), updates);
+  }
+}
+
+// 次のゲームのリセット
+function resetGame(gameId) {
+  console.log(`リセット処理を開始: ゲームID=${gameId}`);
+  
+  // ゲーム終了条件の確認
+  const anyPlayerLost = Object.values(currentGame.players).some(player => player.points <= 0);
+  
+  if (anyPlayerLost) {
+    // ゲーム終了処理
+    showGameOver();
+  } else {
+    // プレイヤーの準備状態をリセット
+    const resetData = {};
+    
+    // ベースとなるゲーム状態のリセット
+    resetData.status = 'waiting';
+    resetData.current_phase = null;
+    resetData.field_cards = [];
+    resetData.votes = {};
+    resetData.executed_players = null;
+    resetData.winning_team = null;
+    resetData.points_updated = false;
+    resetData.role_exchanges = null;
+    resetData.outlaw_exchanges = null;
+    resetData.forced_vote_target = null;
+    resetData.forced_vote_by = null;
+    resetData.spy_report = null;
+    resetData.puppy_guessed_correct = null;
+    resetData.special_victory = null;
+    
+    // プレイヤーごとのデータリセット
+    Object.keys(currentGame.players).forEach(id => {
+      resetData[`players/${id}/role`] = null;
+      resetData[`players/${id}/ready`] = false;
+    });
+    
+    // 一度にすべての更新を送信
+    console.log('ゲーム状態をリセットします');
+    update(ref(db, `games/${gameId}`), resetData)
+      .then(() => {
+        console.log('ゲーム状態のリセットが完了しました');
+      })
+      .catch(error => {
+        console.error('リセットエラー:', error);
+        alert('次のゲームへの移行に失敗しました。ページを再読み込みしてください。');
+      });
+  }
+}
+
+// ゲーム終了表示
+function showGameOver() {
+  // プレイヤーを持ち点順にソート
+  const sortedPlayers = Object.entries(currentGame.players)
+    .map(([id, data]) => ({ id, ...data }))
+    .sort((a, b) => b.points - a.points);
+  
+  const gameContainer = document.getElementById('gameStatus');
+  gameContainer.innerHTML = `
+    <h3>ゲーム終了</h3>
+    <p>いずれかのプレイヤーの持ち点が0以下になりました。</p>
+    
+    <div class="final-ranking">
+      <h4>最終ランキング:</h4>
+      <ol>
+        ${sortedPlayers.map(player => `
+          <li>${player.name}: ${player.points}点</li>
+        `).join('')}
+      </ol>
+    </div>
+    
+    <p>勝者: ${sortedPlayers[0].name}!</p>
+    <button id="returnHomeBtn" class="btn primary">ホームに戻る</button>
+  `;
+  
+  document.getElementById('returnHomeBtn').addEventListener('click', () => {
+    window.location.reload();
+  });
+}
+
+// 占い師UIの表示
+function showSeerUI(gameData) {
+  const role = currentPlayer.data.role;
+  if (!role) return;
+  
+  // 占い系の役職の場合のみUI表示
+  if (role.name === '占い師' || role.name === '占い師の弟子' || role.name === '占い人狼') {
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>占いフェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>占う対象を選択してください:</p>
+      <div class="action-targets">
+        ${role.name === '占い師' || role.name === '占い人狼' ? 
+          `<button id="checkFieldCards" class="btn action">場札を占う</button>` : ''}
+        <div class="player-targets">
+          ${Object.entries(gameData.players).map(([id, player]) => {
+            if (id !== currentPlayer.id) {
+              return `<button class="btn player-target" data-id="${id}">${player.name}を占う</button>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      </div>
+    `;
+    
+    // 場札占いボタンのイベント
+    setTimeout(() => {
+      const checkFieldBtn = document.getElementById('checkFieldCards');
+      if (checkFieldBtn) {
+        checkFieldBtn.addEventListener('click', () => {
+          // 場札確認表示
+          const fieldCards = gameData.field_cards || [];
+          alert(`場札の役職:\n1枚目: ${fieldCards[0].name}\n2枚目: ${fieldCards[1].name}`);
+        });
+      }
+      
+      // プレイヤー占いボタンのイベント
+      document.querySelectorAll('.player-target').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const targetId = e.target.dataset.id;
+          const targetPlayer = gameData.players[targetId];
+          alert(`${targetPlayer.name}の役職: ${targetPlayer.role.name}`);
+        });
+      });
+    }, 100); // DOMが確実に更新された後にイベントをバインド
+  } else {
+    // 占い系役職でない場合
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>占いフェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>占い系の役職のプレイヤーがいれば、能力を使用しています。</p>
+    `;
+  }
+}
+
 // 人狼UIの表示
 function showWerewolfUI(gameData) {
   const role = currentPlayer.data.role;
@@ -638,3 +1113,106 @@ function showWerewolfUI(gameData) {
     `;
   }
 }
+
+// 怪盗UIの表示
+function showThiefUI(gameData) {
+  const role = currentPlayer.data.role;
+  if (!role) return;
+  
+  // 怪盗役職の場合のみUI表示
+  if (role.name === '怪盗') {
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>怪盗フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>役職を交換するプレイヤーを選択するか、交換しないを選べます:</p>
+      <div class="action-targets">
+        <button id="noExchangeBtn" class="btn action">交換しない</button>
+        <div class="player-targets">
+          ${Object.entries(gameData.players).map(([id, player]) => {
+            if (id !== currentPlayer.id) {
+              return `<button class="btn player-target" data-id="${id}">${player.name}と交換する</button>`;
+            }
+            return '';
+          }).join('')}
+        </div>
+      </div>
+    `;
+    
+    // 交換しないボタンのイベント
+    document.getElementById('noExchangeBtn').addEventListener('click', () => {
+      alert('役職の交換をしませんでした。');
+    });
+    
+    // 役職交換ボタンのイベント
+    document.querySelectorAll('.player-target').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const targetId = e.target.dataset.id;
+        const targetPlayer = gameData.players[targetId];
+        
+        // 自分の画面だけに表示（相手には通知しない）
+        alert(`${targetPlayer.name}との役職交換: あなたは「${targetPlayer.role.name}」になりました！`);
+        
+        // 役職交換情報を記録する（実際の役職は交換するが、交換情報も保持）
+        exchangeRoles(gameData.id || getGameId(gameData), currentPlayer.id, targetId);
+      });
+    });
+  } else {
+    // 怪盗役職でない場合
+    const gameContainer = document.getElementById('gameStatus');
+    gameContainer.innerHTML = `
+      <h3>怪盗フェーズ</h3>
+      <p>あなたの役職: ${role.name}</p>
+      <p>怪盗がいれば、他のプレイヤーと役職を交換している可能性があります。</p>
+    `;
+  }
+}
+
+// フェーズの更新
+function updateGamePhase(gameId, phase) {
+  return update(ref(db, `games/${gameId}`), {
+    current_phase: phase
+  });
+}
+
+// ゲームIDの取得
+function getGameId(gameData) {
+  // gameDataに追加されたgameIdプロパティを使用
+  if (gameData.gameId) {
+    return gameData.gameId;
+  }
+  
+  console.error('gameDataにgameIdがありません', gameData);
+  return null; // IDが見つからない場合
+}
+
+// 役職交換処理の関数を追加
+function exchangeRoles(gameId, playerId1, playerId2) {
+  const updates = {};
+  
+  // Firebaseで役職を交換
+  const gameRef = ref(db, `games/${gameId}`);
+  get(gameRef).then((snapshot) => {
+    const gameData = snapshot.val();
+    if (!gameData) return;
+    
+    const role1 = gameData.players[playerId1].role;
+    const role2 = gameData.players[playerId2].role;
+    
+    // 役職の交換
+    updates[`players/${playerId1}/role`] = role2;
+    updates[`players/${playerId2}/role`] = role1;
+    
+    // 役職交換の情報を保存（結果フェーズで使用）
+    updates[`role_exchanges`] = {
+      thief_id: playerId1,
+      target_id: playerId2,
+      original_thief_role: role1.name,
+      target_role: role2.name
+    };
+    
+    update(ref(db, `games/${gameId}`), updates);
+  });
+}
+
+export { initGame, startGame, handlePhase };
