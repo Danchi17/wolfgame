@@ -82,7 +82,8 @@ async function createGame(hostName, hostIcon) {
       duration: 180,
       start_time: null
     },
-    votes: {}
+    votes: {},
+    points_updated: false
   };
 
   await set(gameRef, gameData);
@@ -116,7 +117,7 @@ async function joinGame(gameId, playerName, playerIcon) {
 // ゲームの状態をリスニング
 function listenGameState(gameId, callback) {
   const gameRef = ref(db, `games/${gameId}`);
-  return onValue(gameRef, (snapshot) => {
+  const unsubscribe = onValue(gameRef, (snapshot) => {
     const gameData = snapshot.val();
     if (gameData) {
       callback(gameData);
@@ -124,6 +125,9 @@ function listenGameState(gameId, callback) {
       callback(null);
     }
   });
+  
+  // リスナーの解除関数を返す
+  return unsubscribe;
 }
 
 // プレイヤーの準備状態を更新
