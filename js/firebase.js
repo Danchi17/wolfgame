@@ -83,7 +83,12 @@ async function createGame(hostName, hostIcon) {
       start_time: null
     },
     votes: {},
-    points_updated: false
+    points_updated: false,
+    forced_vote_target: null,
+    forced_vote_by: null,
+    spy_report: null,
+    puppy_guessed_correct: null,
+    special_victory: null
   };
 
   await set(gameRef, gameData);
