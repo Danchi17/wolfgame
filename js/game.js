@@ -420,7 +420,8 @@ async function checkAllVoted(gameId) {
     update(ref(db, `games/${gameId}`), {
       status: 'result',
       executed_players: executedPlayers,
-      winning_team: werewolfExecuted ? 'village' : 'werewolf'
+      winning_team: werewolfExecuted ? 'village' : 'werewolf',
+      points_updated: false // 持ち点更新フラグをリセット
     });
   }
 }
@@ -470,6 +471,12 @@ function updatePlayerPoints(gameData) {
   
   if (!winningTeam) return;
   
+  // 既に更新済みかどうかを確認
+  if (gameData.points_updated) {
+    console.log('持ち点は既に更新済みです');
+    return;
+  }
+  
   const updates = {};
   
   // 敗北チームのプレイヤー持ち点を減らす
@@ -480,8 +487,12 @@ function updatePlayerPoints(gameData) {
     }
   });
   
+  // 更新済みフラグを設定
+  updates.points_updated = true;
+  
   // 更新実行
   if (Object.keys(updates).length > 0) {
+    console.log('持ち点を更新します');
     update(ref(db, `games/${gameId}`), updates);
   }
 }
@@ -502,7 +513,8 @@ function resetGame(gameId) {
       field_cards: [],
       votes: {},
       executed_players: null,
-      winning_team: null
+      winning_team: null,
+      points_updated: false // 持ち点更新フラグをリセット
     };
     
     // プレイヤーの準備状態をリセット
