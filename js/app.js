@@ -1,5 +1,5 @@
 // js/app.js
-import { auth, signInAnonymouslyAuth, createGame, joinGame, listenGameState, updatePlayerReady } from './firebase.js';
+import { auth, signInAnonymouslyAuth, createGame, joinGame, listenGameState, updatePlayerReady, leaveGame } from './firebase.js';
 import { initGame, startGame, handlePhase } from './game.js';
 
 // 利用可能なアイコン（仮）
@@ -133,13 +133,14 @@ function enterGameRoom(gameId) {
   `;
   
   // ゲーム状態リスニング
-  listenGameState(gameId, (gameData) => {
+  const unsubscribe = listenGameState(gameId, (gameData) => {
     if (!gameData) {
       alert('ゲームが見つかりません');
       showHomeScreen();
       return;
     }
     
+    // ゲームデータに重要な変更があった場合、UIを更新
     updateGameUI(gameData, gameId);
   });
   
@@ -153,17 +154,27 @@ function enterGameRoom(gameId) {
   // 退出ボタン
   document.getElementById('leaveBtn').addEventListener('click', () => {
     // ゲーム退出処理
+    if (auth.currentUser) {
+      leaveGame(gameId, auth.currentUser.uid);
+    }
     showHomeScreen();
   });
 }
 
 // ゲームUI更新
 function updateGameUI(gameData, gameId) {
+  console.log(`UIを更新: ゲーム状態=${gameData.status}`);
+  
   // ゲームIDをgameDataに追加
   gameData.gameId = gameId;
   
   const currentUserId = auth.currentUser.uid;
   const currentPlayer = gameData.players[currentUserId];
+  
+  if (!currentPlayer) {
+    console.error('現在のプレイヤーがゲームに参加していません');
+    return;
+  }
   
   // プレイヤー表示の更新
   const playersContainer = document.getElementById('playersContainer');
@@ -186,9 +197,11 @@ function updateGameUI(gameData, gameId) {
     playersContainer.appendChild(playerElement);
   });
   
-  // 自分の手札表示
+  // 自分の手札表示（役職があるときのみ）
+  const playerHand = document.getElementById('playerHand');
+  playerHand.innerHTML = ''; // 一旦クリア
+  
   if (currentPlayer.role) {
-    const playerHand = document.getElementById('playerHand');
     playerHand.innerHTML = `
       <div class="card my-role">
         <div class="role-name">${currentPlayer.role.name}</div>
@@ -209,36 +222,55 @@ function updateGameUI(gameData, gameId) {
     readyBtn.classList.remove('active');
   }
   
-  // ホストプレイヤーの場合、開始ボタンを表示
-  if (currentPlayer.isHost && gameData.status === 'waiting') {
-    // すべてのプレイヤーが準備完了しているか確認
-    const allReady = Object.values(gameData.players).every(player => player.ready);
-    const playerCount = Object.keys(gameData.players).length;
+  // ゲーム状態に基づいたUI更新
+  if (gameData.status === 'waiting') {
+    // 待機状態の場合
+    document.getElementById('gameStatus').innerHTML = 'ゲーム開始を待っています...';
     
-    // ゲーム開始ボタンの追加（または更新）
-    let startBtn = document.getElementById('startGameBtn');
-    
-    if (!startBtn) {
-      startBtn = document.createElement('button');
-      startBtn.id = 'startGameBtn';
-      startBtn.className = 'btn primary';
-      startBtn.textContent = 'ゲーム開始';
-      
-      document.querySelector('.game-controls').prepend(startBtn);
-      
-      startBtn.addEventListener('click', () => {
-        startGame(gameId);
-      });
+    // ホストプレイヤーの場合、開始ボタンを表示
+    if (currentPlayer.isHost) {
+      showStartGameButton(gameData);
+    } else {
+      // ホストでない場合、開始ボタンが残っていれば削除
+      const startBtn = document.getElementById('startGameBtn');
+      if (startBtn) {
+        startBtn.remove();
+      }
     }
-    
-    // 4人以上かつ全員準備完了している場合のみ有効
-    startBtn.disabled = !(playerCount >= 4 && allReady);
-  }
-  
-  // ゲーム状態に応じた表示更新
-  if (gameData.status !== 'waiting') {
+  } else {
+    // ゲーム中の場合
     initGame(gameData, currentUserId);
     handlePhase(gameData.status, gameData);
   }
 }
+
+// ゲーム開始ボタンの表示
+function showStartGameButton(gameData) {
+  // すべてのプレイヤーが準備完了しているか確認
+  const allReady = Object.values(gameData.players).every(player => player.ready);
+  const playerCount = Object.keys(gameData.players).length;
+  
+  // ゲーム開始ボタンの追加（または更新）
+  let startBtn = document.getElementById('startGameBtn');
+  
+  if (!startBtn) {
+    const gameControls = document.querySelector('.game-controls');
+    if (!gameControls) return;
+    
+    startBtn = document.createElement('button');
+    startBtn.id = 'startGameBtn';
+    startBtn.className = 'btn primary';
+    startBtn.textContent = 'ゲーム開始';
+    
+    gameControls.prepend(startBtn);
+    
+    startBtn.addEventListener('click', () => {
+      startGame(gameData.gameId);
+    });
+  }
+  
+  // 4人以上かつ全員準備完了している場合のみ有効
+  startBtn.disabled = !(playerCount >= 4 && allReady);
+}
+
 export { showHomeScreen };
