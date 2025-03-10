@@ -434,10 +434,40 @@ function handleResultPhase(gameData) {
   const executedPlayers = gameData.executed_players || [];
   const executedNames = executedPlayers.map(id => gameData.players[id].name).join('、');
   
+  // 投票情報の整理
+  let voteInfo = '<h4>投票結果:</h4><ul>';
+  if (gameData.votes) {
+    Object.entries(gameData.votes).forEach(([voterId, voteData]) => {
+      const voterName = gameData.players[voterId]?.name || '不明';
+      const targetName = gameData.players[voteData.target]?.name || '不明';
+      voteInfo += `<li>${voterName} → ${targetName}</li>`;
+    });
+  }
+  voteInfo += '</ul>';
+  
+  // 役職交換情報の表示（怪盗が役職交換した場合）
+  let exchangeInfo = '';
+  if (gameData.role_exchanges) {
+    const thiefName = gameData.players[gameData.role_exchanges.thief_id]?.name || '不明';
+    const targetName = gameData.players[gameData.role_exchanges.target_id]?.name || '不明';
+    exchangeInfo = `
+      <div class="role-exchange-info">
+        <h4>役職交換情報:</h4>
+        <p>怪盗 ${thiefName} が ${targetName} の役職「${gameData.role_exchanges.target_role}」を盗みました。</p>
+      </div>
+    `;
+  }
+  
   gameContainer.innerHTML = `
     <h3>ゲーム結果</h3>
     <p>処刑されたプレイヤー: ${executedNames}</p>
     <p class="result-text">${gameData.winning_team === 'village' ? '市民陣営' : '人狼陣営'}の勝利です！</p>
+    
+    <div class="votes-container">
+      ${voteInfo}
+    </div>
+    
+    ${exchangeInfo}
     
     <div class="all-roles">
       <h4>全プレイヤーの役職:</h4>
@@ -519,6 +549,7 @@ function resetGame(gameId) {
     resetData.executed_players = null;
     resetData.winning_team = null;
     resetData.points_updated = false; // 持ち点更新フラグをリセット
+    resetData.role_exchanges = null;  // 役職交換情報のリセット
     
     // プレイヤーごとのデータリセット
     Object.keys(currentGame.players).forEach(id => {
@@ -738,10 +769,11 @@ function showThiefUI(gameData) {
       btn.addEventListener('click', (e) => {
         const targetId = e.target.dataset.id;
         const targetPlayer = gameData.players[targetId];
-        // 役職交換の処理
+        
+        // 自分の画面だけに表示（相手には通知しない）
         alert(`${targetPlayer.name}との役職交換: あなたは「${targetPlayer.role.name}」になりました！`);
         
-        // ここで実際の役職交換処理を実装する
+        // 役職交換情報を記録する（実際の役職は交換するが、交換情報も保持）
         exchangeRoles(gameData.id || getGameId(gameData), currentPlayer.id, targetId);
       });
     });
@@ -787,8 +819,17 @@ function exchangeRoles(gameId, playerId1, playerId2) {
     const role1 = gameData.players[playerId1].role;
     const role2 = gameData.players[playerId2].role;
     
+    // 役職の交換
     updates[`players/${playerId1}/role`] = role2;
     updates[`players/${playerId2}/role`] = role1;
+    
+    // 役職交換の情報を保存（結果フェーズで使用）
+    updates[`role_exchanges`] = {
+      thief_id: playerId1,
+      target_id: playerId2,
+      original_thief_role: role1.name,
+      target_role: role2.name
+    };
     
     update(ref(db, `games/${gameId}`), updates);
   });
