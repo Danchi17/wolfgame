@@ -368,14 +368,65 @@ function handleDayPhase(gameData) {
     `;
   }
   
+  // やっかいな豚男の能力UI
+  let pigAbilityUI = '';
+  if (currentPlayer.data.role && currentPlayer.data.role.name === 'やっかいな豚男' && !gameData.forced_vote_by) {
+    pigAbilityUI = `
+      <div class="pig-ability" style="margin-top: 20px; padding: 10px; background-color: #fff3cd; border-radius: 5px;">
+        <h4>やっかいな豚男の能力</h4>
+        <p>投票先を強制的に指定するプレイヤーを選択できます（あなたは投票権を失います）:</p>
+        <div id="pigTargets" class="pig-targets" style="margin-top: 10px;"></div>
+      </div>
+    `;
+  }
+  
   gameContainer.innerHTML = `
     <h3>議論フェーズ</h3>
     ${fortuneTellerInfo}
     <p>外部のボイスチャットを使って議論してください。</p>
     <div class="timer">残り時間: <span id="timerDisplay">3:00</span></div>
+    ${pigAbilityUI}
     ${currentPlayer.data.isHost ? 
       `<button id="skipTimer" class="btn primary">スキップ</button>` : ''}
   `;
+  
+  // やっかいな豚男の能力UI処理
+  if (currentPlayer.data.role && currentPlayer.data.role.name === 'やっかいな豚男' && !gameData.forced_vote_by) {
+    setTimeout(() => {
+      const pigTargets = document.getElementById('pigTargets');
+      if (pigTargets) {
+        // 自分以外のプレイヤーを表示
+        Object.entries(gameData.players).forEach(([id, player]) => {
+          if (id !== currentPlayer.id) {
+            const btn = document.createElement('button');
+            btn.className = 'btn secondary';
+            btn.textContent = `${player.name}の投票先を指定`;
+            btn.style.marginRight = '5px';
+            btn.style.marginBottom = '5px';
+            
+            btn.addEventListener('click', () => {
+              const gameId = gameData.gameId || getGameId(gameData);
+              
+              // 確認ダイアログ
+              if (confirm(`${player.name}の投票先を強制指定すると、あなた自身は投票できなくなります。よろしいですか？`)) {
+                // 投票先指定対象の保存
+                update(ref(db, `games/${gameId}`), {
+                  forced_vote_target: id,
+                  forced_vote_by: currentPlayer.id
+                }).then(() => {
+                  alert(`${player.name}の投票先を指定しました。投票フェーズであなたは投票できなくなります。`);
+                  // UIを更新して能力使用済みを示す
+                  pigTargets.innerHTML = '<p>能力を使用しました。投票フェーズで効果が発動します。</p>';
+                });
+              }
+            });
+            
+            pigTargets.appendChild(btn);
+          }
+        });
+      }
+    }, 100);
+  }
   
   // 議論タイマー開始
   gameTimer.startDiscussionTimer(180, () => {
@@ -472,10 +523,9 @@ function handleVotingPhase(gameData) {
   let forcedVoteMessage = '';
   if (gameData.forced_vote_target && gameData.forced_vote_by) {
     if (currentPlayer.id === gameData.forced_vote_target) {
-      const forcer = gameData.players[gameData.forced_vote_by];
       forcedVoteMessage = `
         <div class="forced-vote-message" style="background-color: #ffcccc; padding: 10px; margin-bottom: 15px; border-radius: 5px;">
-          <p><strong>注意:</strong> ${forcer.name}によって投票先が強制的に指定されています！</p>
+          <p><strong>注意:</strong> 投票先が強制的に指定されています！</p>
         </div>
       `;
     }
@@ -525,20 +575,28 @@ function handleVotingPhase(gameData) {
       // 自分自身または既に投票済みのプレイヤーは表示しない
       if (id !== currentPlayer.id) {
         // 強制投票対象がある場合、その対象のみ表示
-        if (gameData.forced_vote_target === currentPlayer.id && id !== gameData.forced_vote_by) {
-          const forcedTargetId = Object.keys(gameData.players).find(playerId => 
-            playerId !== currentPlayer.id && playerId !== gameData.forced_vote_by
+        if (gameData.forced_vote_target === currentPlayer.id) {
+          // 強制投票対象（自分が豚男によって選ばれた場合）
+          // 他のプレイヤーをランダムに選択
+          const otherPlayersIds = Object.keys(gameData.players).filter(playerId => 
+            playerId !== currentPlayer.id
           );
           
-          if (id === forcedTargetId) {
-            const btn = document.createElement('button');
-            btn.className = 'btn vote-btn forced';
-            btn.textContent = `${player.name}（強制）`;
-            btn.style.backgroundColor = '#ffcccc';
-            btn.addEventListener('click', () => {
-              voteForPlayer(gameData.gameId || getGameId(gameData), id, isMayor);
-            });
-            votingOptions.appendChild(btn);
+          if (otherPlayersIds.length > 0) {
+            // 強制投票先はランダムに決定（これによって誰が豚男かバレない）
+            const randomIndex = Math.floor(Math.random() * otherPlayersIds.length);
+            const forcedTargetId = otherPlayersIds[randomIndex];
+            
+            if (id === forcedTargetId) {
+              const btn = document.createElement('button');
+              btn.className = 'btn vote-btn forced';
+              btn.textContent = `${player.name}（強制）`;
+              btn.style.backgroundColor = '#ffcccc';
+              btn.addEventListener('click', () => {
+                voteForPlayer(gameData.gameId || getGameId(gameData), id, isMayor);
+              });
+              votingOptions.appendChild(btn);
+            }
           }
         } else {
           const btn = document.createElement('button');
@@ -883,11 +941,19 @@ async function checkAllVoted(gameId) {
   
   if (!gameData) return;
   
-  const playerCount = Object.keys(gameData.players).length;
+  // 投票権のあるプレイヤー数を計算
+  // やっかいな豚男が能力を使っていれば、その人は投票権がない
+  const playersWithVoteRight = Object.entries(gameData.players).filter(([id, player]) => {
+    // 豚男が能力を使っている場合、その豚男は投票権がない
+    return !(player.role && player.role.name === 'やっかいな豚男' && gameData.forced_vote_by === id);
+  }).length;
+  
   const voteCount = Object.keys(gameData.votes || {}).length;
   
-  // 全員投票したら結果フェーズへ
-  if (voteCount >= playerCount && currentPlayer.data.isHost) {
+  console.log(`投票状況: ${voteCount}/${playersWithVoteRight}人が投票済み`);
+  
+  // 投票権のあるプレイヤー全員が投票したら結果フェーズへ
+  if (voteCount >= playersWithVoteRight && currentPlayer.data.isHost) {
     console.log("全員の投票を確認しました。処理を続行します...");
     
     // 票の集計（村長の2票を考慮）
@@ -1379,40 +1445,6 @@ function showWerewolfUI(gameData) {
       } else {
         gameContainer.innerHTML += `<p>他の人狼は見つかりませんでした。</p>`;
       }
-    }
-    
-    // 役職固有の能力UI
-    if (role.name === 'やっかいな豚男') {
-      gameContainer.innerHTML += `
-        <p>投票先を強制的に指定するプレイヤーを選択してください:</p>
-        <div class="player-targets">
-          ${Object.entries(gameData.players).map(([id, player]) => {
-            if (id !== currentPlayer.id) {
-              return `<button class="btn player-target" data-id="${id}">${player.name}を指定</button>`;
-            }
-            return '';
-          }).join('')}
-        </div>
-      `;
-      
-      // 投票先指定のイベント
-      setTimeout(() => {
-        document.querySelectorAll('.player-target').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const targetId = e.target.dataset.id;
-            const targetPlayer = gameData.players[targetId];
-            
-            // 投票先指定対象の保存
-            const gameId = gameData.gameId || getGameId(gameData);
-            update(ref(db, `games/${gameId}`), {
-              forced_vote_target: targetId,
-              forced_vote_by: currentPlayer.id
-            });
-            
-            alert(`${targetPlayer.name}の投票先を強制的に指定します。あなたは投票権を失います。`);
-          });
-        });
-      }, 100);
     }
   } else {
     // 人狼系役職でない場合
