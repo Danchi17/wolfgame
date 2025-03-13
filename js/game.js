@@ -6,6 +6,204 @@ import { getRandomRoles, isWerewolfTeam } from './roles.js';
 let currentGame = null;
 let currentPlayer = null;
 
+// メッセージ通知システム（ポップアップ代替）
+const notificationSystem = {
+  container: null,
+  
+  // 初期化
+  init() {
+    // 既存のコンテナがあれば削除
+    const existingContainer = document.getElementById('notification-container');
+    if (existingContainer) {
+      existingContainer.remove();
+    }
+    
+    // 新しいコンテナを作成
+    this.container = document.createElement('div');
+    this.container.id = 'notification-container';
+    this.container.style.position = 'fixed';
+    this.container.style.top = '10px';
+    this.container.style.right = '10px';
+    this.container.style.width = '300px';
+    this.container.style.maxHeight = '90vh';
+    this.container.style.overflowY = 'auto';
+    this.container.style.zIndex = '1000';
+    document.body.appendChild(this.container);
+  },
+  
+  // 通知を表示
+  show(message, type = 'info', duration = 5000) {
+    if (!this.container) {
+      this.init();
+    }
+    
+    // メッセージアイテムを作成
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.style.margin = '5px';
+    notification.style.padding = '10px';
+    notification.style.borderRadius = '5px';
+    notification.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+    notification.style.opacity = '0';
+    notification.style.transition = 'opacity 0.3s';
+    
+    // タイプによって背景色を変更
+    switch (type) {
+      case 'success':
+        notification.style.backgroundColor = '#d4edda';
+        notification.style.borderLeft = '5px solid #28a745';
+        break;
+      case 'error':
+        notification.style.backgroundColor = '#f8d7da';
+        notification.style.borderLeft = '5px solid #dc3545';
+        break;
+      case 'warning':
+        notification.style.backgroundColor = '#fff3cd';
+        notification.style.borderLeft = '5px solid #ffc107';
+        break;
+      default:
+        notification.style.backgroundColor = '#e3f2fd';
+        notification.style.borderLeft = '5px solid #007bff';
+    }
+    
+    // 閉じるボタン
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '×';
+    closeBtn.style.float = 'right';
+    closeBtn.style.background = 'none';
+    closeBtn.style.border = 'none';
+    closeBtn.style.color = '#666';
+    closeBtn.style.fontSize = '16px';
+    closeBtn.style.cursor = 'pointer';
+    closeBtn.onclick = () => {
+      notification.style.opacity = '0';
+      setTimeout(() => notification.remove(), 300);
+    };
+    
+    // メッセージとボタンを追加
+    notification.appendChild(closeBtn);
+    notification.appendChild(document.createTextNode(message));
+    
+    // コンテナに通知を追加
+    this.container.appendChild(notification);
+    
+    // フェードイン
+    setTimeout(() => {
+      notification.style.opacity = '1';
+    }, 10);
+    
+    // 自動的に消える
+    if (duration > 0) {
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => notification.remove(), 300);
+      }, duration);
+    }
+    
+    return notification;
+  },
+  
+  // 情報通知
+  info(message, duration = 5000) {
+    return this.show(message, 'info', duration);
+  },
+  
+  // 成功通知
+  success(message, duration = 5000) {
+    return this.show(message, 'success', duration);
+  },
+  
+  // 警告通知
+  warning(message, duration = 5000) {
+    return this.show(message, 'warning', duration);
+  },
+  
+  // エラー通知
+  error(message, duration = 5000) {
+    return this.show(message, 'error', duration);
+  }
+};
+
+// インフォメーションパネル（役職情報表示用）
+const infoPanel = {
+  panel: null,
+  
+  // 初期化
+  init() {
+    // 既存のパネルがあれば削除
+    const existingPanel = document.getElementById('info-panel');
+    if (existingPanel) {
+      existingPanel.remove();
+    }
+    
+    // 新しいパネルを作成
+    this.panel = document.createElement('div');
+    this.panel.id = 'info-panel';
+    this.panel.style.position = 'fixed';
+    this.panel.style.left = '50%';
+    this.panel.style.top = '50%';
+    this.panel.style.transform = 'translate(-50%, -50%)';
+    this.panel.style.backgroundColor = 'white';
+    this.panel.style.padding = '20px';
+    this.panel.style.borderRadius = '5px';
+    this.panel.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.5)';
+    this.panel.style.maxWidth = '80%';
+    this.panel.style.maxHeight = '80vh';
+    this.panel.style.overflowY = 'auto';
+    this.panel.style.zIndex = '2000';
+    this.panel.style.display = 'none';
+    
+    // 閉じるボタン
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = '閉じる';
+    closeBtn.className = 'btn primary';
+    closeBtn.style.marginTop = '15px';
+    closeBtn.onclick = () => this.hide();
+    
+    this.contentArea = document.createElement('div');
+    this.panel.appendChild(this.contentArea);
+    this.panel.appendChild(closeBtn);
+    
+    document.body.appendChild(this.panel);
+  },
+  
+  // パネルを表示
+  show(content, title = '') {
+    if (!this.panel) {
+      this.init();
+    }
+    
+    // コンテンツをセット
+    this.contentArea.innerHTML = '';
+    
+    if (title) {
+      const titleElement = document.createElement('h3');
+      titleElement.textContent = title;
+      titleElement.style.marginTop = '0';
+      titleElement.style.marginBottom = '15px';
+      this.contentArea.appendChild(titleElement);
+    }
+    
+    if (typeof content === 'string') {
+      const contentElement = document.createElement('div');
+      contentElement.innerHTML = content;
+      this.contentArea.appendChild(contentElement);
+    } else {
+      this.contentArea.appendChild(content);
+    }
+    
+    // パネルを表示
+    this.panel.style.display = 'block';
+  },
+  
+  // パネルを非表示
+  hide() {
+    if (this.panel) {
+      this.panel.style.display = 'none';
+    }
+  }
+};
+
 // タイマー管理クラス
 class GameTimer {
   constructor() {
@@ -104,6 +302,9 @@ function initGame(gameData, playerId) {
     data: gameData.players[playerId]
   };
   
+  // 通知システムを初期化
+  notificationSystem.init();
+  
   // 占星術師の場合は人狼の数を表示
   if (currentPlayer.data.role && currentPlayer.data.role.name === '占星術師') {
     showWerewolfCount(gameData);
@@ -131,8 +332,8 @@ function showWerewolfCount(gameData) {
     });
   }
   
-  // 警告表示
-  alert(`【占星術師情報】場に出ている全6枚のカードのうち、${werewolfCount}枚が人狼陣営です。`);
+  // 通知表示
+  notificationSystem.info(`【占星術師情報】場に出ている全6枚のカードのうち、${werewolfCount}枚が人狼陣営です。`, 10000);
 }
 
 // ゲーム開始処理
@@ -146,7 +347,7 @@ async function startGame(gameId) {
     await updateGamePhase(gameId, 'seer');
   } catch (error) {
     console.error("ゲーム開始エラー:", error);
-    alert("ゲーム開始に失敗しました。");
+    notificationSystem.error("ゲーム開始に失敗しました。");
   }
 }
 
@@ -407,18 +608,46 @@ function handleDayPhase(gameData) {
             btn.addEventListener('click', () => {
               const gameId = gameData.gameId || getGameId(gameData);
               
-              // 確認ダイアログ
-              if (confirm(`${player.name}の投票先を強制指定すると、あなた自身は投票できなくなります。よろしいですか？`)) {
-                // 投票先指定対象の保存
+              // 確認メッセージを表示して豚男の能力を使うかユーザーに確認
+              const info = `${player.name}の投票先を強制指定すると、あなた自身は投票できなくなります。よろしいですか？`;
+              
+              // 確認パネルを表示
+              const confirmDiv = document.createElement('div');
+              confirmDiv.innerHTML = `<p>${info}</p>`;
+              
+              const buttonContainer = document.createElement('div');
+              buttonContainer.style.marginTop = '15px';
+              
+              const confirmBtn = document.createElement('button');
+              confirmBtn.className = 'btn primary';
+              confirmBtn.textContent = '指定する';
+              confirmBtn.style.marginRight = '10px';
+              confirmBtn.onclick = () => {
+                // 能力使用を確定
                 update(ref(db, `games/${gameId}`), {
                   forced_vote_target: id,
                   forced_vote_by: currentPlayer.id
                 }).then(() => {
-                  alert(`${player.name}の投票先を指定しました。投票フェーズであなたは投票できなくなります。`);
+                  infoPanel.hide();
+                  notificationSystem.success(`${player.name}の投票先を指定しました。投票フェーズであなたは投票できなくなります。`);
+                  
                   // UIを更新して能力使用済みを示す
                   pigTargets.innerHTML = '<p>能力を使用しました。投票フェーズで効果が発動します。</p>';
                 });
-              }
+              };
+              
+              const cancelBtn = document.createElement('button');
+              cancelBtn.className = 'btn secondary';
+              cancelBtn.textContent = 'キャンセル';
+              cancelBtn.onclick = () => {
+                infoPanel.hide();
+              };
+              
+              buttonContainer.appendChild(confirmBtn);
+              buttonContainer.appendChild(cancelBtn);
+              confirmDiv.appendChild(buttonContainer);
+              
+              infoPanel.show(confirmDiv, 'やっかいな豚男の能力');
             });
             
             pigTargets.appendChild(btn);
@@ -680,6 +909,12 @@ function voteForPlayer(gameId, targetId, isMayor) {
         timestamp: Date.now()
       }));
       
+      // 投票完了通知
+      const targetPlayer = currentGame.players[targetId];
+      if (targetPlayer) {
+        notificationSystem.success(`${targetPlayer.name}に投票しました`);
+      }
+      
       // 全プレイヤーが投票したか確認
       setTimeout(() => checkAllVoted(gameId), 1000); // 少し遅延させて全員の投票を確実に受け取る
     })
@@ -695,6 +930,9 @@ function voteForPlayer(gameId, targetId, isMayor) {
           handleVotingPhase(currentGame);
         }, 2000);
       }
+      
+      // エラー通知
+      notificationSystem.error('投票に失敗しました。もう一度お試しください。');
     });
 }
 
@@ -713,7 +951,7 @@ function checkPuppyGuess(gameData, guessedRole) {
   
   if (isCorrect) {
     // 正解の場合、持ち点を2点回復
-    alert(`正解！場札に「${guessedRole}」がありました。持ち点が2点回復します。`);
+    notificationSystem.success(`正解！場札に「${guessedRole}」がありました。持ち点が2点回復します。`);
     
     // 持ち点更新
     const currentPoints = currentPlayer.data.points || 0;
@@ -726,7 +964,7 @@ function checkPuppyGuess(gameData, guessedRole) {
       puppy_guessed_correct: true
     });
   } else {
-    alert(`不正解...場札に「${guessedRole}」はありませんでした。`);
+    notificationSystem.error(`不正解...場札に「${guessedRole}」はありませんでした。`);
   }
   
   // 推測ボタンを無効化
@@ -766,7 +1004,8 @@ function reportAsWerewolf(gameId, reportedId) {
       spyReportTargets.innerHTML = '<p>通報が完了しました。結果は処刑フェーズで発表されます。</p>';
     }
     
-    alert(`${reportedPlayer.name}を人狼として通報しました。結果は処刑フェーズで発表されます。`);
+    // 通知表示
+    notificationSystem.info(`${reportedPlayer.name}を人狼として通報しました。結果は処刑フェーズで発表されます。`);
   });
 }
 
@@ -915,8 +1154,10 @@ async function handleOutlawExchanges(gameId, gameData) {
         console.log(`役職交換: ${outlawPlayer.name} (無法者) ⇔ ${targetPlayer.name} (${targetPlayer.role.name})`);
         
         // 全プレイヤーに通知
-        const exchangeNotification = `無法者の能力発動: ${outlawPlayer.name} が ${targetPlayer.name} と役職を交換しました！`;
-        alert(exchangeNotification);
+        const exchangeMessage = `無法者の能力発動: ${outlawPlayer.name} が ${targetPlayer.name} と役職を交換しました！`;
+        
+        // 結果画面で表示できるようにメッセージを保存
+        notificationSystem.warning(exchangeMessage, 10000);
       }
     }
   }
@@ -1312,10 +1553,11 @@ function resetGame(gameId) {
     update(ref(db, `games/${gameId}`), resetData)
       .then(() => {
         console.log('ゲーム状態のリセットが完了しました');
+        notificationSystem.success('ゲーム状態のリセットが完了しました');
       })
       .catch(error => {
         console.error('リセットエラー:', error);
-        alert('次のゲームへの移行に失敗しました。ページを再読み込みしてください。');
+        notificationSystem.error('次のゲームへの移行に失敗しました。ページを再読み込みしてください。');
       });
   }
 }
@@ -1383,7 +1625,16 @@ function showSeerUI(gameData) {
         checkFieldBtn.addEventListener('click', () => {
           // 場札確認表示
           const fieldCards = gameData.field_cards || [];
-          alert(`場札の役職:\n1枚目: ${fieldCards[0].name}\n2枚目: ${fieldCards[1].name}`);
+          
+          // 情報をパネルで表示
+          const content = `
+            <p>場札の役職:</p>
+            <ul>
+              <li>1枚目: ${fieldCards[0].name}</li>
+              <li>2枚目: ${fieldCards[1].name}</li>
+            </ul>
+          `;
+          infoPanel.show(content, '占い結果');
         });
       }
       
@@ -1392,7 +1643,13 @@ function showSeerUI(gameData) {
         btn.addEventListener('click', (e) => {
           const targetId = e.target.dataset.id;
           const targetPlayer = gameData.players[targetId];
-          alert(`${targetPlayer.name}の役職: ${targetPlayer.role.name}`);
+          
+          // 情報をパネルで表示
+          const content = `
+            <p>${targetPlayer.name}の役職: <strong>${targetPlayer.role.name}</strong></p>
+            <p>陣営: ${targetPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}</p>
+          `;
+          infoPanel.show(content, '占い結果');
         });
       });
     }, 100); // DOMが確実に更新された後にイベントをバインド
@@ -1484,7 +1741,7 @@ function showThiefUI(gameData) {
     
     // 交換しないボタンのイベント
     document.getElementById('noExchangeBtn').addEventListener('click', () => {
-      alert('役職の交換をしませんでした。');
+      notificationSystem.info('役職の交換をしませんでした。');
     });
     
     // 役職交換ボタンのイベント
@@ -1493,8 +1750,13 @@ function showThiefUI(gameData) {
         const targetId = e.target.dataset.id;
         const targetPlayer = gameData.players[targetId];
         
-        // 自分の画面だけに表示（相手には通知しない）
-        alert(`${targetPlayer.name}との役職交換: あなたは「${targetPlayer.role.name}」になりました！`);
+        // 役職交換の情報をパネル表示
+        const content = `
+          <p>${targetPlayer.name}との役職交換:</p>
+          <p>あなたは「<strong>${targetPlayer.role.name}</strong>」になりました！</p>
+          <p>相手には気づかれません。結果フェーズまで交換は秘密です。</p>
+        `;
+        infoPanel.show(content, '怪盗の能力');
         
         // 役職交換情報を記録する（実際の役職は交換するが、交換情報も保持）
         exchangeRoles(gameData.id || getGameId(gameData), currentPlayer.id, targetId);
