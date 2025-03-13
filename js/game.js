@@ -103,6 +103,36 @@ function initGame(gameData, playerId) {
     id: playerId,
     data: gameData.players[playerId]
   };
+  
+  // 占星術師の場合は人狼の数を表示
+  if (currentPlayer.data.role && currentPlayer.data.role.name === '占星術師') {
+    showWerewolfCount(gameData);
+  }
+}
+
+// 占星術師用の人狼陣営の数を表示する
+function showWerewolfCount(gameData) {
+  // 人狼陣営の数をカウント
+  let werewolfCount = 0;
+  
+  // プレイヤーの役職
+  Object.values(gameData.players).forEach(player => {
+    if (player.role && player.role.team === 'werewolf') {
+      werewolfCount++;
+    }
+  });
+  
+  // 場札の役職
+  if (gameData.field_cards) {
+    gameData.field_cards.forEach(card => {
+      if (card.team === 'werewolf') {
+        werewolfCount++;
+      }
+    });
+  }
+  
+  // 警告表示
+  alert(`【占星術師情報】場に出ている全6枚のカードのうち、${werewolfCount}枚が人狼陣営です。`);
 }
 
 // ゲーム開始処理
@@ -193,10 +223,6 @@ function handleNightPhase(gameData) {
     phaseTitle = '占いフェーズ';
     // 占い師系の処理
     showSeerUI(gameData);
-  } else if (currentPhase === 'fortune_teller') {
-    phaseTitle = '占星術師フェーズ';
-    // 占星術師の処理
-    showFortuneTellerUI(gameData);
   } else if (currentPhase === 'werewolf') {
     phaseTitle = '人狼フェーズ';
     // 人狼系の処理
@@ -215,9 +241,6 @@ function handleNightPhase(gameData) {
     let isStatusChange = false;
     
     if (currentPhase === 'seer') {
-      nextPhase = 'fortune_teller';
-      nextPhaseText = '占星術師フェーズへ';
-    } else if (currentPhase === 'fortune_teller') {
       nextPhase = 'werewolf';
       nextPhaseText = '人狼フェーズへ';
     } else if (currentPhase === 'werewolf') {
@@ -279,50 +302,6 @@ function handleNightPhase(gameData) {
   }
 }
 
-// 占星術師UIの表示
-function showFortuneTellerUI(gameData) {
-  const role = currentPlayer.data.role;
-  if (!role) return;
-  
-  // 占星術師の場合のみUI表示
-  if (role.name === '占星術師') {
-    const gameContainer = document.getElementById('gameStatus');
-    
-    // 人狼陣営の数をカウント
-    let werewolfCount = 0;
-    
-    // プレイヤーの役職
-    Object.values(gameData.players).forEach(player => {
-      if (player.role && player.role.team === 'werewolf') {
-        werewolfCount++;
-      }
-    });
-    
-    // 場札の役職
-    if (gameData.field_cards) {
-      gameData.field_cards.forEach(card => {
-        if (card.team === 'werewolf') {
-          werewolfCount++;
-        }
-      });
-    }
-    
-    gameContainer.innerHTML = `
-      <h3>占星術師フェーズ</h3>
-      <p>あなたの役職: ${role.name}</p>
-      <p>場に出ている6枚のカードのうち、<strong>${werewolfCount}枚</strong>が人狼陣営です。</p>
-    `;
-  } else {
-    // 占星術師でない場合
-    const gameContainer = document.getElementById('gameStatus');
-    gameContainer.innerHTML = `
-      <h3>占星術師フェーズ</h3>
-      <p>あなたの役職: ${role.name}</p>
-      <p>占星術師がいれば、人狼陣営の数を確認しています。</p>
-    `;
-  }
-}
-
 // フェーズをスキップするボタンを追加（デバッグ用）
 function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = false) {
   const gameStatus = document.getElementById('gameStatus');
@@ -359,8 +338,39 @@ function addPhaseSkipButton(gameId, nextPhase, buttonText, isStatusChange = fals
 function handleDayPhase(gameData) {
   // 議論タイマーの表示
   const gameContainer = document.getElementById('gameStatus');
+  
+  // 占星術師の人狼陣営の数を表示
+  let fortuneTellerInfo = '';
+  if (currentPlayer.data.role && currentPlayer.data.role.name === '占星術師') {
+    // 人狼陣営の数をカウント
+    let werewolfCount = 0;
+    
+    // プレイヤーの役職
+    Object.values(gameData.players).forEach(player => {
+      if (player.role && player.role.team === 'werewolf') {
+        werewolfCount++;
+      }
+    });
+    
+    // 場札の役職
+    if (gameData.field_cards) {
+      gameData.field_cards.forEach(card => {
+        if (card.team === 'werewolf') {
+          werewolfCount++;
+        }
+      });
+    }
+    
+    fortuneTellerInfo = `
+      <div class="fortune-teller-info" style="margin-bottom: 20px; padding: 10px; background-color: #e3f2fd; border-radius: 5px;">
+        <p><strong>占星術師情報:</strong> 場に出ている全6枚のカードのうち、<strong>${werewolfCount}枚</strong>が人狼陣営です。</p>
+      </div>
+    `;
+  }
+  
   gameContainer.innerHTML = `
     <h3>議論フェーズ</h3>
+    ${fortuneTellerInfo}
     <p>外部のボイスチャットを使って議論してください。</p>
     <div class="timer">残り時間: <span id="timerDisplay">3:00</span></div>
     ${currentPlayer.data.isHost ? 
@@ -388,6 +398,35 @@ function handleVotingPhase(gameData) {
   // 投票UI表示
   const gameContainer = document.getElementById('gameStatus');
   
+  // 占星術師の人狼陣営の数を表示
+  let fortuneTellerInfo = '';
+  if (currentPlayer.data.role && currentPlayer.data.role.name === '占星術師') {
+    // 人狼陣営の数をカウント
+    let werewolfCount = 0;
+    
+    // プレイヤーの役職
+    Object.values(gameData.players).forEach(player => {
+      if (player.role && player.role.team === 'werewolf') {
+        werewolfCount++;
+      }
+    });
+    
+    // 場札の役職
+    if (gameData.field_cards) {
+      gameData.field_cards.forEach(card => {
+        if (card.team === 'werewolf') {
+          werewolfCount++;
+        }
+      });
+    }
+    
+    fortuneTellerInfo = `
+      <div class="fortune-teller-info" style="margin-bottom: 20px; padding: 10px; background-color: #e3f2fd; border-radius: 5px;">
+        <p><strong>占星術師情報:</strong> 場に出ている全6枚のカードのうち、<strong>${werewolfCount}枚</strong>が人狼陣営です。</p>
+      </div>
+    `;
+  }
+  
   // スパイ通報ボタン用のUI要素
   let spyReportUI = '';
   
@@ -404,7 +443,7 @@ function handleVotingPhase(gameData) {
   
   // 博識な子犬の役職推測UI
   let puppyGuessUI = '';
-  if (currentPlayer.data.role && currentPlayer.data.role.name === '博識な子犬') {
+  if (currentPlayer.data.role && currentPlayer.data.role.name === '博識な子犬' && !gameData.puppy_guessed) {
     const villageRoles = [
       '占い師', '占星術師', '占い師の弟子', '無法者', '村長', '怪盗', 'スパイ'
     ];
@@ -418,6 +457,13 @@ function handleVotingPhase(gameData) {
             <button class="btn guess-role" data-role="${role}">${role}</button>
           `).join('')}
         </div>
+      </div>
+    `;
+  } else if (currentPlayer.data.role && currentPlayer.data.role.name === '博識な子犬' && gameData.puppy_guessed) {
+    puppyGuessUI = `
+      <div class="puppy-guess">
+        <h4>役職推測</h4>
+        <p>すでに推測を行いました。</p>
       </div>
     `;
   }
@@ -444,6 +490,7 @@ function handleVotingPhase(gameData) {
   
   gameContainer.innerHTML = `
     <h3>投票フェーズ</h3>
+    ${fortuneTellerInfo}
     ${forcedVoteMessage}
     <p>処刑するプレイヤーを選択してください${isMayor ? '（あなたは2票の投票権があります）' : ''}:</p>
     ${hasVoteRight ? `<div id="votingOptions" class="voting-options"></div>` : 
@@ -507,7 +554,7 @@ function handleVotingPhase(gameData) {
   }
   
   // 博識な子犬の役職推測イベント
-  if (currentPlayer.data.role && currentPlayer.data.role.name === '博識な子犬') {
+  if (currentPlayer.data.role && currentPlayer.data.role.name === '博識な子犬' && !gameData.puppy_guessed) {
     setTimeout(() => {
       document.querySelectorAll('.guess-role').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -522,19 +569,23 @@ function handleVotingPhase(gameData) {
   if (currentPlayer.data.role && currentPlayer.data.role.name === 'スパイ') {
     const spyReportTargets = document.getElementById('spyReportTargets');
     if (spyReportTargets) {
-      // 通報対象を表示（自分以外の全プレイヤー）
+      // 通報対象を表示（自分以外の人狼陣営と思われるプレイヤー）
       Object.entries(gameData.players).forEach(([id, player]) => {
+        // スパイ自身は対象外
         if (id !== currentPlayer.id) {
-          const reportBtn = document.createElement('button');
-          reportBtn.className = 'btn report-btn';
-          reportBtn.textContent = `${player.name}を人狼として通報`;
-          reportBtn.dataset.id = id;
-          
-          reportBtn.addEventListener('click', () => {
-            reportAsWerewolf(gameData.gameId || getGameId(gameData), id);
-          });
-          
-          spyReportTargets.appendChild(reportBtn);
+          // スパイも通報対象から除外する
+          if (player.role && player.role.name !== 'スパイ') {
+            const reportBtn = document.createElement('button');
+            reportBtn.className = 'btn report-btn';
+            reportBtn.textContent = `${player.name}を人狼として通報`;
+            reportBtn.dataset.id = id;
+            
+            reportBtn.addEventListener('click', () => {
+              reportAsWerewolf(gameData.gameId || getGameId(gameData), id);
+            });
+            
+            spyReportTargets.appendChild(reportBtn);
+          }
         }
       });
     }
@@ -597,6 +648,11 @@ function checkPuppyGuess(gameData, guessedRole) {
   // 場札に指定された市民陣営の役職があるかチェック
   const isCorrect = fieldCards.some(card => card.name === guessedRole && card.team === 'village');
   
+  // まず推測済みフラグを設定して二度と推測できないようにする
+  update(ref(db, `games/${gameId}`), {
+    puppy_guessed: true
+  });
+  
   if (isCorrect) {
     // 正解の場合、持ち点を2点回復
     alert(`正解！場札に「${guessedRole}」がありました。持ち点が2点回復します。`);
@@ -619,6 +675,15 @@ function checkPuppyGuess(gameData, guessedRole) {
   document.querySelectorAll('.guess-role').forEach(btn => {
     btn.disabled = true;
   });
+  
+  // 推測UIを更新
+  const puppyGuessDiv = document.querySelector('.puppy-guess');
+  if (puppyGuessDiv) {
+    puppyGuessDiv.innerHTML = `
+      <h4>役職推測</h4>
+      <p>すでに推測を行いました。${isCorrect ? '正解しました！' : '不正解でした。'}</p>
+    `;
+  }
 }
 
 // スパイの通報処理
@@ -647,6 +712,169 @@ function reportAsWerewolf(gameId, reportedId) {
   });
 }
 
+// 無法者の役職交換処理（投票後、勝敗判定前に呼び出す）
+async function handleOutlawExchanges(gameId, gameData) {
+  console.log("無法者の役職交換チェック中...");
+  
+  // 無法者の役職交換処理
+  const outlawPlayers = Object.entries(gameData.players).filter(([id, player]) => 
+    player.role && player.role.name === '無法者'
+  );
+  
+  if (outlawPlayers.length === 0) {
+    console.log("無法者は居ません");
+    return gameData; // 無法者が居なければ何もしない
+  }
+  
+  // 票の集計（村長の2票を考慮）
+  const votes = {};
+  
+  Object.entries(gameData.votes || {}).forEach(([voterId, vote]) => {
+    const voteValue = vote.value || 1; // 指定がなければ1票とする
+    votes[vote.target] = (votes[vote.target] || 0) + voteValue;
+  });
+  
+  // 最多票のプレイヤーを特定
+  let maxVote = 0;
+  let executedPlayers = [];
+  
+  Object.entries(votes).forEach(([playerId, count]) => {
+    if (count > maxVote) {
+      maxVote = count;
+      executedPlayers = [playerId];
+    } else if (count === maxVote) {
+      executedPlayers.push(playerId);
+    }
+  });
+  
+  // 特殊勝利条件チェック（蛇女、大熊など）
+  let winningTeam = null;
+  let specialVictory = null;
+  
+  // 蛇女の同数投票特殊勝利チェック
+  const hasSnakeWoman = executedPlayers.some(id => {
+    const player = gameData.players[id];
+    return player && player.role && player.role.name === '蛇女';
+  });
+  
+  if (hasSnakeWoman && executedPlayers.length > 1) {
+    // 蛇女の単独勝利
+    specialVictory = 'snake_woman';
+    winningTeam = 'snake_woman';
+  } else {
+    // 大熊の特殊勝利チェック
+    const bigBearExecuted = executedPlayers.some(id => {
+      const player = gameData.players[id];
+      return player && player.role && player.role.name === '大熊';
+    });
+    
+    if (bigBearExecuted) {
+      // 人狼陣営の数をカウント
+      let werewolfCount = 0;
+      Object.values(gameData.players).forEach(player => {
+        if (player.role && player.role.team === 'werewolf') {
+          werewolfCount++;
+        }
+      });
+      
+      const playerCount = Object.keys(gameData.players).length;
+      
+      // 人狼陣営が過半数なら強制勝利
+      if (werewolfCount > playerCount / 2) {
+        specialVictory = 'big_bear';
+        winningTeam = 'werewolf';
+      }
+    }
+    
+    // スパイ通報チェック
+    if (gameData.spy_report) {
+      const spyReport = gameData.spy_report;
+      if (spyReport.is_correct) {
+        // 通報が正しい場合、市民陣営強制敗北
+        specialVictory = 'spy_reported';
+        winningTeam = 'werewolf';
+      }
+    }
+    
+    // 博識な子犬の正解チェック
+    if (gameData.puppy_guessed_correct) {
+      specialVictory = 'puppy_correct';
+      winningTeam = 'werewolf';
+    }
+    
+    // 通常の勝敗判定（特殊勝利がない場合）
+    if (!winningTeam) {
+      let werewolfExecuted = false;
+      executedPlayers.forEach(id => {
+        if (isWerewolfTeam(gameData.players[id].role)) {
+          werewolfExecuted = true;
+        }
+      });
+      
+      winningTeam = werewolfExecuted ? 'village' : 'werewolf';
+    }
+  }
+  
+  // 無法者がいて、かつ敗北する場合にのみ役職交換
+  const outlawExchanges = {};
+  const updates = {};
+  
+  for (const [outlawId, outlawPlayer] of outlawPlayers) {
+    // 無法者が敗北陣営に所属するかチェック（蛇女特殊勝利の場合は蛇女以外全敗北）
+    const isDefeated = 
+      (winningTeam === 'snake_woman' && outlawPlayer.role.name !== '蛇女') ||
+      (winningTeam !== 'snake_woman' && outlawPlayer.role.team !== winningTeam);
+    
+    if (isDefeated) {
+      console.log(`無法者 ${outlawPlayer.name} は敗北陣営です。役職交換を実行します。`);
+      
+      // 自分以外のプレイヤーから1人をランダムに選択
+      const otherPlayers = Object.entries(gameData.players).filter(([id]) => id !== outlawId);
+      
+      if (otherPlayers.length > 0) {
+        const randomIndex = Math.floor(Math.random() * otherPlayers.length);
+        const [targetId, targetPlayer] = otherPlayers[randomIndex];
+        
+        // 役職交換の情報を記録
+        outlawExchanges[outlawId] = {
+          target_id: targetId,
+          original_outlaw_role: outlawPlayer.role.name,
+          target_role: targetPlayer.role.name
+        };
+        
+        // 実際に役職を交換
+        const outlawRole = {...outlawPlayer.role};
+        const targetRole = {...targetPlayer.role};
+        
+        // データベース更新用オブジェクトに追加
+        updates[`players/${outlawId}/role`] = targetRole;
+        updates[`players/${targetId}/role`] = outlawRole;
+        
+        // ローカルデータも更新（この後の判定のため）
+        gameData.players[outlawId].role = targetRole;
+        gameData.players[targetId].role = outlawRole;
+        
+        console.log(`役職交換: ${outlawPlayer.name} (無法者) ⇔ ${targetPlayer.name} (${targetPlayer.role.name})`);
+        
+        // 全プレイヤーに通知
+        const exchangeNotification = `無法者の能力発動: ${outlawPlayer.name} が ${targetPlayer.name} と役職を交換しました！`;
+        alert(exchangeNotification);
+      }
+    }
+  }
+  
+  // 交換情報があれば保存
+  if (Object.keys(outlawExchanges).length > 0) {
+    updates[`outlaw_exchanges`] = outlawExchanges;
+    
+    // データベース更新
+    await update(ref(db, `games/${gameId}`), updates);
+  }
+  
+  // 役職交換後の更新されたデータを返す
+  return gameData;
+}
+
 // 全プレイヤーの投票確認
 async function checkAllVoted(gameId) {
   const gameRef = ref(db, `games/${gameId}`);
@@ -660,6 +888,8 @@ async function checkAllVoted(gameId) {
   
   // 全員投票したら結果フェーズへ
   if (voteCount >= playerCount && currentPlayer.data.isHost) {
+    console.log("全員の投票を確認しました。処理を続行します...");
+    
     // 票の集計（村長の2票を考慮）
     const votes = {};
     let totalVotes = 0;
@@ -683,13 +913,16 @@ async function checkAllVoted(gameId) {
       }
     });
     
-    // 特殊勝利条件チェック
+    // 無法者の役職交換を先に処理
+    const updatedGameData = await handleOutlawExchanges(gameId, gameData);
+    
+    // 交換後の状態で特殊勝利条件チェック
     let winningTeam = null;
     let specialVictory = null;
     
     // 蛇女の同数投票特殊勝利チェック
     const hasSnakeWoman = executedPlayers.some(id => {
-      const player = gameData.players[id];
+      const player = updatedGameData.players[id];
       return player && player.role && player.role.name === '蛇女';
     });
     
@@ -699,7 +932,7 @@ async function checkAllVoted(gameId) {
       
       // 蛇女のプレイヤーIDを取得
       const snakeWomanId = executedPlayers.find(id => {
-        const player = gameData.players[id];
+        const player = updatedGameData.players[id];
         return player && player.role && player.role.name === '蛇女';
       });
       
@@ -708,20 +941,20 @@ async function checkAllVoted(gameId) {
     } else {
       // 大熊の特殊勝利チェック
       const bigBearExecuted = executedPlayers.some(id => {
-        const player = gameData.players[id];
+        const player = updatedGameData.players[id];
         return player && player.role && player.role.name === '大熊';
       });
       
       if (bigBearExecuted) {
         // 人狼陣営の数をカウント
         let werewolfCount = 0;
-        Object.values(gameData.players).forEach(player => {
+        Object.values(updatedGameData.players).forEach(player => {
           if (player.role && player.role.team === 'werewolf') {
             werewolfCount++;
           }
         });
         
-        const playerCount = Object.keys(gameData.players).length;
+        const playerCount = Object.keys(updatedGameData.players).length;
         
         // 人狼陣営が過半数なら強制勝利
         if (werewolfCount > playerCount / 2) {
@@ -731,8 +964,8 @@ async function checkAllVoted(gameId) {
       }
       
       // スパイ通報チェック
-      if (gameData.spy_report) {
-        const spyReport = gameData.spy_report;
+      if (updatedGameData.spy_report) {
+        const spyReport = updatedGameData.spy_report;
         if (spyReport.is_correct) {
           // 通報が正しい場合、市民陣営強制敗北
           specialVictory = 'spy_reported';
@@ -741,7 +974,7 @@ async function checkAllVoted(gameId) {
       }
       
       // 博識な子犬の正解チェック
-      if (gameData.puppy_guessed_correct) {
+      if (updatedGameData.puppy_guessed_correct) {
         specialVictory = 'puppy_correct';
         winningTeam = 'werewolf';
       }
@@ -750,7 +983,7 @@ async function checkAllVoted(gameId) {
       if (!winningTeam) {
         let werewolfExecuted = false;
         executedPlayers.forEach(id => {
-          if (isWerewolfTeam(gameData.players[id].role)) {
+          if (isWerewolfTeam(updatedGameData.players[id].role)) {
             werewolfExecuted = true;
           }
         });
@@ -916,7 +1149,7 @@ function handleResultPhase(gameData) {
     });
   }
   
-  // 持ち点の更新と無法者の役職交換処理
+  // 持ち点の更新と無法者の役職交換処理は既に実行済みなので省略
   updatePlayerPoints(gameData);
 }
 
@@ -960,61 +1193,6 @@ function updatePlayerPoints(gameData) {
     updates[`players/${spyId}/points`] = currentPoints - 2;
   }
   
-  // 無法者の役職交換処理
-  const outlawPlayers = Object.entries(gameData.players).filter(([id, player]) => 
-    player.role && player.role.name === '無法者' && player.role.team !== winningTeam
-  );
-  
-  if (outlawPlayers.length > 0) {
-    // 無法者が敗北した場合、ランダムに他のプレイヤーと役職交換
-    outlawPlayers.forEach(([outlawId, outlawPlayer]) => {
-      // 自分以外のプレイヤーから1人をランダムに選択
-      const otherPlayers = Object.entries(gameData.players).filter(([id]) => id !== outlawId);
-      
-      if (otherPlayers.length > 0) {
-        const randomIndex = Math.floor(Math.random() * otherPlayers.length);
-        const [targetId, targetPlayer] = otherPlayers[randomIndex];
-        
-        // 役職交換の情報を記録
-        updates[`outlaw_exchanges`] = updates[`outlaw_exchanges`] || {};
-        updates[`outlaw_exchanges`][outlawId] = {
-          target_id: targetId,
-          original_outlaw_role: outlawPlayer.role.name,
-          target_role: targetPlayer.role.name
-        };
-        
-        // 実際に役職を交換
-        const outlawRole = {...outlawPlayer.role};
-        const targetRole = {...targetPlayer.role};
-        updates[`players/${outlawId}/role`] = targetRole;
-        updates[`players/${targetId}/role`] = outlawRole;
-        
-        // 持ち点調整（交換した役職のコスト差分を調整）
-        const outlawCost = outlawPlayer.role.cost;
-        const targetCost = targetPlayer.role.cost;
-        
-        // 既に計算されている持ち点を取得
-        const outlawPoints = updates[`players/${outlawId}/points`] || outlawPlayer.points;
-        const targetPoints = updates[`players/${targetId}/points`] || targetPlayer.points;
-        
-        // コスト差分を調整
-        updates[`players/${outlawId}/points`] = outlawPoints + (outlawCost - targetCost);
-        updates[`players/${targetId}/points`] = targetPoints + (targetCost - outlawCost);
-        
-        // アラートでプレイヤーに通知
-        if (currentPlayer.id === outlawId) {
-          setTimeout(() => {
-            alert(`無法者の能力が発動しました！あなたは${targetPlayer.name}と役職を交換し、「${targetPlayer.role.name}」になりました。`);
-          }, 1000);
-        } else if (currentPlayer.id === targetId) {
-          setTimeout(() => {
-            alert(`無法者の能力が発動しました！あなたは${outlawPlayer.name}と役職を交換し、「無法者」になりました。`);
-          }, 1000);
-        }
-      }
-    });
-  }
-  
   // 更新済みフラグを設定
   updates.points_updated = true;
   
@@ -1052,6 +1230,7 @@ function resetGame(gameId) {
     resetData.forced_vote_target = null;
     resetData.forced_vote_by = null;
     resetData.spy_report = null;
+    resetData.puppy_guessed = null;
     resetData.puppy_guessed_correct = null;
     resetData.special_victory = null;
     resetData.hidden_roles = null;
