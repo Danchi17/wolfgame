@@ -1,8 +1,10 @@
 // js/app.js
 import { auth, signInAnonymouslyAuth, createGame, joinGame, listenGameState, updatePlayerReady, leaveGame } from './firebase.js';
-import { initGame, startGame, handlePhase } from './game.js';
+import { initGame, startGame, handlePhase } from './modules/game-core.js';
+import { notificationSystem } from './ui.js';
+import { initGameUtils } from './modules/game-utils.js';
 
-// 利用可能なアイコン（仮）
+// 利用可能なアイコン
 const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
 
 // アプリ初期化
@@ -11,6 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 匿名認証
     await signInAnonymouslyAuth();
     showHomeScreen();
+    // 通知システム初期化
+    notificationSystem.init();
   } catch (error) {
     console.error("初期化エラー:", error);
     alert("アプリケーションの初期化に失敗しました");
@@ -67,7 +71,7 @@ function showHomeScreen() {
   document.getElementById('createGameBtn').addEventListener('click', async () => {
     const playerName = document.getElementById('playerName').value.trim();
     if (!playerName) {
-      alert('プレイヤー名を入力してください');
+      notificationSystem.error('プレイヤー名を入力してください');
       return;
     }
     
@@ -77,7 +81,7 @@ function showHomeScreen() {
     if (gameId) {
       enterGameRoom(gameId);
     } else {
-      alert('ゲーム作成に失敗しました');
+      notificationSystem.error('ゲーム作成に失敗しました');
     }
   });
   
@@ -87,7 +91,7 @@ function showHomeScreen() {
     const gameId = document.getElementById('gameId').value.trim();
     
     if (!playerName || !gameId) {
-      alert('プレイヤー名とゲームIDを入力してください');
+      notificationSystem.error('プレイヤー名とゲームIDを入力してください');
       return;
     }
     
@@ -97,7 +101,7 @@ function showHomeScreen() {
     if (success) {
       enterGameRoom(gameId);
     } else {
-      alert('ゲームへの参加に失敗しました');
+      notificationSystem.error('ゲームへの参加に失敗しました');
     }
   });
 }
@@ -135,7 +139,7 @@ function enterGameRoom(gameId) {
   // ゲーム状態リスニング
   const unsubscribe = listenGameState(gameId, (gameData) => {
     if (!gameData) {
-      alert('ゲームが見つかりません');
+      notificationSystem.error('ゲームが見つかりません');
       showHomeScreen();
       return;
     }
@@ -240,6 +244,8 @@ function updateGameUI(gameData, gameId) {
   } else {
     // ゲーム中の場合
     initGame(gameData, currentUserId);
+    // ゲームユーティリティモジュールの初期化
+    initGameUtils(gameData);
     handlePhase(gameData.status, gameData);
   }
 }
@@ -271,6 +277,14 @@ function showStartGameButton(gameData) {
   
   // 4人以上かつ全員準備完了している場合のみ有効
   startBtn.disabled = !(playerCount >= 4 && allReady);
+  
+  if (startBtn.disabled) {
+    startBtn.title = playerCount < 4 ? 
+      '4人以上のプレイヤーが必要です' : 
+      '全員が準備完了になるまで待ってください';
+  } else {
+    startBtn.title = 'ゲームを開始する';
+  }
 }
 
 export { showHomeScreen };

@@ -92,4 +92,30 @@ function isWerewolfTeam(role) {
   return role && role.team === 'werewolf';
 }
 
-export { ROLES, getRandomRoles, isWerewolfTeam };
+// 役職に関する機能の追加
+function getVillageRoles() {
+  return Object.values(ROLES).filter(role => role.team === 'village');
+}
+
+function getWerewolfRoles() {
+  return Object.values(ROLES).filter(role => role.team === 'werewolf');
+}
+
+function getRoleByName(name) {
+  return Object.values(ROLES).find(role => role.name === name);
+}
+
+function getRoleCost(roleName) {
+  const role = getRoleByName(roleName);
+  return role ? role.cost : 0;
+}
+
+export { 
+  ROLES, 
+  getRandomRoles, 
+  isWerewolfTeam,
+  getVillageRoles,
+  getWerewolfRoles,
+  getRoleByName,
+  getRoleCost
+};
