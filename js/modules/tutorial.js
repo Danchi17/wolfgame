@@ -1,421 +1,614 @@
 // js/modules/tutorial.js
+import { notificationSystem } from '../ui.js';
 
 /**
- * チュートリアル管理クラス
- * 初心者向けのゲーム説明を提供
+ * チュートリアルモジュール
+ * 初回プレイ時のガイドとヒントを提供
  */
-const TutorialManager = {
+const Tutorial = {
   /**
-   * チュートリアルを表示済みか確認するキー
+   * チュートリアルの完了状態を保存するキー
    */
-  TUTORIAL_SEEN_KEY: 'wolf_game_tutorial_seen',
+  STORAGE_KEY: 'wolfgame_tutorials_completed',
   
   /**
-   * チュートリアルのステップ定義
+   * チュートリアルダイアログの要素
    */
-  steps: [
-    {
-      title: 'ゲームの概要',
-      content: `
-        <p>多能力一夜人狼へようこそ！</p>
-        <p>このゲームは、プレイヤーがシークレットな役職を持ち、市民陣営と人狼陣営に分かれて戦うソーシャルデダクションゲームです。</p>
-        <p>各役職は独自の能力を持ち、これを使って相手の役職を推理します。</p>
-      `
-    },
-    {
-      title: 'ゲームの流れ',
-      content: `
-        <p>ゲームは次のように進みます：</p>
-        <ol>
-          <li><strong>役職配布</strong> - 各プレイヤーにランダムな役職が配布されます</li>
-          <li><strong>夜フェーズ</strong> - 役職に応じた能力を使用する時間です</li>
-          <li><strong>日中フェーズ</strong> - 全員で議論し、役職を推測します</li>
-          <li><strong>投票フェーズ</strong> - 処刑するプレイヤーに投票します</li>
-          <li><strong>結果発表</strong> - 勝敗と得点の変動が発表されます</li>
-        </ol>
-      `
-    },
-    {
-      title: '市民陣営の役職',
-      content: `
-        <p><strong>市民陣営</strong>は人狼を見つけ出して処刑するのが目標です。</p>
-        <ul>
-          <li><strong>占い師(コスト3)</strong> - 他人も1人または場札2枚の役職を確認できます</li>
-          <li><strong>占星術師(コスト2)</strong> - 場の6枚のカード中、人狼陣営の数を知ります</li>
-          <li><strong>怪盗(コスト1)</strong> - 他人と役職を交換できます</li>
-          <li><strong>村長(コスト3)</strong> - 投票権が2票あります</li>
-          <li><strong>スパイ(コスト2)</strong> - 人狼を通報できますが、間違えるとペナルティ</li>
-        </ul>
-      `
-    },
-    {
-      title: '人狼陣営の役職',
-      content: `
-        <p><strong>人狼陣営</strong>は市民を欺き、市民の投票で処刑されないようにします。</p>
-        <ul>
-          <li><strong>大熊(コスト5)</strong> - 処刑された場合、人狼陣営が過半数なら強制勝利</li>
-          <li><strong>占い人狼(コスト4)</strong> - 占い師の能力を持ちますが人狼同士を確認できません</li>
-          <li><strong>やっかいな豚男(コスト4)</strong> - 他人の投票先を強制指定できますが自分は投票できません</li>
-          <li><strong>蛇女(コスト3)</strong> - 同票数で処刑されると単独勝利します</li>
-          <li><strong>博識な子犬(コスト3)</strong> - 場札の市民陣営役職を当てると持ち点が回復します</li>
-        </ul>
-      `
-    },
-    {
-      title: '勝利条件と得点',
-      content: `
-        <p><strong>勝利条件:</strong></p>
-        <ul>
-          <li>市民陣営: 人狼を処刑すれば勝利</li>
-          <li>人狼陣営: 人狼なしに市民が処刑されたら勝利</li>
-        </ul>
-        <p><strong>特殊勝利:</strong></p>
-        <ul>
-          <li>蛇女が同票数で処刑されると単独勝利</li>
-          <li>大熊が処刑されたとき人狼陣営が過半数だと人狼陣営勝利</li>
-        </ul>
-        <p>敗北陣営のプレイヤーは役職のコスト分、持ち点が減ります。持ち点が0点以下になるとゲーム終了となります。</p>
-      `
-    },
-    {
-      title: 'コツとヒント',
-      content: `
-        <p><strong>プレイのコツ:</strong></p>
-        <ul>
-          <li>自分の役職を隠したり、假の役職を主張したりするのが重要です</li>
-          <li>他のプレイヤーの発言や行動を観察して役職を推測しましょう</li>
-          <li>コストの低い役職は敗北しても持ち点の減りが少なく、長期的に有利です</li>
-          <li>論理的な推理だけでなく、相手の心理を読むスキルも重要です</li>
-        </ul>
-        <p>それでは、楽しいゲームをお楽しみください！</p>
-      `
-    }
-  ],
+  dialogElement: null,
   
   /**
-   * 現在のステップインデックス
-   */
-  currentStep: 0,
-  
-  /**
-   * チュートリアルウィンドウの要素
-   */
-  tutorialElement: null,
-  
-  /**
-   * チュートリアルを初期化
+   * チュートリアルの初期化
    */
   init() {
-    // 既存のチュートリアルを削除
-    this.hide();
+    // 既存のダイアログがあれば削除
+    this.cleanup();
     
-    // 初期ステップをリセット
-    this.currentStep = 0;
-    
-    // 既に表示済みか確認
-    if (this.hasSeenTutorial()) {
-      return false;
-    }
-    
-    return true;
-  },
-  
-  /**
-   * チュートリアルを表示
-   * @returns {boolean} 表示成功ならtrue
-   */
-  show() {
-    if (!this.init()) {
-      return false;
-    }
-    
-    // チュートリアル要素の作成
-    this.tutorialElement = document.createElement('div');
-    this.tutorialElement.id = 'tutorial';
-    this.tutorialElement.className = 'tutorial-container';
+    // チュートリアルダイアログを作成
+    this.dialogElement = document.createElement('div');
+    this.dialogElement.id = 'tutorial-dialog';
+    this.dialogElement.className = 'tutorial-dialog';
+    document.body.appendChild(this.dialogElement);
     
     // スタイルの追加
-    const style = document.createElement('style');
-    style.textContent = `
-      .tutorial-container {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-        animation: fadeIn 0.5s ease-out;
-      }
-      
-      .tutorial-content {
-        background-color: white;
-        border-radius: 10px;
-        max-width: 80%;
-        width: 600px;
-        max-height: 80vh;
-        overflow-y: auto;
-        padding: 20px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        position: relative;
-        animation: scaleIn 0.3s ease-out;
-      }
-      
-      .tutorial-header {
-        border-bottom: 1px solid #eee;
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      
-      .tutorial-title {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #2c3e50;
-        margin: 0;
-      }
-      
-      .tutorial-close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-        color: #7f8c8d;
-      }
-      
-      .tutorial-close:hover {
-        color: #e74c3c;
-      }
-      
-      .tutorial-body {
-        margin-bottom: 20px;
-      }
-      
-      .tutorial-footer {
-        display: flex;
-        justify-content: space-between;
-        border-top: 1px solid #eee;
-        padding-top: 15px;
-      }
-      
-      .tutorial-progress {
-        display: flex;
-        gap: 5px;
-      }
-      
-      .progress-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: #ddd;
-      }
-      
-      .progress-dot.active {
-        background-color: #3498db;
-      }
-      
-      .tutorial-buttons {
-        display: flex;
-        gap: 10px;
-      }
-      
-      .tutorial-btn {
-        padding: 8px 15px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: 600;
-      }
-      
-      .tutorial-btn.back {
-        background-color: #f1f1f1;
-        color: #333;
-      }
-      
-      .tutorial-btn.next {
-        background-color: #3498db;
-        color: white;
-      }
-      
-      .tutorial-btn.skip {
-        background-color: #7f8c8d;
-        color: white;
-      }
-      
-      @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      
-      @keyframes scaleIn {
-        from { transform: scale(0.9); opacity: 0; }
-        to { transform: scale(1); opacity: 1; }
-      }
-      
-      @media (max-width: 768px) {
-        .tutorial-content {
+    if (!document.getElementById('tutorial-styles')) {
+      const styleElement = document.createElement('style');
+      styleElement.id = 'tutorial-styles';
+      styleElement.textContent = `
+        .tutorial-dialog {
+          position: fixed;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          background-color: white;
+          border-radius: 10px;
+          box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+          padding: 20px;
+          max-width: 500px;
           width: 90%;
-          max-height: 90vh;
-          padding: 15px;
+          z-index: 3000;
+          display: none;
+          opacity: 0;
+          transition: opacity 0.3s ease;
         }
         
-        .tutorial-title {
-          font-size: 1.2rem;
+        .tutorial-dialog.visible {
+          display: block;
+          opacity: 1;
         }
-      }
-    `;
-    document.head.appendChild(style);
+        
+        .tutorial-dialog h2 {
+          margin-top: 0;
+          color: #3498db;
+          border-bottom: 2px solid #f1f1f1;
+          padding-bottom: 10px;
+        }
+        
+        .tutorial-content {
+          margin: 15px 0;
+          line-height: 1.6;
+        }
+        
+        .tutorial-content img {
+          max-width: 100%;
+          margin: 10px 0;
+          border-radius: 5px;
+          border: 1px solid #eee;
+        }
+        
+        .tutorial-buttons {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 20px;
+        }
+        
+        .tutorial-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 2999;
+          display: none;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        
+        .tutorial-overlay.visible {
+          display: block;
+          opacity: 1;
+        }
+        
+        .tutorial-highlight {
+          position: absolute;
+          box-shadow: 0 0 0 2000px rgba(0, 0, 0, 0.7);
+          border-radius: 5px;
+          z-index: 2999;
+          pointer-events: none;
+        }
+        
+        .tooltip {
+          position: absolute;
+          background-color: #3498db;
+          color: white;
+          padding: 10px;
+          border-radius: 5px;
+          z-index: 3001;
+          box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .tooltip::after {
+          content: '';
+          position: absolute;
+          border-width: 8px;
+          border-style: solid;
+        }
+        
+        .tooltip.top::after {
+          border-color: #3498db transparent transparent transparent;
+          top: 100%;
+          left: 50%;
+          margin-left: -8px;
+        }
+        
+        .tooltip.bottom::after {
+          border-color: transparent transparent #3498db transparent;
+          bottom: 100%;
+          left: 50%;
+          margin-left: -8px;
+        }
+        
+        .tooltip.left::after {
+          border-color: transparent transparent transparent #3498db;
+          top: 50%;
+          right: -16px;
+          margin-top: -8px;
+        }
+        
+        .tooltip.right::after {
+          border-color: transparent #3498db transparent transparent;
+          top: 50%;
+          left: -16px;
+          margin-top: -8px;
+        }
+        
+        @media (max-width: 480px) {
+          .tutorial-dialog {
+            width: 95%;
+            padding: 15px;
+          }
+          
+          .tutorial-buttons {
+            flex-direction: column-reverse;
+            gap: 10px;
+          }
+          
+          .tutorial-buttons button {
+            width: 100%;
+          }
+        }
+      `;
+      document.head.appendChild(styleElement);
+    }
     
-    // 内容を表示
-    this.updateContent();
-    
-    // DOMに追加
-    document.body.appendChild(this.tutorialElement);
-    
-    return true;
+    // オーバーレイ作成
+    const overlay = document.createElement('div');
+    overlay.id = 'tutorial-overlay';
+    overlay.className = 'tutorial-overlay';
+    document.body.appendChild(overlay);
   },
   
   /**
-   * チュートリアルコンテンツを更新
+   * チュートリアル要素を削除
    */
-  updateContent() {
-    if (!this.tutorialElement) return;
+  cleanup() {
+    // ダイアログの削除
+    const existingDialog = document.getElementById('tutorial-dialog');
+    if (existingDialog) {
+      existingDialog.remove();
+    }
     
-    const step = this.steps[this.currentStep];
+    // オーバーレイの削除
+    const existingOverlay = document.getElementById('tutorial-overlay');
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
     
-    this.tutorialElement.innerHTML = `
-      <div class="tutorial-content">
-        <div class="tutorial-header">
-          <h2 class="tutorial-title">${step.title}</h2>
-          <button class="tutorial-close" aria-label="閉じる">&times;</button>
-        </div>
-        <div class="tutorial-body">
-          ${step.content}
-        </div>
-        <div class="tutorial-footer">
-          <div class="tutorial-progress">
-            ${this.steps.map((_, index) => 
-              `<div class="progress-dot ${index === this.currentStep ? 'active' : ''}"></div>`
-            ).join('')}
-          </div>
-          <div class="tutorial-buttons">
-            ${this.currentStep > 0 ? 
-              `<button class="tutorial-btn back">戻る</button>` : 
-              `<button class="tutorial-btn skip">スキップ</button>`
-            }
-            <button class="tutorial-btn next">${this.isLastStep() ? '完了' : '次へ'}</button>
-          </div>
-        </div>
+    // ハイライト要素の削除
+    const highlight = document.querySelector('.tutorial-highlight');
+    if (highlight) {
+      highlight.remove();
+    }
+    
+    // トールチップの削除
+    const tooltip = document.querySelector('.tooltip');
+    if (tooltip) {
+      tooltip.remove();
+    }
+    
+    this.dialogElement = null;
+  },
+  
+  /**
+   * チュートリアルダイアログを表示
+   * @param {string} title - ダイアログのタイトル
+   * @param {string} content - ダイアログの内容（HTML可）
+   * @param {Function} onNext - 「次へ」ボタンを押したときのコールバック
+   * @param {Function} onClose - 「閉じる」ボタンを押したときのコールバック
+   * @param {boolean} showSkipButton - スキップボタンを表示するか
+   */
+  showDialog(title, content, onNext = null, onClose = null, showSkipButton = true) {
+    if (!this.dialogElement) {
+      this.init();
+    }
+    
+    this.dialogElement.innerHTML = `
+      <h2>${title}</h2>
+      <div class="tutorial-content">${content}</div>
+      <div class="tutorial-buttons">
+        <button id="tutorial-close" class="btn secondary">閉じる</button>
+        ${showSkipButton ? '<button id="tutorial-skip" class="btn secondary">スキップ</button>' : ''}
+        ${onNext ? '<button id="tutorial-next" class="btn primary">次へ</button>' : ''}
       </div>
     `;
     
-    // イベントリスナーを設定
-    this.setupEventListeners();
-  },
-  
-  /**
-   * イベントリスナーを設定
-   */
-  setupEventListeners() {
-    // 閉じるボタン
-    const closeBtn = this.tutorialElement.querySelector('.tutorial-close');
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => this.complete());
+    // オーバーレイを表示
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      overlay.classList.add('visible');
     }
     
-    // 戻るボタン
-    const backBtn = this.tutorialElement.querySelector('.tutorial-btn.back');
-    if (backBtn) {
-      backBtn.addEventListener('click', () => this.previousStep());
+    // ダイアログを表示
+    this.dialogElement.classList.add('visible');
+    
+    // ボタンイベントの設定
+    const closeButton = document.getElementById('tutorial-close');
+    if (closeButton) {
+      closeButton.addEventListener('click', () => {
+        this.hideDialog();
+        if (onClose) onClose();
+      });
     }
     
-    // スキップボタン
-    const skipBtn = this.tutorialElement.querySelector('.tutorial-btn.skip');
-    if (skipBtn) {
-      skipBtn.addEventListener('click', () => this.complete());
+    const skipButton = document.getElementById('tutorial-skip');
+    if (skipButton) {
+      skipButton.addEventListener('click', () => {
+        this.hideDialog();
+        this.markAllTutorialsCompleted();
+        notificationSystem.info('すべてのチュートリアルをスキップしました。設定から再度表示できます。');
+      });
     }
     
-    // 次へ/完了ボタン
-    const nextBtn = this.tutorialElement.querySelector('.tutorial-btn.next');
-    if (nextBtn) {
-      nextBtn.addEventListener('click', () => {
-        if (this.isLastStep()) {
-          this.complete();
-        } else {
-          this.nextStep();
-        }
+    const nextButton = document.getElementById('tutorial-next');
+    if (nextButton && onNext) {
+      nextButton.addEventListener('click', () => {
+        this.hideDialog();
+        onNext();
       });
     }
   },
   
   /**
-   * 次のステップへ進む
+   * チュートリアルダイアログを非表示
    */
-  nextStep() {
-    if (this.currentStep < this.steps.length - 1) {
-      this.currentStep++;
-      this.updateContent();
+  hideDialog() {
+    if (this.dialogElement) {
+      this.dialogElement.classList.remove('visible');
     }
-  },
-  
-  /**
-   * 前のステップに戻る
-   */
-  previousStep() {
-    if (this.currentStep > 0) {
-      this.currentStep--;
-      this.updateContent();
-    }
-  },
-  
-  /**
-   * 最後のステップか確認
-   * @returns {boolean} 最後のステップであればtrue
-   */
-  isLastStep() {
-    return this.currentStep === this.steps.length - 1;
-  },
-  
-  /**
-   * チュートリアルを完了
-   */
-  complete() {
-    // チュートリアルを非表示
-    this.hide();
     
-    // ストレージに表示済みを記録
-    localStorage.setItem(this.TUTORIAL_SEEN_KEY, 'true');
-  },
-  
-  /**
-   * チュートリアルを非表示
-   */
-  hide() {
-    if (this.tutorialElement && this.tutorialElement.parentNode) {
-      this.tutorialElement.parentNode.removeChild(this.tutorialElement);
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
     }
-    this.tutorialElement = null;
+    
+    // ハイライトとトールチップも非表示
+    this.hideHighlight();
   },
   
   /**
-   * チュートリアルを既に見たか確認
-   * @returns {boolean} 既に見たならtrue
+   * 要素をハイライトしてトールチップを表示
+   * @param {string} selector - ハイライトする要素のCSSセレクター
+   * @param {string} tooltipText - トールチップのテキスト
+   * @param {string} position - トールチップの位置 (top, bottom, left, right)
    */
-  hasSeenTutorial() {
-    return localStorage.getItem(this.TUTORIAL_SEEN_KEY) === 'true';
+  highlightElement(selector, tooltipText, position = 'top') {
+    // 前のハイライトを削除
+    this.hideHighlight();
+    
+    const element = document.querySelector(selector);
+    if (!element) return;
+    
+    // オーバーレイを表示
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+      overlay.classList.add('visible');
+    }
+    
+    // 要素の位置情報取得
+    const rect = element.getBoundingClientRect();
+    
+    // ハイライト要素を作成
+    const highlight = document.createElement('div');
+    highlight.className = 'tutorial-highlight';
+    highlight.style.top = `${rect.top}px`;
+    highlight.style.left = `${rect.left}px`;
+    highlight.style.width = `${rect.width}px`;
+    highlight.style.height = `${rect.height}px`;
+    document.body.appendChild(highlight);
+    
+    // トールチップ要素を作成
+    const tooltip = document.createElement('div');
+    tooltip.className = `tooltip ${position}`;
+    tooltip.textContent = tooltipText;
+    document.body.appendChild(tooltip);
+    
+    // トールチップの位置を設定
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let top, left;
+    
+    switch (position) {
+      case 'top':
+        top = rect.top - tooltipRect.height - 16;
+        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        break;
+      case 'bottom':
+        top = rect.bottom + 16;
+        left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        break;
+      case 'left':
+        top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+        left = rect.left - tooltipRect.width - 16;
+        break;
+      case 'right':
+        top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+        left = rect.right + 16;
+        break;
+    }
+    
+    tooltip.style.top = `${top}px`;
+    tooltip.style.left = `${left}px`;
   },
   
   /**
-   * チュートリアルの表示履歴をリセット
+   * ハイライトとトールチップを非表示
    */
-  resetSeenStatus() {
-    localStorage.removeItem(this.TUTORIAL_SEEN_KEY);
+  hideHighlight() {
+    // ハイライト要素の削除
+    const highlight = document.querySelector('.tutorial-highlight');
+    if (highlight) {
+      highlight.remove();
+    }
+    
+    // トールチップの削除
+    const tooltip = document.querySelector('.tooltip');
+    if (tooltip) {
+      tooltip.remove();
+    }
+  },
+  
+  /**
+   * チュートリアルの完了状態をチェック
+   * @param {string} tutorialId - チュートリアルID
+   * @returns {boolean} 完了していればtrue
+   */
+  isTutorialCompleted(tutorialId) {
+    try {
+      const completed = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+      return !!completed[tutorialId];
+    } catch (error) {
+      console.error('チュートリアル完了状態の読み込みエラー:', error);
+      return false;
+    }
+  },
+  
+  /**
+   * チュートリアルを完了済みとしてマーク
+   * @param {string} tutorialId - チュートリアルID
+   */
+  markTutorialCompleted(tutorialId) {
+    try {
+      const completed = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '{}');
+      completed[tutorialId] = true;
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(completed));
+    } catch (error) {
+      console.error('チュートリアル完了状態の保存エラー:', error);
+    }
+  },
+  
+  /**
+   * すべてのチュートリアルを完了済みとしてマーク
+   */
+  markAllTutorialsCompleted() {
+    try {
+      const allTutorials = {
+        'home': true,
+        'game-room': true,
+        'night-phase': true,
+        'day-phase': true,
+        'voting-phase': true,
+        'result-phase': true
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(allTutorials));
+    } catch (error) {
+      console.error('すべてのチュートリアル完了状態の保存エラー:', error);
+    }
+  },
+  
+  /**
+   * すべてのチュートリアルの完了状態をリセット
+   */
+  resetAllTutorials() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+      notificationSystem.info('チュートリアルの表示状態をリセットしました。次回から再度表示されます。');
+    } catch (error) {
+      console.error('チュートリアル状態のリセットエラー:', error);
+    }
+  },
+  
+  /**
+   * ホーム画面のチュートリアルを表示
+   */
+  showHomeTutorial() {
+    if (this.isTutorialCompleted('home')) return;
+    
+    this.showDialog(
+      '多能力一夜人狼へようこそ！',
+      `
+        <p>このゲームは多数の特殊な役職と能力を持つ「一夜人狼」です。</p>
+        <p>市民陣営と人狼陣営に分かれて戦います。特別な勝利条件を持つ役職もあります。</p>
+        <p>まずは「ゲームを作成」するか、友達から共有されたゲームIDを使って「ゲームに参加」しましょう。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('home');
+        this.highlightElement('#createGameBtn', 'ゲームを作成してホストになります', 'bottom');
+      },
+      () => {
+        this.markTutorialCompleted('home');
+      }
+    );
+  },
+  
+  /**
+   * ゲームルーム画面のチュートリアルを表示
+   */
+  showGameRoomTutorial() {
+    if (this.isTutorialCompleted('game-room')) return;
+    
+    this.showDialog(
+      'ゲームルーム',
+      `
+        <p>ここがゲームルームです。ゲームが始まる前に全員が「準備完了」ボタンを押す必要があります。</p>
+        <p>準備が整ったら、ホストプレイヤーが「ゲーム開始」ボタンを押してゲームを始めます。</p>
+        <p>4人以上のプレイヤーが必要です。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('game-room');
+        this.highlightElement('#readyBtn', '準備完了ボタンを押して準備OKを表示します', 'top');
+      },
+      () => {
+        this.markTutorialCompleted('game-room');
+      }
+    );
+  },
+  
+  /**
+   * 夜フェーズのチュートリアルを表示
+   */
+  showNightPhaseTutorial() {
+    if (this.isTutorialCompleted('night-phase')) return;
+    
+    this.showDialog(
+      '夜フェーズ',
+      `
+        <p>夜フェーズでは、各役職が能力を使用します。</p>
+        <p>占い師は他のプレイヤーの役職を見たり、怪盗は役職を交換したり、人狼は仏間を確認します。</p>
+        <p>役職に応じた指示が表示されるので、それに従って行動してください。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('night-phase');
+      },
+      () => {
+        this.markTutorialCompleted('night-phase');
+      }
+    );
+  },
+  
+  /**
+   * 日中フェーズのチュートリアルを表示
+   */
+  showDayPhaseTutorial() {
+    if (this.isTutorialCompleted('day-phase')) return;
+    
+    this.showDialog(
+      '日中フェーズ',
+      `
+        <p>日中フェーズでは、プレイヤー同士で議論を行います。</p>
+        <p>外部のボイスチャットツール（Discordなど）を使って話し合いましょう。</p>
+        <p>博識な子犬や豚男といった役職は、このフェーズで特殊能力を使えます。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('day-phase');
+      },
+      () => {
+        this.markTutorialCompleted('day-phase');
+      }
+    );
+  },
+  
+  /**
+   * 投票フェーズのチュートリアルを表示
+   */
+  showVotingPhaseTutorial() {
+    if (this.isTutorialCompleted('voting-phase')) return;
+    
+    this.showDialog(
+      '投票フェーズ',
+      `
+        <p>投票フェーズでは、処刑するプレイヤーを選びます。</p>
+        <p>市民陣営は人狼を処刑すれば勝利、人狼陣営は人狼以外のプレイヤーが処刑されれば勝利です。</p>
+        <p>村長は2票、スパイは通報機能、蛇女は同数投票で処刑されると単独勝利といった特殊ルールがあります。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('voting-phase');
+      },
+      () => {
+        this.markTutorialCompleted('voting-phase');
+      }
+    );
+  },
+  
+  /**
+   * 結果フェーズのチュートリアルを表示
+   */
+  showResultPhaseTutorial() {
+    if (this.isTutorialCompleted('result-phase')) return;
+    
+    this.showDialog(
+      '結果フェーズ',
+      `
+        <p>結果フェーズでは、投票結果と勝敗が表示されます。</p>
+        <p>敗北陣営は役職のコスト分、持ち点が減少します。持ち点が0以下になるとゲームが終了します。</p>
+        <p>特殊な役職能力（無法者の役職交換など）もここで発動します。</p>
+      `,
+      () => {
+        this.markTutorialCompleted('result-phase');
+      },
+      () => {
+        this.markTutorialCompleted('result-phase');
+      }
+    );
+  },
+  
+  /**
+   * 役職説明ダイアログを表示
+   * @param {Object} role - 役職データ
+   */
+  showRoleInfo(role) {
+    if (!role) return;
+    
+    const teamText = role.team === 'village' ? '市民陣営' : '人狼陣営';
+    
+    this.showDialog(
+      `${role.name}（${teamText}）`,
+      `
+        <p><strong>コスト:</strong> ${role.cost}</p>
+        <p><strong>能力:</strong> ${role.description}</p>
+        ${this.getRoleSpecialInfo(role.name)}
+      `,
+      null,
+      null,
+      false
+    );
+  },
+  
+  /**
+   * 役職の特殊情報を取得
+   * @param {string} roleName - 役職名
+   * @returns {string} 特殊情報のHTML
+   */
+  getRoleSpecialInfo(roleName) {
+    const roleInfo = {
+      '占い師': '夜フェーズで他プレイヤーの役職を確認できます。または場札の2枚の役職を確認できます。',
+      '占星術師': '場札を含む6枚の役職の中で、人狼陣営の数が分かります。',
+      '占い師の弟子': '夜フェーズで他プレイヤーの役職を1つ確認できます。',
+      '無法者': '敗北する場合、他プレイヤーと役職がランダムに入れ替わります。',
+      '村長': '投票時に2票分の投票権を持ちます。',
+      '怪盗': '夜フェーズで他プレイヤーと役職を交換できます。',
+      'スパイ': '人狼陣営のプレイヤーを確認でき、投票時に通報可能です。通報が外れると持ち点-2点。',
+      '大熊': '処刑された場合、プレイヤーの過半数が人狼陣営なら強制勝利します。',
+      '占い人狼': '占い師と同じ能力を持ちますが、他の人狼と確認できません。',
+      'やっかいな豚男': '日中フェーズで他プレイヤーの投票先を強制指定できますが、自身は投票権がなくなります。',
+      '蛇女': '同数投票で処刑される場合、単独勝利します。',
+      '博識な子犬': '日中フェーズで場札の市民陣営役職を当てると持ち点+2点。'
+    };
+    
+    if (roleInfo[roleName]) {
+      return `<div class="role-special-info"><p><strong>特殊ルール:</strong> ${roleInfo[roleName]}</p></div>`;
+    }
+    
+    return '';
   }
 };
 
-export default TutorialManager;
+export default Tutorial;
