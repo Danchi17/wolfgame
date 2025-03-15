@@ -1,8 +1,9 @@
 // js/app.js
-import { auth, signInAnonymouslyAuth, createGame, joinGame, listenGameState, updatePlayerReady, leaveGame } from './firebase.js';
+import { auth, signInAnonymouslyAuth, createGame, joinGame, listenGameState, updatePlayerReady, leaveGame, isOnline } from './firebase.js';
 import { initGame, startGame, handlePhase } from './modules/game-core.js';
 import { notificationSystem } from './ui.js';
 import { initGameUtils } from './modules/game-utils.js';
+import LoadingIndicator from './modules/loading.js';
 
 // 利用可能なアイコン
 const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
@@ -10,14 +11,21 @@ const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', async () => {
   try {
-    // 匿名認証
-    await signInAnonymouslyAuth();
-    showHomeScreen();
+    // ローディングインジケーターの初期化
+    LoadingIndicator.init();
+    LoadingIndicator.show('ゲームを準備しています...');
+    
     // 通知システム初期化
     notificationSystem.init();
+    
+    // 匿名認証
+    await signInAnonymouslyAuth();
+    LoadingIndicator.hide();
+    showHomeScreen();
   } catch (error) {
     console.error("初期化エラー:", error);
-    alert("アプリケーションの初期化に失敗しました");
+    LoadingIndicator.hide();
+    notificationSystem.error("アプリケーションの初期化に失敗しました");
   }
 });
 
@@ -55,6 +63,11 @@ function showHomeScreen() {
           <button id="joinGameBtn" class="btn secondary">ゲームに参加</button>
         </div>
       </div>
+      
+      <div class="connection-status ${isOnline ? 'online' : 'offline'}">
+        <span class="status-indicator"></span>
+        <span class="status-text">${isOnline ? 'オンライン' : 'オフライン'}</span>
+      </div>
     </div>
   `;
   
@@ -76,7 +89,12 @@ function showHomeScreen() {
     }
     
     const selectedIcon = document.querySelector('.icon-option.selected').dataset.icon;
-    const gameId = await createGame(playerName, selectedIcon);
+    
+    // ローディング表示を使用してゲーム作成
+    const gameId = await LoadingIndicator.withLoading(
+      async () => await createGame(playerName, selectedIcon),
+      'ゲームを作成しています...'
+    );
     
     if (gameId) {
       enterGameRoom(gameId);
@@ -96,7 +114,12 @@ function showHomeScreen() {
     }
     
     const selectedIcon = document.querySelector('.icon-option.selected').dataset.icon;
-    const success = await joinGame(gameId, playerName, selectedIcon);
+    
+    // ローディング表示を使用してゲーム参加
+    const success = await LoadingIndicator.withLoading(
+      async () => await joinGame(gameId, playerName, selectedIcon),
+      'ゲームに参加しています...'
+    );
     
     if (success) {
       enterGameRoom(gameId);
@@ -108,6 +131,8 @@ function showHomeScreen() {
 
 // ゲームルーム画面表示
 function enterGameRoom(gameId) {
+  LoadingIndicator.show('ゲームルームに入室しています...');
+  
   const appContainer = document.getElementById('app');
   appContainer.innerHTML = `
     <div class="game-container">
@@ -133,11 +158,18 @@ function enterGameRoom(gameId) {
         <button id="readyBtn" class="btn secondary">準備完了</button>
         <button id="leaveBtn" class="btn danger">退出する</button>
       </div>
+      
+      <div class="connection-status ${isOnline ? 'online' : 'offline'}">
+        <span class="status-indicator"></span>
+        <span class="status-text">${isOnline ? 'オンライン' : 'オフライン'}</span>
+      </div>
     </div>
   `;
   
   // ゲーム状態リスニング
   const unsubscribe = listenGameState(gameId, (gameData) => {
+    LoadingIndicator.hide();
+    
     if (!gameData) {
       notificationSystem.error('ゲームが見つかりません');
       showHomeScreen();
@@ -156,10 +188,13 @@ function enterGameRoom(gameId) {
   });
   
   // 退出ボタン
-  document.getElementById('leaveBtn').addEventListener('click', () => {
+  document.getElementById('leaveBtn').addEventListener('click', async () => {
     // ゲーム退出処理
     if (auth.currentUser) {
-      leaveGame(gameId, auth.currentUser.uid);
+      await LoadingIndicator.withLoading(
+        async () => await leaveGame(gameId, auth.currentUser.uid),
+        'ゲームから退出しています...'
+      );
     }
     showHomeScreen();
   });
@@ -178,6 +213,16 @@ function updateGameUI(gameData, gameId) {
   if (!currentPlayer) {
     console.error('現在のプレイヤーがゲームに参加していません');
     return;
+  }
+  
+  // オンラインステータスを更新
+  const connectionStatus = document.querySelector('.connection-status');
+  if (connectionStatus) {
+    connectionStatus.className = `connection-status ${isOnline ? 'online' : 'offline'}`;
+    const statusText = connectionStatus.querySelector('.status-text');
+    if (statusText) {
+      statusText.textContent = isOnline ? 'オンライン' : 'オフライン';
+    }
   }
   
   // プレイヤー表示の更新
@@ -270,8 +315,11 @@ function showStartGameButton(gameData) {
     
     gameControls.prepend(startBtn);
     
-    startBtn.addEventListener('click', () => {
-      startGame(gameData.gameId);
+    startBtn.addEventListener('click', async () => {
+      await LoadingIndicator.withLoading(
+        async () => await startGame(gameData.gameId),
+        'ゲームを開始しています...'
+      );
     });
   }
   

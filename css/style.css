@@ -97,6 +97,7 @@ input {
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .home-container h1 {
@@ -123,11 +124,16 @@ input {
   border-radius: 50%;
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, transform 0.2s;
+}
+
+.icon-option:hover {
+  transform: scale(1.05);
 }
 
 .icon-option.selected {
   border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
 }
 
 .icon-option img {
@@ -140,6 +146,49 @@ input {
   margin-top: 20px;
 }
 
+/* ネットワーク状態表示 */
+.connection-status {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  background-color: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+.connection-status.online .status-indicator {
+  background-color: #2ecc71;
+  box-shadow: 0 0 5px #2ecc71;
+  animation: pulse 2s infinite;
+}
+
+.connection-status.offline .status-indicator {
+  background-color: #e74c3c;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(46, 204, 113, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+  }
+}
+
 /* ゲーム画面 */
 .game-container {
   max-width: 1000px;
@@ -148,6 +197,7 @@ input {
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  position: relative;
 }
 
 .game-header {
@@ -196,11 +246,12 @@ input {
   padding: 10px;
   text-align: center;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  transition: transform 0.3s;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .player:hover {
   transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 .player.host {
@@ -218,6 +269,11 @@ input {
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid #ddd;
+  transition: transform 0.2s;
+}
+
+.player:hover .player-icon {
+  transform: scale(1.1);
 }
 
 .player-icon img {
@@ -252,11 +308,12 @@ input {
   padding: 15px;
   margin: 0 10px;
   position: relative;
-  transition: transform 0.3s;
+  transition: transform 0.3s, box-shadow 0.3s;
 }
 
 .card:hover {
   transform: translateY(-10px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
 .field-card {
@@ -308,6 +365,8 @@ input {
   border-radius: 8px;
   margin: 20px 0;
   min-height: 150px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
 }
 
 .game-controls {
@@ -349,10 +408,29 @@ input {
 .vote-btn {
   background-color: #e67e22;
   color: white;
+  transition: all 0.3s ease;
+}
+
+.vote-btn:hover {
+  background-color: #d35400;
+  transform: scale(1.05);
 }
 
 .vote-btn.forced {
   background-color: #e74c3c;
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(231, 76, 60, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
 }
 
 /* フェーズ管理UI */
@@ -361,6 +439,8 @@ input {
   padding: 15px;
   background-color: #f0f0f0;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
 }
 
 /* 結果表示部分 */
@@ -370,6 +450,12 @@ input {
   text-align: center;
   margin: 20px 0;
   color: #2c3e50;
+  animation: fadeIn 1s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .special-victory {
@@ -381,6 +467,12 @@ input {
   padding: 10px;
   background-color: #fadbd8;
   border-radius: 5px;
+  animation: highlight 2s infinite alternate;
+}
+
+@keyframes highlight {
+  from { background-color: #fadbd8; }
+  to { background-color: #f8c9c4; }
 }
 
 .votes-container,
@@ -393,6 +485,7 @@ input {
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
 }
 
 .points-info {
@@ -401,6 +494,7 @@ input {
   background-color: #eaf2f8;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
 }
 
 .final-ranking {
@@ -409,6 +503,12 @@ input {
   background-color: #f9f9f9;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(50px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
 /* スパイ通報、博識な子犬関連 */
@@ -417,6 +517,8 @@ input {
   padding: 15px;
   background-color: #e3f2fd;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  transition: all 0.3s ease;
 }
 
 .spy-report-targets, .role-guess-options {
@@ -429,11 +531,23 @@ input {
 .report-btn {
   background-color: #d35400;
   color: white;
+  transition: all 0.3s ease;
+}
+
+.report-btn:hover {
+  background-color: #e74c3c;
+  transform: scale(1.05);
 }
 
 .guess-role {
   background-color: #16a085;
   color: white;
+  transition: all 0.3s ease;
+}
+
+.guess-role:hover {
+  background-color: #1abc9c;
+  transform: scale(1.05);
 }
 
 /* レスポンシブデザイン */
@@ -507,7 +621,13 @@ input {
   padding: 10px;
   border-radius: 5px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-  transition: opacity 0.3s;
+  transition: opacity 0.3s, transform 0.3s;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 .notification.info {
@@ -544,4 +664,10 @@ input {
   max-width: 80%;
   max-height: 80vh;
   overflow-y: auto;
+  animation: fadeInScale 0.3s ease-out;
+}
+
+@keyframes fadeInScale {
+  from { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
