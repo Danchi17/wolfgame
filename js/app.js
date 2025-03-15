@@ -4,6 +4,8 @@ import { initGame, startGame, handlePhase } from './modules/game-core.js';
 import { notificationSystem } from './ui.js';
 import { initGameUtils } from './modules/game-utils.js';
 import LoadingIndicator from './modules/loading.js';
+import Tutorial from './modules/tutorial.js';
+import DataManager from './modules/data-manager.js';
 
 // 利用可能なアイコン
 const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
@@ -17,6 +19,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // 通知システム初期化
     notificationSystem.init();
+    
+    // チュートリアル初期化
+    Tutorial.init();
     
     // 匿名認証
     await signInAnonymouslyAuth();
@@ -64,6 +69,10 @@ function showHomeScreen() {
         </div>
       </div>
       
+      <div class="home-actions">
+        <button id="showTutorialBtn" class="btn info">遊び方を見る</button>
+      </div>
+      
       <div class="connection-status ${isOnline ? 'online' : 'offline'}">
         <span class="status-indicator"></span>
         <span class="status-text">${isOnline ? 'オンライン' : 'オフライン'}</span>
@@ -78,6 +87,11 @@ function showHomeScreen() {
       iconOptions.forEach(opt => opt.classList.remove('selected'));
       option.classList.add('selected');
     });
+  });
+  
+  // チュートリアル表示ボタン
+  document.getElementById('showTutorialBtn').addEventListener('click', () => {
+    Tutorial.show();
   });
   
   // ゲーム作成ボタン
@@ -127,6 +141,24 @@ function showHomeScreen() {
       notificationSystem.error('ゲームへの参加に失敗しました');
     }
   });
+  
+  // キーボードアクセシビリティの追加
+  const playerNameInput = document.getElementById('playerName');
+  const gameIdInput = document.getElementById('gameId');
+  const createBtn = document.getElementById('createGameBtn');
+  const joinBtn = document.getElementById('joinGameBtn');
+  
+  playerNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      createBtn.click();
+    }
+  });
+  
+  gameIdInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      joinBtn.click();
+    }
+  });
 }
 
 // ゲームルーム画面表示
@@ -156,6 +188,7 @@ function enterGameRoom(gameId) {
       
       <div class="game-controls">
         <button id="readyBtn" class="btn secondary">準備完了</button>
+        <button id="helpBtn" class="btn info">遊び方</button>
         <button id="leaveBtn" class="btn danger">退出する</button>
       </div>
       
@@ -166,8 +199,9 @@ function enterGameRoom(gameId) {
     </div>
   `;
   
-  // ゲーム状態リスニング
-  const unsubscribe = listenGameState(gameId, (gameData) => {
+  // データマネージャーを使用してゲーム状態を監視
+  DataManager.unsubscribeAll(); // 先に既存のリスナーをクリア
+  DataManager.listenToData(`games/${gameId}`, (gameData) => {
     LoadingIndicator.hide();
     
     if (!gameData) {
@@ -187,6 +221,11 @@ function enterGameRoom(gameId) {
     updatePlayerReady(gameId, currentUserId, !isReady);
   });
   
+  // 遊び方ボタン
+  document.getElementById('helpBtn').addEventListener('click', () => {
+    Tutorial.show();
+  });
+  
   // 退出ボタン
   document.getElementById('leaveBtn').addEventListener('click', async () => {
     // ゲーム退出処理
@@ -196,7 +235,21 @@ function enterGameRoom(gameId) {
         'ゲームから退出しています...'
       );
     }
+    DataManager.unsubscribeAll();
     showHomeScreen();
+  });
+  
+  // キーボードアクセシビリティの追加
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F1') {
+      e.preventDefault();
+      document.getElementById('helpBtn').click();
+    } else if (e.key === 'Escape') {
+      if (document.querySelector('.tutorial-overlay.visible')) {
+        // チュートリアルが表示されている場合は、そちらを閉じる
+        Tutorial.hide();
+      }
+    }
   });
 }
 
@@ -232,18 +285,25 @@ function updateGameUI(gameData, gameId) {
   Object.entries(gameData.players).forEach(([id, player]) => {
     const playerElement = document.createElement('div');
     playerElement.className = `player ${player.isHost ? 'host' : ''} ${player.ready ? 'ready' : ''}`;
+    playerElement.setAttribute('aria-label', `プレイヤー: ${player.name} ${player.isHost ? 'ホスト' : ''} ${player.ready ? '準備完了' : '準備中'} 持ち点: ${player.points}`);
     playerElement.innerHTML = `
       <div class="player-icon">
         <img src="assets/images/${player.icon}.png" alt="${player.name}">
       </div>
       <div class="player-name">${player.name}</div>
       <div class="player-status">
-        ${player.isHost ? '👑' : ''}
-        ${player.ready ? '✅' : ''}
+        ${player.isHost ? '<span class="host-icon" title="ホスト">👑</span>' : ''}
+        ${player.ready ? '<span class="ready-icon" title="準備完了">✅</span>' : ''}
       </div>
       <div class="player-points">持ち点: ${player.points}</div>
     `;
     playersContainer.appendChild(playerElement);
+    
+    // 自分のプレイヤーに複読機能で読み上げてもらえるようにマーク
+    if (id === currentUserId) {
+      playerElement.setAttribute('aria-current', 'true');
+      playerElement.classList.add('current-player');
+    }
   });
   
   // 自分の手札表示（役職があるときのみ）
@@ -251,14 +311,16 @@ function updateGameUI(gameData, gameId) {
   playerHand.innerHTML = ''; // 一旦クリア
   
   if (currentPlayer.role) {
-    playerHand.innerHTML = `
-      <div class="card my-role">
-        <div class="role-name">${currentPlayer.role.name}</div>
-        <div class="role-team">${currentPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}</div>
-        <div class="role-cost">コスト: ${currentPlayer.role.cost}</div>
-        <div class="role-description">${currentPlayer.role.description}</div>
-      </div>
+    const roleCard = document.createElement('div');
+    roleCard.className = 'card my-role';
+    roleCard.setAttribute('aria-label', `あなたの役職: ${currentPlayer.role.name}, 陣営: ${currentPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}, コスト: ${currentPlayer.role.cost}`);
+    roleCard.innerHTML = `
+      <div class="role-name">${currentPlayer.role.name}</div>
+      <div class="role-team">${currentPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}</div>
+      <div class="role-cost">コスト: ${currentPlayer.role.cost}</div>
+      <div class="role-description">${currentPlayer.role.description}</div>
     `;
+    playerHand.appendChild(roleCard);
   }
   
   // 準備完了ボタンの状態更新
@@ -266,15 +328,24 @@ function updateGameUI(gameData, gameId) {
   if (currentPlayer.ready) {
     readyBtn.textContent = '準備取消';
     readyBtn.classList.add('active');
+    readyBtn.setAttribute('aria-pressed', 'true');
   } else {
     readyBtn.textContent = '準備完了';
     readyBtn.classList.remove('active');
+    readyBtn.setAttribute('aria-pressed', 'false');
   }
   
   // ゲーム状態に基づいたUI更新
   if (gameData.status === 'waiting') {
     // 待機状態の場合
-    document.getElementById('gameStatus').innerHTML = 'ゲーム開始を待っています...';
+    const statusArea = document.getElementById('gameStatus');
+    statusArea.innerHTML = 'ゲーム開始を待っています...';
+    statusArea.setAttribute('aria-live', 'polite');
+    
+    // 待機中のプレイヤー数と準備完了数を表示
+    const players = Object.values(gameData.players);
+    const readyCount = players.filter(p => p.ready).length;
+    statusArea.innerHTML += `<p>プレイヤー: ${players.length}人中${readyCount}人が準備完了</p>`;
     
     // ホストプレイヤーの場合、開始ボタンを表示
     if (currentPlayer.isHost) {
@@ -288,6 +359,23 @@ function updateGameUI(gameData, gameId) {
     }
   } else {
     // ゲーム中の場合
+    // 状態変化を通知する
+    const previousStatus = document.getElementById('gameStatus').getAttribute('data-status');
+    if (previousStatus !== gameData.status) {
+      const statusMessages = {
+        'night': '夜フェーズが始まりました',
+        'day': '日中フェーズが始まりました',
+        'voting': '投票フェーズが始まりました',
+        'result': '結果発表フェーズです'
+      };
+      
+      if (statusMessages[gameData.status]) {
+        notificationSystem.info(statusMessages[gameData.status]);
+      }
+      
+      document.getElementById('gameStatus').setAttribute('data-status', gameData.status);
+    }
+    
     initGame(gameData, currentUserId);
     // ゲームユーティリティモジュールの初期化
     initGameUtils(gameData);
@@ -312,6 +400,7 @@ function showStartGameButton(gameData) {
     startBtn.id = 'startGameBtn';
     startBtn.className = 'btn primary';
     startBtn.textContent = 'ゲーム開始';
+    startBtn.setAttribute('aria-label', 'ゲームを開始する');
     
     gameControls.prepend(startBtn);
     
@@ -324,14 +413,23 @@ function showStartGameButton(gameData) {
   }
   
   // 4人以上かつ全員準備完了している場合のみ有効
-  startBtn.disabled = !(playerCount >= 4 && allReady);
+  const canStart = playerCount >= 4 && allReady;
+  startBtn.disabled = !canStart;
   
-  if (startBtn.disabled) {
-    startBtn.title = playerCount < 4 ? 
-      '4人以上のプレイヤーが必要です' : 
-      '全員が準備完了になるまで待ってください';
+  if (!canStart) {
+    let reason = '';
+    if (playerCount < 4) {
+      reason = '4人以上のプレイヤーが必要です';
+    } else if (!allReady) {
+      reason = '全員が準備完了になるまで待ってください';
+    }
+    startBtn.title = reason;
+    startBtn.setAttribute('aria-disabled', 'true');
+    startBtn.setAttribute('aria-label', `ゲームを開始する - ${reason}`);
   } else {
     startBtn.title = 'ゲームを開始する';
+    startBtn.setAttribute('aria-disabled', 'false');
+    startBtn.setAttribute('aria-label', 'ゲームを開始する - 準備完了');
   }
 }
 
