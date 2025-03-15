@@ -1,0 +1,32 @@
+{
+  "rules": {
+    "games": {
+      ".read": true,
+      ".write": true,
+      "$gameId": {
+        ".read": true,
+        ".write": true,
+        "players": {
+          "$playerId": {
+            ".read": true,
+            ".write": "auth.uid === $playerId || root.child('games').child($gameId).child('host').val() === auth.uid"
+          }
+        },
+        "votes": {
+          "$voterId": {
+            ".read": true,
+            ".write": "auth.uid === $voterId || root.child('games').child($gameId).child('host').val() === auth.uid"
+          }
+        },
+        "status": {
+          ".read": true,
+          ".write": "root.child('games').child($gameId).child('host').val() === auth.uid"
+        },
+        "current_phase": {
+          ".read": true,
+          ".write": "root.child('games').child($gameId).child('host').val() === auth.uid"
+        }
+      }
+    }
+  }
+}
