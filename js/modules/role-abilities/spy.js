@@ -1,13 +1,13 @@
 // js/modules/role-abilities/spy.js
 import { currentPlayer } from '../game-core.js';
-import { notificationSystem } from '../ui-components.js';
+import { notificationSystem } from '../../ui.js';
 
 /**
  * スパイの人狼陣営確認機能
  * 人狼フェーズで使用される
  * @param {Object} gameData - ゲームデータ
  */
-function handleSpyAbility(gameData) {
+export function handleSpyAbility(gameData) {
   // プレイヤーがスパイでない場合は何もしない
   if (currentPlayer.data.role?.name !== 'スパイ') {
     return;
@@ -108,7 +108,7 @@ function showSpyToWerewolves(gameData) {
  * @param {Function} getFunction - Firebase取得関数
  * @param {Function} dbRef - Firebaseリファレンス関数
  */
-async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
+export async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
   try {
     // 通報対象が本当に人狼陣営かチェック
     const snapshot = await getFunction(dbRef(`games/${gameId}/players/${reportedId}`));
