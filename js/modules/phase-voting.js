@@ -152,7 +152,8 @@ export function handleVotingPhase(gameData) {
     if (nextPhaseBtn) {
       nextPhaseBtn.addEventListener('click', async () => {
         await processVotingResults(gameId);
-        await nextPhase(gameId, 'voting');
+        // 修正: 'voting'ではなく'result'を指定して次のフェーズに移行
+        await nextPhase(gameId, 'result');
       });
     }
   }
