@@ -56,31 +56,29 @@ function handleSpyAbility(gameData) {
     `;
   }
   
-  // 人狼にスパイの存在を通知する
-  showSpyToWerewolves(gameData);
+  // 人狼陣営プレイヤーに通知する（スパイ自身は特定しない）
+  notifyWerewolvesAboutSpy(gameData);
 }
 
 /**
- * 人狼陣営のプレイヤーにスパイの存在を表示
+ * 人狼陣営プレイヤーにスパイの存在を通知（スパイの特定はしない）
  * @param {Object} gameData - ゲームデータ
  */
-function showSpyToWerewolves(gameData) {
-  // スパイプレイヤーを特定
-  const spyPlayer = Object.entries(gameData.players).find(([id, player]) => 
+function notifyWerewolvesAboutSpy(gameData) {
+  // スパイが存在するか確認
+  const spyExists = Object.values(gameData.players).some(player => 
     player.role && player.role.name === 'スパイ'
   );
   
-  if (!spyPlayer) return;
+  if (!spyExists) return;
   
-  const [spyId, spy] = spyPlayer;
-  
-  // 現在のプレイヤーが人狼陣営ならスパイの存在を表示
+  // 現在のプレイヤーが人狼陣営ならスパイの存在を通知（誰がスパイかは特定しない）
   if (currentPlayer.data.role && 
       currentPlayer.data.role.team === 'werewolf' && 
       currentPlayer.data.role.name !== 'スパイ' && // スパイ自身は除外
       currentPlayer.data.role.name !== '占い人狼') { // 占い人狼は除外
     
-    notificationSystem.warning(`【警告】スパイが存在します。あなたたち人狼陣営を確認しているプレイヤーがいます。`, 15000);
+    notificationSystem.warning(`【警告】スパイが存在します。市民陣営のいずれかのプレイヤーがスパイとして人狼陣営を確認しています。`, 15000);
     
     // スパイ情報を追加表示
     const gameStatus = document.getElementById('gameStatus');
@@ -89,7 +87,7 @@ function showSpyToWerewolves(gameData) {
       spyWarning.className = 'spy-warning';
       spyWarning.innerHTML = `
         <h4>警告: スパイの存在</h4>
-        <p>人狼陣営を確認できるスパイが存在します。投票フェーズでスパイと思われるプレイヤーを通報できます。通報が成功すれば、市民陣営の強制敗北となります。</p>
+        <p>市民陣営のいずれかのプレイヤーがスパイとして人狼陣営を確認しています。投票フェーズでスパイと思われる市民陣営プレイヤーを通報できます。通報が成功すれば、市民陣営の強制敗北となります。</p>
       `;
       
       // 既存の警告がない場合のみ追加
@@ -147,4 +145,4 @@ async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction,
 }
 
 // 関数のエクスポート
-export { handleSpyAbility, showSpyToWerewolves, reportAsWerewolf };
+export { handleSpyAbility, notifyWerewolvesAboutSpy, reportAsWerewolf };
