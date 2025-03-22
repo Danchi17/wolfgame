@@ -167,7 +167,7 @@ export async function nextPhase(gameId, currentPhase) {
     let nextPhaseValue;
     let updates = {};
     
-    // 夜フェーズの順序: 占い師 → 人狼 → 怪盗
+    // フェーズの順序と遷移を定義
     switch (currentPhase) {
       case 'seer':
         nextPhaseValue = 'werewolf';
@@ -202,6 +202,12 @@ export async function nextPhase(gameId, currentPhase) {
         updates.current_phase = null;
         nextPhaseValue = 'result';
         break;
+      case 'result':
+        // 結果フェーズはゲームの最終フェーズのため、次のフェーズはない
+        // この場合は何も更新せず、通知だけを表示する
+        console.log('結果フェーズが終了しました。次のゲームに移行するには「次のゲームへ」ボタンを押してください。');
+        notificationSystem.info('結果確認が完了しました。次のゲームに移行するには「次のゲームへ」ボタンを押してください。');
+        return;
       default:
         console.error('不明なフェーズ:', currentPhase);
         return;
