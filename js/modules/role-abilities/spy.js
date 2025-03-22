@@ -108,7 +108,7 @@ function showSpyToWerewolves(gameData) {
  * @param {Function} getFunction - Firebase取得関数
  * @param {Function} dbRef - Firebaseリファレンス関数
  */
-export async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
+async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
   try {
     // 通報対象が本当に人狼陣営かチェック
     const snapshot = await getFunction(dbRef(`games/${gameId}/players/${reportedId}`));
