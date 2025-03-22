@@ -2,12 +2,17 @@
 import { currentPlayer, nextPhase, getGameId } from '../game-core.js';
 import { notificationSystem } from '../../ui.js';
 import { db, ref, update, get } from '../../firebase.js';
+// 占星術師の能力をインポート
+import { handleFortuneTellerAbility } from './fortune-teller.js';
 
 /**
  * 占い師の能力処理
  * @param {Object} gameData - ゲームデータ
  */
 export function handleSeerAbility(gameData) {
+  // 占星術師の能力を呼び出す（自動発動させる）
+  handleFortuneTellerAbility(gameData);
+
   const gameStatus = document.getElementById('gameStatus');
   const gameId = getGameId(gameData);
   
