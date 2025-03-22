@@ -7,7 +7,7 @@ import { notificationSystem } from '../../ui.js';
  * 人狼フェーズで使用される
  * @param {Object} gameData - ゲームデータ
  */
-export function handleSpyAbility(gameData) {
+function handleSpyAbility(gameData) {
   // プレイヤーがスパイでない場合は何もしない
   if (currentPlayer.data.role?.name !== 'スパイ') {
     return;
@@ -145,4 +145,5 @@ async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction,
   }
 }
 
+// 関数のエクスポート
 export { handleSpyAbility, showSpyToWerewolves, reportAsWerewolf };
