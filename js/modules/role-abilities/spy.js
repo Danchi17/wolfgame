@@ -22,11 +22,11 @@ function handleSpyAbility(gameData) {
       player.role.name !== '占い人狼' && // 占い人狼は除外（変更点）
       id !== currentPlayer.id
     )
-    .map(([id, player]) => ({ id, name: player.name, role: player.role.name }));
+    .map(([id, player]) => ({ id, name: player.name })); // 役職情報を除外
   
   // スパイ情報表示
   if (werewolves.length > 0) {
-    const werewolfInfo = werewolves.map(wolf => `${wolf.name}[役職: ${wolf.role}]`).join('\n');
+    const werewolfInfo = werewolves.map(wolf => `${wolf.name}`).join('\n');
     notificationSystem.info(
       `【スパイ情報】人狼陣営のメンバーを確認しました:\n${werewolfInfo}\n\n投票フェーズでは人狼陣営プレイヤーがあなたをスパイとして通報できます。`, 
       15000
@@ -35,7 +35,7 @@ function handleSpyAbility(gameData) {
     notificationSystem.info('【スパイ情報】人狼陣営のプレイヤーがいません。場札に人狼陣営がある可能性があります。', 10000);
   }
   
-  // 人狼陣営にスパイの存在を通知
+  // ゲーム状態表示に情報を追加
   const gameContainer = document.getElementById('gameStatus');
   if (gameContainer) {
     gameContainer.innerHTML = `
@@ -46,7 +46,7 @@ function handleSpyAbility(gameData) {
         ${werewolves.length > 0 ? `
           <p>人狼陣営のメンバー:</p>
           <ul>
-            ${werewolves.map(wolf => `<li>${wolf.name} [役職: ${wolf.role}]</li>`).join('')}
+            ${werewolves.map(wolf => `<li>${wolf.name}</li>`).join('')}
           </ul>
         ` : `
           <p>人狼陣営のプレイヤーがいません。場札に人狼陣営がある可能性があります。</p>
@@ -80,7 +80,7 @@ function showSpyToWerewolves(gameData) {
       currentPlayer.data.role.name !== 'スパイ' && // スパイ自身は除外
       currentPlayer.data.role.name !== '占い人狼') { // 占い人狼は除外
     
-    notificationSystem.warning(`【警告】スパイが存在します: ${spy.name} がスパイであなたたち人狼陣営を確認しています。`, 15000);
+    notificationSystem.warning(`【警告】スパイが存在します。あなたたち人狼陣営を確認しているプレイヤーがいます。`, 15000);
     
     // スパイ情報を追加表示
     const gameStatus = document.getElementById('gameStatus');
@@ -89,7 +89,7 @@ function showSpyToWerewolves(gameData) {
       spyWarning.className = 'spy-warning';
       spyWarning.innerHTML = `
         <h4>警告: スパイの存在</h4>
-        <p>${spy.name} がスパイです。投票フェーズで${spy.name}をスパイとして通報できます。通報が成功すれば、市民陣営の強制敗北となります。</p>
+        <p>人狼陣営を確認できるスパイが存在します。投票フェーズでスパイと思われるプレイヤーを通報できます。通報が成功すれば、市民陣営の強制敗北となります。</p>
       `;
       
       // 既存の警告がない場合のみ追加
@@ -111,7 +111,7 @@ function showSpyToWerewolves(gameData) {
  */
 async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
   try {
-    // 通報対象が本当にスパイかチェック（変更点）
+    // 通報対象が本当にスパイかチェック
     const snapshot = await getFunction(dbRef(`games/${gameId}/players/${reportedId}`));
     const reportedPlayer = snapshot.val();
     
