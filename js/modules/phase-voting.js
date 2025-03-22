@@ -93,8 +93,11 @@ export function handleVotingPhase(gameData) {
     }
   }
   
-  // スパイの通報機能
-  if (currentPlayer.data?.role?.name === 'スパイ' && !hasVoted) {
+  // スパイの通報機能（人狼陣営プレイヤー向け）
+  if (currentPlayer.data?.role?.team === 'werewolf' && 
+      currentPlayer.data?.role?.name !== 'スパイ' &&
+      currentPlayer.data?.role?.name !== '占い人狼' &&
+      !hasVoted) {
     statusHtml += addSpyReportUI(gameData);
   }
   
@@ -129,8 +132,10 @@ export function handleVotingPhase(gameData) {
     });
   }
   
-  // スパイの通報ボタンにイベントリスナーを追加
-  if (currentPlayer.data?.role?.name === 'スパイ') {
+  // スパイ通報ボタンにイベントリスナーを追加（人狼陣営プレイヤー向け）
+  if (currentPlayer.data?.role?.team === 'werewolf' && 
+      currentPlayer.data?.role?.name !== 'スパイ' &&
+      currentPlayer.data?.role?.name !== '占い人狼') {
     const reportButtons = document.querySelectorAll('.report-btn');
     reportButtons.forEach(button => {
       button.addEventListener('click', async () => {
@@ -214,28 +219,34 @@ function checkAllVoted(gameData) {
 }
 
 /**
- * スパイの通報UI追加
+ * スパイの通報UI追加（人狼陣営プレイヤー向け）
  * @param {Object} gameData - ゲームデータ
  * @returns {string} HTML文字列
  */
 function addSpyReportUI(gameData) {
-  // 通報対象オプション生成（人狼陣営以外のプレイヤー）
-  let reportOptions = '';
+  // スパイプレイヤーを特定
+  const spyPlayers = Object.entries(gameData.players)
+    .filter(([id, player]) => player.role && player.role.name === 'スパイ')
+    .map(([id, player]) => ({ id, name: player.name }));
   
-  Object.entries(gameData.players).forEach(([id, player]) => {
-    if (id !== currentPlayer.id) { // 自分以外のプレイヤー
-      reportOptions += `
-        <button class="btn report-btn" data-player-id="${id}">
-          ${player.name}を人狼と通報
-        </button>
-      `;
-    }
+  if (spyPlayers.length === 0) {
+    return '';
+  }
+  
+  // 通報対象オプション生成
+  let reportOptions = '';
+  spyPlayers.forEach(spy => {
+    reportOptions += `
+      <button class="btn report-btn" data-player-id="${spy.id}">
+        ${spy.name}をスパイとして通報
+      </button>
+    `;
   });
   
   return `
     <div id="spyReportTargets" class="spy-report">
-      <h4>スパイの通報機能</h4>
-      <p>あなたはスパイです。人狼だと思うプレイヤーを通報できます。正解なら市民陣営の強制敗北、間違いならあなたの持ち点が追加で2点減少します。</p>
+      <h4>スパイ通報機能</h4>
+      <p>あなたは人狼陣営です。スパイを通報できます。正解なら市民陣営の強制敗北となります。</p>
       <div class="spy-report-targets">
         ${reportOptions}
       </div>
