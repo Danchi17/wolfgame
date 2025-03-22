@@ -19,6 +19,7 @@ function handleSpyAbility(gameData) {
       player.role && 
       player.role.team === 'werewolf' && 
       player.role.name !== 'スパイ' && // スパイは除外
+      player.role.name !== '占い人狼' && // 占い人狼は除外（変更点）
       id !== currentPlayer.id
     )
     .map(([id, player]) => ({ id, name: player.name, role: player.role.name }));
@@ -27,7 +28,7 @@ function handleSpyAbility(gameData) {
   if (werewolves.length > 0) {
     const werewolfInfo = werewolves.map(wolf => `${wolf.name}[役職: ${wolf.role}]`).join('\n');
     notificationSystem.info(
-      `【スパイ情報】人狼陣営のメンバーを確認しました:\n${werewolfInfo}\n\n投票フェーズで通報機能を使用できます。`, 
+      `【スパイ情報】人狼陣営のメンバーを確認しました:\n${werewolfInfo}\n\n投票フェーズでは人狼陣営プレイヤーがあなたをスパイとして通報できます。`, 
       15000
     );
   } else {
@@ -50,7 +51,7 @@ function handleSpyAbility(gameData) {
         ` : `
           <p>人狼陣営のプレイヤーがいません。場札に人狼陣営がある可能性があります。</p>
         `}
-        <p>投票フェーズでは人狼だと思われるプレイヤーを通報できます。正しければ市民陣営の強制敗北、間違っていればあなたの持ち点が2点減少します。</p>
+        <p>投票フェーズでは、人狼陣営プレイヤーがあなたをスパイとして通報できます。通報されると市民陣営の強制敗北になります。</p>
       </div>
     `;
   }
@@ -88,7 +89,7 @@ function showSpyToWerewolves(gameData) {
       spyWarning.className = 'spy-warning';
       spyWarning.innerHTML = `
         <h4>警告: スパイの存在</h4>
-        <p>${spy.name} がスパイです。スパイは投票フェーズで人狼を通報できます。</p>
+        <p>${spy.name} がスパイです。投票フェーズで${spy.name}をスパイとして通報できます。通報が成功すれば、市民陣営の強制敗北となります。</p>
       `;
       
       // 既存の警告がない場合のみ追加
@@ -100,17 +101,17 @@ function showSpyToWerewolves(gameData) {
 }
 
 /**
- * スパイの通報処理
+ * 人狼によるスパイ通報処理
  * 投票フェーズで使用される
  * @param {string} gameId - ゲームID
- * @param {string} reportedId - 通報されたプレイヤーID
+ * @param {string} reportedId - 通報されたプレイヤーID（スパイと疑われるプレイヤー）
  * @param {Function} updateFunction - Firebase更新関数
  * @param {Function} getFunction - Firebase取得関数
  * @param {Function} dbRef - Firebaseリファレンス関数
  */
 async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
   try {
-    // 通報対象が本当に人狼陣営かチェック
+    // 通報対象が本当にスパイかチェック（変更点）
     const snapshot = await getFunction(dbRef(`games/${gameId}/players/${reportedId}`));
     const reportedPlayer = snapshot.val();
     
@@ -119,14 +120,14 @@ async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction,
       return;
     }
     
-    const isWerewolf = reportedPlayer && reportedPlayer.role && reportedPlayer.role.team === 'werewolf';
+    const isSpy = reportedPlayer && reportedPlayer.role && reportedPlayer.role.name === 'スパイ';
     
     // 通報情報を保存
     await updateFunction(dbRef(`games/${gameId}`), {
       spy_report: {
         reporter: currentPlayer.id,
         reported: reportedId,
-        is_correct: isWerewolf
+        is_correct: isSpy
       }
     });
     
@@ -137,7 +138,7 @@ async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction,
     }
     
     // 通知表示
-    notificationSystem.info(`${reportedPlayer.name}を人狼として通報しました。結果は処刑フェーズで発表されます。`);
+    notificationSystem.info(`${reportedPlayer.name}をスパイとして通報しました。結果は処刑フェーズで発表されます。`);
     
   } catch (error) {
     console.error('スパイ通報エラー:', error);
