@@ -163,7 +163,7 @@ export function handleVotingPhase(gameData) {
           console.log("投票結果処理完了、resultフェーズへ移行します");
           notificationSystem.info("投票結果を計算しました。結果発表フェーズに移行します。");
           
-          // フェーズ移行
+          // 重要: 'voting'ではなく'result'を渡す
           await nextPhase(gameId, 'voting');
           
           // 直接移行に失敗した場合に備えて追加対応
