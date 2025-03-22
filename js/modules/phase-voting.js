@@ -163,17 +163,10 @@ export function handleVotingPhase(gameData) {
           console.log("投票結果処理完了、resultフェーズへ移行します");
           notificationSystem.info("投票結果を計算しました。結果発表フェーズに移行します。");
           
-          // 重要: 'voting'ではなく'result'を渡す
+          // 重要: 'voting'を渡して結果フェーズへ移行
+          // game-core.jsではvotingを受け取るとresultフェーズへ移行する
           await nextPhase(gameId, 'voting');
           
-          // 直接移行に失敗した場合に備えて追加対応
-          setTimeout(() => {
-            // 3秒後にUIを更新
-            const gameStatus = document.getElementById('gameStatus');
-            if (gameStatus && gameStatus.innerHTML.includes('投票フェーズ')) {
-              notificationSystem.warning("フェーズ移行に問題が発生した可能性があります。ページを更新してください。");
-            }
-          }, 3000);
         } catch (error) {
           console.error("投票フェーズ移行エラー:", error);
           notificationSystem.error("結果フェーズへの移行中にエラーが発生しました。");
@@ -404,7 +397,8 @@ async function processVotingResults(gameId) {
     await update(ref(db, `games/${gameId}`), {
       executed_players: executedPlayers,
       winning_team: winningTeam,
-      special_victory: specialVictory
+      special_victory: specialVictory,
+      status: 'result'  // 直接resultステータスを設定
     });
     
     // 無法者の役職交換処理
