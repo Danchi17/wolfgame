@@ -27,13 +27,13 @@ export function handleWerewolfAbility(gameData) {
         id !== currentPlayer.id && 
         player.role && 
         player.role.team === 'werewolf' &&
-        player.role.name !== '占い人狼' // 占い人狼は他の人狼と確認し合えない
+        player.role.name !== '占い人狼' && // 占い人狼は他の人狼と確認し合えない
+        player.role.name !== 'スパイ' // スパイは通常の人狼と確認し合えない
       )
       .map(([id, player]) => ({
         id,
         name: player.name,
-        // スパイの場合は役職名を隠し「人狼陣営」と表示
-        role: player.role.name === 'スパイ' ? '人狼陣営' : player.role.name
+        role: player.role.name
       }));
     
     if (otherWerewolves.length > 0) {
@@ -60,6 +60,22 @@ export function handleWerewolfAbility(gameData) {
       `;
       
       notificationSystem.info('【人狼情報】他の人狼陣営のプレイヤーはいません。場札に人狼陣営がある可能性があります。', 10000);
+    }
+    
+    // スパイの存在をチェック（誰かはわからない）
+    const spyExists = Object.values(gameData.players).some(player => 
+      player.role && player.role.name === 'スパイ' && player.id !== currentPlayer.id
+    );
+    
+    if (spyExists) {
+      statusHtml += `
+        <div class="spy-warning">
+          <h4>注意: スパイの存在</h4>
+          <p>市民陣営プレイヤーの中にスパイがいる可能性があります。投票フェーズでスパイを見つけて通報できます。</p>
+        </div>
+      `;
+      
+      notificationSystem.warning('【注意】市民陣営の中にスパイがいる可能性があります。投票フェーズでスパイを通報できます。', 10000);
     }
     
     // やっかいな豚男の能力
