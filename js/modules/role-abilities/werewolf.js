@@ -32,7 +32,7 @@ export function handleWerewolfAbility(gameData) {
       .map(([id, player]) => ({
         id,
         name: player.name,
-        role: player.role.name
+        role: player.role.name === 'スパイ' ? '人狼' : player.role.name // スパイの場合は「人狼」と表示
       }));
     
     if (otherWerewolves.length > 0) {
