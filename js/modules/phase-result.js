@@ -17,6 +17,24 @@ function handleResultPhase(gameData) {
       gameData.players[targetId].role = gameData.hidden_roles[targetId];
     }
   }
+
+  // 無法者の役職交換も反映
+  if (gameData.outlaw_exchanges && gameData.hidden_roles) {
+    Object.entries(gameData.outlaw_exchanges).forEach(([outlawId, exchange]) => {
+      const targetId = exchange.target_id;
+      
+      if (gameData.hidden_roles[outlawId]) {
+        gameData.players[outlawId].role = gameData.hidden_roles[outlawId];
+      }
+      
+      if (gameData.hidden_roles[targetId]) {
+        gameData.players[targetId].role = gameData.hidden_roles[targetId];
+      }
+    });
+  }
+  
+  // 役職交換後に持ち点の更新を行う
+  updatePlayerPoints(gameData);
   
   // 勝敗結果表示
   const gameContainer = document.getElementById('gameStatus');
@@ -81,7 +99,7 @@ function handleResultPhase(gameData) {
       case 'spy_reported':
         const spyName = gameData.players[gameData.spy_report.reporter]?.name || '不明';
         const reportedName = gameData.players[gameData.spy_report.reported]?.name || '不明';
-        specialVictoryInfo = `<p class="special-victory">スパイ(${spyName})が人狼(${reportedName})を正しく通報しました！市民陣営強制敗北！</p>`;
+        specialVictoryInfo = `<p class="special-victory">スパイ(${reportedName})が人狼(${spyName})に通報されました！市民陣営強制敗北！</p>`;
         break;
       case 'puppy_correct':
         // 推測した博識な子犬を特定
@@ -103,7 +121,7 @@ function handleResultPhase(gameData) {
   if (gameData.spy_report && !gameData.spy_report.is_correct) {
     const spyName = gameData.players[gameData.spy_report.reporter]?.name || '不明';
     const reportedName = gameData.players[gameData.spy_report.reported]?.name || '不明';
-    spyReportFailInfo = `<p class="spy-report-fail">スパイ(${spyName})は誤って${reportedName}を人狼と通報しました。スパイの持ち点が追加で2点減少します。</p>`;
+    spyReportFailInfo = `<p class="spy-report-fail">人狼(${spyName})は誤って${reportedName}をスパイと通報しました。通報者の持ち点が追加で2点減少します。</p>`;
   }
   
   gameContainer.innerHTML = `
@@ -159,9 +177,6 @@ function handleResultPhase(gameData) {
       resetGame(gameData.id || getGameId(gameData));
     });
   }
-  
-  // 持ち点の更新
-  updatePlayerPoints(gameData);
 }
 
 export { handleResultPhase };
