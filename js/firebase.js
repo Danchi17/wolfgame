@@ -1,6 +1,6 @@
 // js/firebase.js
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-app.js';
-import { getDatabase, ref, set, onValue, push, update, remove, onDisconnect } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js';
+import { getDatabase, ref, set, onValue, push, update, remove, onDisconnect, get } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-auth.js';
 import { notificationSystem } from './ui.js';
 
@@ -283,12 +283,23 @@ function leaveGame(gameId, playerId) {
   });
 }
 
-// Firebaseのget関数を公開
-import { get } from 'https://www.gstatic.com/firebasejs/10.3.0/firebase-database.js';
-
+// すべての関連する関数とオブジェクトをエクスポート
 export {
-  db, auth, get, signInAnonymouslyAuth,
-  createGame, joinGame, listenGameState,
-  updatePlayerReady, updateGameStatus, leaveGame,
+  db, 
+  auth, 
+  ref,
+  set,
+  onValue,
+  push,
+  update,
+  remove,
+  get,
+  signInAnonymouslyAuth,
+  createGame, 
+  joinGame, 
+  listenGameState,
+  updatePlayerReady, 
+  updateGameStatus, 
+  leaveGame,
   isOnline
 };
