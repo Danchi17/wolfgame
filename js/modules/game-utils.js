@@ -21,11 +21,15 @@ function updatePlayerPoints(gameData) {
   
   // 敗北チームのプレイヤー持ち点を減らす
   Object.entries(gameData.players).forEach(([id, player]) => {
+    // プレイヤーの役職を取得（既に交換後の役職になっている）
+    const playerRole = player.role;
+    if (!playerRole) return;
+    
     // 蛇女特殊勝利の場合
     if (winningTeam === 'snake_woman') {
       // 蛇女以外の全員が敗北
-      if (!(player.role && player.role.name === '蛇女')) {
-        const newPoints = player.points - player.role.cost;
+      if (playerRole.name !== '蛇女') {
+        const newPoints = player.points - playerRole.cost;
         updates[`players/${id}/points`] = newPoints;
       }
     } 
@@ -34,8 +38,8 @@ function updatePlayerPoints(gameData) {
       // 点数変更なし
     }
     // 通常の勝敗
-    else if (player.role && player.role.team !== winningTeam) {
-      const newPoints = player.points - player.role.cost;
+    else if (playerRole.team !== winningTeam) {
+      const newPoints = player.points - playerRole.cost;
       updates[`players/${id}/points`] = newPoints;
     }
   });
