@@ -151,9 +151,37 @@ export function handleVotingPhase(gameData) {
     const nextPhaseBtn = document.getElementById('nextPhaseBtn');
     if (nextPhaseBtn) {
       nextPhaseBtn.addEventListener('click', async () => {
-        await processVotingResults(gameId);
-        // 修正: 'voting'ではなく'result'を指定して次のフェーズに移行
-        await nextPhase(gameId, 'result');
+        try {
+          // ボタンを無効化して複数回クリックを防止
+          nextPhaseBtn.disabled = true;
+          nextPhaseBtn.textContent = "処理中...";
+          
+          // 投票結果を処理
+          await processVotingResults(gameId);
+          
+          // 明示的に状態をログに出力
+          console.log("投票結果処理完了、resultフェーズへ移行します");
+          notificationSystem.info("投票結果を計算しました。結果発表フェーズに移行します。");
+          
+          // フェーズ移行
+          await nextPhase(gameId, 'voting');
+          
+          // 直接移行に失敗した場合に備えて追加対応
+          setTimeout(() => {
+            // 3秒後にUIを更新
+            const gameStatus = document.getElementById('gameStatus');
+            if (gameStatus && gameStatus.innerHTML.includes('投票フェーズ')) {
+              notificationSystem.warning("フェーズ移行に問題が発生した可能性があります。ページを更新してください。");
+            }
+          }, 3000);
+        } catch (error) {
+          console.error("投票フェーズ移行エラー:", error);
+          notificationSystem.error("結果フェーズへの移行中にエラーが発生しました。");
+          
+          // ボタンを再度有効化
+          nextPhaseBtn.disabled = false;
+          nextPhaseBtn.textContent = "結果発表フェーズへ進む";
+        }
       });
     }
   }
@@ -225,21 +253,25 @@ function checkAllVoted(gameData) {
  * @returns {string} HTML文字列
  */
 function addSpyReportUI(gameData) {
-  // スパイプレイヤーを特定
-  const spyPlayers = Object.entries(gameData.players)
-    .filter(([id, player]) => player.role && player.role.name === 'スパイ')
+  // すべてのプレイヤーから自分以外を抽出（スパイかどうかは表示しない）
+  const otherPlayers = Object.entries(gameData.players)
+    .filter(([id, player]) => 
+      id !== currentPlayer.id && 
+      player.role && 
+      player.role.team === 'village' // 市民陣営のみ表示
+    )
     .map(([id, player]) => ({ id, name: player.name }));
   
-  if (spyPlayers.length === 0) {
+  if (otherPlayers.length === 0) {
     return '';
   }
   
   // 通報対象オプション生成
   let reportOptions = '';
-  spyPlayers.forEach(spy => {
+  otherPlayers.forEach(player => {
     reportOptions += `
-      <button class="btn report-btn" data-player-id="${spy.id}">
-        ${spy.name}をスパイとして通報
+      <button class="btn report-btn" data-player-id="${player.id}">
+        ${player.name}をスパイとして通報
       </button>
     `;
   });
@@ -247,7 +279,7 @@ function addSpyReportUI(gameData) {
   return `
     <div id="spyReportTargets" class="spy-report">
       <h4>スパイ通報機能</h4>
-      <p>あなたは人狼陣営です。スパイを通報できます。正解なら市民陣営の強制敗北となります。</p>
+      <p>あなたは人狼陣営です。スパイを見つけて通報できます。正解なら市民陣営の強制敗北となります。誤った通報をすると追加で2点減点されます。</p>
       <div class="spy-report-targets">
         ${reportOptions}
       </div>
@@ -378,9 +410,16 @@ async function processVotingResults(gameId) {
     // 無法者の役職交換処理
     await handleOutlawExchanges(gameData, executedPlayers, winningTeam);
     
+    console.log("投票処理が完了しました", {
+      executed: executedPlayers.map(id => gameData.players[id]?.name || 'unknown'),
+      winningTeam,
+      specialVictory
+    });
+    
   } catch (error) {
     console.error('投票結果処理エラー:', error);
     notificationSystem.error('投票結果の処理に失敗しました');
+    throw error; // エラーを再スローして呼び出し元で処理できるようにする
   }
 }
 
