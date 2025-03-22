@@ -21,7 +21,7 @@ export function handleWerewolfAbility(gameData) {
   `;
   
   if (isWerewolf) {
-    // 他の人狼プレイヤーを取得
+    // 他の人狼プレイヤーを取得（役職は表示しない、名前だけ）
     const otherWerewolves = Object.entries(gameData.players)
       .filter(([id, player]) => 
         id !== currentPlayer.id && 
@@ -32,8 +32,7 @@ export function handleWerewolfAbility(gameData) {
       )
       .map(([id, player]) => ({
         id,
-        name: player.name,
-        role: player.role.name
+        name: player.name
       }));
     
     if (otherWerewolves.length > 0) {
@@ -42,13 +41,13 @@ export function handleWerewolfAbility(gameData) {
         <div class="werewolf-info">
           <h4>人狼陣営の仲間</h4>
           <ul>
-            ${otherWerewolves.map(wolf => `<li>${wolf.name} [役職: ${wolf.role}]</li>`).join('')}
+            ${otherWerewolves.map(wolf => `<li>${wolf.name}</li>`).join('')}
           </ul>
         </div>
       `;
       
       // 通知
-      const werewolfInfo = otherWerewolves.map(wolf => `${wolf.name} [役職: ${wolf.role}]`).join('\n');
+      const werewolfInfo = otherWerewolves.map(wolf => `${wolf.name}`).join('\n');
       notificationSystem.info(`【人狼情報】人狼陣営の仲間:\n${werewolfInfo}`, 10000);
     } else {
       // 他の人狼がいない場合
