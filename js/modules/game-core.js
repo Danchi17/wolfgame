@@ -10,7 +10,6 @@ import { handleDayPhase } from './phase-day.js';
 import { handleVotingPhase } from './phase-voting.js';
 import { handleResultPhase } from './phase-result.js';
 import LoadingIndicator from './loading.js';
-import TimerManager from './timer-manager.js';
 
 // 現在のプレイヤー情報
 export const currentPlayer = {
@@ -20,6 +19,56 @@ export const currentPlayer = {
 
 // 現在のゲームID
 let currentGameId = null;
+
+// フェーズタイマー管理
+const phaseTimers = {
+  seer: null,
+  werewolf: null,
+  thief: null,
+  day: null,
+  voting: null,
+  result: null
+};
+
+/**
+ * フェーズタイマーをクリア
+ * @param {string} phase - 特定のフェーズをクリア（省略時は全フェーズをクリア）
+ */
+export function clearPhaseTimers(phase = null) {
+  if (phase && phaseTimers[phase]) {
+    clearTimeout(phaseTimers[phase]);
+    phaseTimers[phase] = null;
+    console.log(`${phase}フェーズのタイマーをクリアしました`);
+  } else if (!phase) {
+    // 全フェーズのタイマーをクリア
+    Object.keys(phaseTimers).forEach(key => {
+      if (phaseTimers[key]) {
+        clearTimeout(phaseTimers[key]);
+        phaseTimers[key] = null;
+      }
+    });
+    console.log('全フェーズのタイマーをクリアしました');
+  }
+}
+
+/**
+ * フェーズタイマーを設定
+ * @param {string} phase - タイマーを設定するフェーズ
+ * @param {Function} callback - タイマー満了時のコールバック
+ * @param {number} delay - 遅延時間（ミリ秒）
+ */
+export function setPhaseTimer(phase, callback, delay) {
+  // 既存のタイマーがあればクリア
+  clearPhaseTimers(phase);
+  
+  // 新しいタイマーを設定
+  phaseTimers[phase] = setTimeout(() => {
+    console.log(`${phase}フェーズのタイマーが満了しました`);
+    callback();
+  }, delay);
+  
+  console.log(`${phase}フェーズのタイマーを${delay}ms で設定しました`);
+}
 
 /**
  * ゲームIDを取得
@@ -36,6 +85,9 @@ export function getGameId(gameData) {
  * @param {string} playerId - プレイヤーID
  */
 export function initGame(gameData, playerId) {
+  // 既存のタイマーをクリア
+  clearPhaseTimers();
+  
   // ゲームIDを設定
   currentGameId = gameData.gameId;
   
@@ -54,9 +106,6 @@ export function initGame(gameData, playerId) {
 export async function startGame(gameId) {
   try {
     console.log(`ゲーム開始: ID=${gameId}`);
-    
-    // ゲーム開始時に全てのタイマーをクリア
-    TimerManager.clearAll();
     
     // プレイヤー数を取得
     const snapshot = await get(ref(db, `games/${gameId}/players`));
@@ -117,11 +166,11 @@ export async function startGame(gameId) {
 export function handlePhase(phase, gameData) {
   console.log(`フェーズ処理: ${phase}`);
   
+  // 既存のタイマーをクリア
+  clearPhaseTimers();
+  
   // ローディング表示を非表示
   LoadingIndicator.hide();
-  
-  // フェーズ変更時に前のフェーズのタイマーをクリア
-  TimerManager.clearCategory('phase-');
   
   switch (phase) {
     case 'night':
@@ -148,9 +197,6 @@ export function handlePhase(phase, gameData) {
 function handleNightPhase(gameData) {
   const currentPhase = gameData.current_phase;
   
-  // 夜フェーズのタイマーをクリア
-  TimerManager.clearCategory('night-');
-  
   switch (currentPhase) {
     case 'seer':
       handleSeerAbility(gameData);
@@ -174,8 +220,8 @@ function handleNightPhase(gameData) {
  */
 export async function nextPhase(gameId, currentPhase) {
   try {
-    // フェーズ遷移時に現在のフェーズに関連するタイマーをクリア
-    TimerManager.clearCategory(`phase-${currentPhase}`);
+    // タイマーをクリア
+    clearPhaseTimers();
     
     let nextPhaseValue;
     let updates = {};
