@@ -20,6 +20,37 @@ export const currentPlayer = {
 // 現在のゲームID
 let currentGameId = null;
 
+// フェーズ自動遷移用タイマーID保存
+const phaseTimers = {
+  seer: null,
+  werewolf: null,
+  thief: null,
+  day: null,
+  voting: null
+};
+
+/**
+ * タイマーをクリアする
+ * @param {string} phase - クリアするフェーズのタイマー
+ */
+function clearPhaseTimer(phase) {
+  if (phaseTimers[phase]) {
+    console.log(`${phase}フェーズのタイマーをクリアします`);
+    clearTimeout(phaseTimers[phase]);
+    phaseTimers[phase] = null;
+  }
+}
+
+/**
+ * すべてのフェーズタイマーをクリアする
+ */
+function clearAllPhaseTimers() {
+  Object.keys(phaseTimers).forEach(phase => {
+    clearPhaseTimer(phase);
+  });
+  console.log('すべてのフェーズタイマーをクリアしました');
+}
+
 /**
  * ゲームIDを取得
  * @param {Object} gameData - ゲームデータ
@@ -35,6 +66,9 @@ export function getGameId(gameData) {
  * @param {string} playerId - プレイヤーID
  */
 export function initGame(gameData, playerId) {
+  // まず全てのタイマーをクリア
+  clearAllPhaseTimers();
+  
   // ゲームIDを設定
   currentGameId = gameData.gameId;
   
@@ -53,6 +87,9 @@ export function initGame(gameData, playerId) {
 export async function startGame(gameId) {
   try {
     console.log(`ゲーム開始: ID=${gameId}`);
+    
+    // 既存のタイマーをすべてクリア
+    clearAllPhaseTimers();
     
     // プレイヤー数を取得
     const snapshot = await get(ref(db, `games/${gameId}/players`));
@@ -113,6 +150,9 @@ export async function startGame(gameId) {
 export function handlePhase(phase, gameData) {
   console.log(`フェーズ処理: ${phase}`);
   
+  // すべてのタイマーをクリア
+  clearAllPhaseTimers();
+  
   // ローディング表示を非表示
   LoadingIndicator.hide();
   
@@ -141,6 +181,9 @@ export function handlePhase(phase, gameData) {
 function handleNightPhase(gameData) {
   const currentPhase = gameData.current_phase;
   
+  // 対応するフェーズのタイマーをクリア
+  clearPhaseTimer(currentPhase);
+  
   switch (currentPhase) {
     case 'seer':
       handleSeerAbility(gameData);
@@ -164,6 +207,9 @@ function handleNightPhase(gameData) {
  */
 export async function nextPhase(gameId, currentPhase) {
   try {
+    // 対応するフェーズのタイマーをクリア
+    clearPhaseTimer(currentPhase);
+    
     let nextPhaseValue;
     let updates = {};
     
@@ -262,4 +308,23 @@ export function getRemainingTime(timer) {
  */
 export function hasRole(roleName) {
   return currentPlayer.data?.role?.name === roleName;
+}
+
+/**
+ * タイマーを設定（フェーズの自動遷移用）
+ * @param {string} gameId - ゲームID 
+ * @param {string} phase - 現在のフェーズ
+ * @param {number} delay - 遅延時間（ミリ秒）
+ */
+export function setPhaseTimer(gameId, phase, delay) {
+  // 既存のタイマーをクリア
+  clearPhaseTimer(phase);
+  
+  // 新しいタイマーを設定
+  phaseTimers[phase] = setTimeout(() => {
+    console.log(`タイマーによる自動フェーズ移行: ${phase}`);
+    nextPhase(gameId, phase);
+  }, delay);
+  
+  console.log(`${phase}フェーズのタイマーを設定しました (${delay}ms)`);
 }
