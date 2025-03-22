@@ -32,7 +32,8 @@ export function handleWerewolfAbility(gameData) {
       .map(([id, player]) => ({
         id,
         name: player.name,
-        role: player.role.name // 他の人狼の役職名は表示する
+        // スパイの場合は役職名を隠し「人狼陣営」と表示
+        role: player.role.name === 'スパイ' ? '人狼陣営' : player.role.name
       }));
     
     if (otherWerewolves.length > 0) {
