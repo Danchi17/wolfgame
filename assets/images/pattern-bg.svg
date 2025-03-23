@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <pattern id="pattern" patternUnits="userSpaceOnUse" width="200" height="200">
+      <rect width="200" height="200" fill="#f9f4ff"/>
+      <path d="M100,0 L200,100 L100,200 L0,100 Z" fill="#6a3b9810"/>
+      <circle cx="100" cy="100" r="30" fill="#ffb34710"/>
+      <circle cx="0" cy="0" r="15" fill="#3498db10"/>
+      <circle cx="200" cy="0" r="15" fill="#3498db10"/>
+      <circle cx="0" cy="200" r="15" fill="#3498db10"/>
+      <circle cx="200" cy="200" r="15" fill="#3498db10"/>
+    </pattern>
+  </defs>
+  <rect width="200" height="200" fill="url(#pattern)"/>
+</svg>
