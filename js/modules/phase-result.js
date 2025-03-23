@@ -205,7 +205,16 @@ function handleResultPhase(gameData) {
   // 次のゲームボタン
   if (currentPlayer.data.isHost) {
     document.getElementById('nextGameBtn').addEventListener('click', () => {
-      resetGame(gameData.id || getGameId(gameData));
+      // ゲームIDを確実に取得して使用
+      const gameIdToReset = getGameId(gameData);
+      console.log(`次のゲームボタンがクリックされました。リセット対象のゲームID: ${gameIdToReset}`);
+      
+      if (!gameIdToReset) {
+        notificationSystem.error('ゲームIDが見つかりません。ページを再読み込みしてください。');
+        return;
+      }
+      
+      resetGame(gameIdToReset);
     });
   }
 }
