@@ -20,6 +20,12 @@ export const currentPlayer = {
 // 現在のゲームID
 let currentGameId = null;
 
+// グローバルなインターバルに名前をつける
+window.gameIntervals = {
+  dayPhase: null,
+  votePhase: null
+};
+
 // フェーズタイマー管理
 const phaseTimers = {
   seer: null,
@@ -48,6 +54,28 @@ export function clearPhaseTimers(phase = null) {
       }
     });
     console.log('全フェーズのタイマーをクリアしました');
+  }
+  
+  // グローバルなインターバルもクリア
+  clearAllIntervals();
+}
+
+/**
+ * 全てのインターバルをクリア
+ */
+function clearAllIntervals() {
+  // 日中フェーズのインターバル
+  if (window.gameIntervals.dayPhase) {
+    clearInterval(window.gameIntervals.dayPhase);
+    window.gameIntervals.dayPhase = null;
+    console.log('日中フェーズのインターバルをクリアしました');
+  }
+  
+  // その他のインターバル
+  if (window.gameIntervals.votePhase) {
+    clearInterval(window.gameIntervals.votePhase);
+    window.gameIntervals.votePhase = null;
+    console.log('投票フェーズのインターバルをクリアしました');
   }
 }
 
@@ -220,7 +248,7 @@ function handleNightPhase(gameData) {
  */
 export async function nextPhase(gameId, currentPhase) {
   try {
-    // タイマーをクリア
+    // タイマーをクリア（重要: フェーズ変更前に必ずクリア）
     clearPhaseTimers();
     
     let nextPhaseValue;
