@@ -1,239 +1,206 @@
 /* css/layout-improvements.css */
-/* ゲーム画面のレイアウト改善に関するスタイル */
 
-/* 全体レイアウト */
-.game-container {
-  width: 100%;
-  max-width: 1600px;
+/* レイアウト最適化 */
+.container {
+  max-width: 1400px;
   margin: 0 auto;
   padding: 20px;
-  background-color: #fff;
-  border-radius: 15px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr auto;
-  grid-template-areas:
-    "header"
-    "main"
-    "controls";
-  min-height: calc(100vh - 40px);
 }
 
-/* ヘッダー部分 */
+/* 1画面表示の最適化 */
+.game-container {
+  max-width: 1300px;
+  margin: 10px auto;
+  padding: 20px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "header"
+    "board"
+    "status"
+    "controls";
+  min-height: calc(100vh - 40px);
+  gap: 15px;
+}
+
 .game-header {
   grid-area: header;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 0;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #f0f0f0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid rgba(106, 59, 152, 0.2);
 }
 
-/* メイン部分（フィールド、プレイヤー、手札、ステータス） */
 .game-board {
-  grid-area: main;
+  grid-area: board;
   display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: auto 1fr auto auto;
-  grid-template-areas:
-    "field"
-    "players"
-    "hand"
-    "status";
-  gap: 20px;
+  grid-template-rows: auto auto;
+  gap: 15px;
+  margin-bottom: 0;
 }
 
-/* フィールドカード領域 */
-.field-cards {
-  grid-area: field;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-/* プレイヤー一覧領域 */
-.players-container {
-  grid-area: players;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 20px;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-/* プレイヤーの手札領域 */
-.player-hand {
-  grid-area: hand;
-  padding: 20px;
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.05);
-}
-
-/* ゲームステータス領域 */
 .game-status {
   grid-area: status;
-  padding: 20px;
-  background-color: #f4f1f8;
-  border-radius: 10px;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
-  min-height: 150px;
+  overflow-y: auto;
+  max-height: 30vh;
 }
 
-/* コントロール部分 */
 .game-controls {
   grid-area: controls;
-  display: flex;
-  justify-content: center;
-  padding: 20px 0;
-  border-top: 2px solid #f0f0f0;
-  margin-top: 20px;
+  margin-top: 0;
 }
 
-/* プレイヤーカード */
-.player {
-  background: linear-gradient(to bottom, #ffffff, #f7f7f7);
-  border-radius: 10px;
-  padding: 15px;
-  text-align: center;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.player:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-}
-
-/* ホストプレイヤー */
-.player.host {
-  background: linear-gradient(to bottom, #fff9e6, #fff);
-  border: 2px solid #f1c40f;
-}
-
-/* 準備完了プレイヤー */
-.player.ready {
-  background: linear-gradient(to bottom, #e8f6e8, #f5fff5);
-  border: 2px solid #2ecc71;
-}
-
-/* 自分のプレイヤー */
-.player.current-player {
-  background: linear-gradient(to bottom, #f4f1f8, #fcfaff);
-  border: 2px solid #6a3b98;
-  box-shadow: 0 5px 15px rgba(106, 59, 152, 0.2);
-}
-
-/* プレイヤーのアイコン */
-.player-icon {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 10px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid #ddd;
-  transition: all 0.3s ease;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
-}
-
-.player:hover .player-icon {
-  transform: scale(1.1);
-  border-color: #3498db;
-}
-
-.player.host .player-icon {
-  border-color: #f1c40f;
-}
-
-.player.ready .player-icon {
-  border-color: #2ecc71;
-}
-
-.player.current-player .player-icon {
-  border-color: #6a3b98;
-}
-
-/* プレイヤー名と状態 */
-.player-name {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 5px;
-  color: #333;
-}
-
-.player-status {
+/* フィールドとプレイヤー表示の最適化 */
+.field-area {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 5px;
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 5px;
+  gap: 30px;
+  margin-bottom: 15px;
 }
 
-.host-icon, .ready-icon {
-  font-size: 16px;
+.players-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 10px;
 }
 
-.player-points {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e74c3c;
-  padding: 3px 8px;
-  background-color: rgba(231, 76, 60, 0.1);
+.player-hand {
+  margin: 10px 0;
+  min-height: 250px;
+}
+
+/* 夜フェーズのスタイル */
+.night-phase {
+  background-color: #1a1a2e;
+  color: #e3e3e3;
+}
+
+.night-phase .game-container {
+  background-color: rgba(26, 26, 46, 0.8);
+  box-shadow: 0 0 30px rgba(106, 59, 152, 0.3);
+}
+
+.night-phase .player {
+  background: linear-gradient(to bottom, #2d2d44, #1a1a2e);
+  border: 1px solid #3a3a5a;
+}
+
+.night-phase .game-status {
+  background: linear-gradient(to bottom, rgba(26, 26, 46, 0.9), rgba(26, 26, 46, 0.7));
+  color: #e3e3e3;
+}
+
+.night-phase .card-back {
+  box-shadow: 0 0 20px rgba(106, 59, 152, 0.5);
+}
+
+/* アニメーション用のクラス */
+.card-deal-animation {
+  animation: dealCard 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.phase-transition {
+  animation: fadeTransition 0.5s ease-in-out;
+}
+
+@keyframes fadeTransition {
+  0% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 投票結果表示の調整 */
+.votes-container,
+.role-exchange-info,
+.outlaw-exchange-info,
+.all-roles,
+.field-cards-reveal,
+.points-info {
+  margin: 10px 0;
+  padding: 15px;
   border-radius: 10px;
-  display: inline-block;
 }
 
-/* ワイドスクリーン用レイアウト */
-@media (min-width: 1200px) {
+.all-roles ul,
+.field-cards-reveal ul,
+.points-info ul,
+.votes-container ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.all-roles li,
+.field-cards-reveal li,
+.points-info li,
+.votes-container li {
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 5px;
+  margin-bottom: 0;
+}
+
+/* 役職アイコン未存在時のフォールバック処理 */
+.role-image img {
+  min-height: 80px;
+  background-color: #f0f0f0;
+  border-radius: 5px;
+}
+
+.role-image img[src*="default.png"],
+.role-image img[onerror] {
+  padding: 10px;
+  opacity: 0.7;
+}
+
+/* レスポンシブ対応強化 */
+@media (min-width: 992px) {
   .game-board {
-    grid-template-columns: 300px 1fr;
-    grid-template-rows: auto 1fr auto;
-    grid-template-areas:
-      "players field"
-      "players hand"
-      "status status";
+    grid-template-columns: 3fr 7fr;
+    grid-template-rows: auto;
+  }
+  
+  .field-area {
+    grid-column: 1;
+    flex-direction: column;
+    justify-content: center;
   }
   
   .players-container {
-    grid-template-columns: 1fr;
-    grid-auto-rows: min-content;
-    height: 100%;
-    overflow-y: auto;
-    padding-right: 10px;
+    grid-column: 2;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  }
+  
+  .player-hand {
+    grid-column: 1 / span 2;
   }
 }
 
-/* タブレット用レイアウト */
-@media (max-width: 992px) {
+@media (max-width: 991px) {
   .game-container {
+    min-height: auto;
     padding: 15px;
+    gap: 10px;
   }
   
-  .game-board {
-    gap: 15px;
+  .game-status {
+    max-height: 40vh;
   }
   
-  .players-container {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  .field-area {
+    flex-direction: row;
   }
   
-  .player-icon {
-    width: 50px;
-    height: 50px;
+  .all-roles ul, 
+  .field-cards-reveal ul, 
+  .points-info ul {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
-/* モバイル用レイアウト */
-@media (max-width: 576px) {
+@media (max-width: 768px) {
   .game-container {
     padding: 10px;
   }
@@ -241,154 +208,20 @@
   .game-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
   }
   
-  .game-board {
-    gap: 10px;
+  .timer {
+    margin-top: 10px;
+    align-self: center;
   }
   
-  .players-container {
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    padding: 10px;
+  .field-area {
+    flex-direction: row;
   }
   
-  .player {
-    padding: 10px;
-  }
-  
-  .player-icon {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .player-name {
-    font-size: 14px;
-  }
-  
-  .game-controls {
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .btn {
-    width: 100%;
-  }
-}
-
-/* チャットスタイル */
-.day-discussion {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-/* 投票オプション */
-.voting-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  justify-content: center;
-  margin-top: 20px;
-}
-
-/* 特殊アクションボタン */
-.action-btn {
-  background: linear-gradient(to right, #2ecc71, #27ae60);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  box-shadow: 0 3px 8px rgba(46, 204, 113, 0.3);
-  transition: all 0.3s ease;
-}
-
-.action-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 5px 12px rgba(46, 204, 113, 0.5);
-}
-
-/* 投票ボタン */
-.vote-btn {
-  background: linear-gradient(to right, #e67e22, #d35400);
-  color: white;
-  padding: 10px 20px;
-  border-radius: 20px;
-  box-shadow: 0 3px 8px rgba(230, 126, 34, 0.3);
-  transition: all 0.3s ease;
-}
-
-.vote-btn:hover {
-  transform: translateY(-3px) scale(1.05);
-  box-shadow: 0 5px 12px rgba(230, 126, 34, 0.5);
-}
-
-.vote-btn.forced {
-  background: linear-gradient(to right, #e74c3c, #c0392b);
-  animation: pulse-red 2s infinite;
-}
-
-/* ゲームIDの表示改善 */
-.game-id {
-  font-family: monospace;
-  font-size: 16px;
-  background-color: #f0f0f0;
-  padding: 5px 10px;
-  border-radius: 5px;
-  border: 1px solid #ddd;
-  color: #333;
-}
-
-/* タイマー表示の改善 */
-.timer {
-  font-size: 22px;
-  font-weight: 700;
-  color: #e74c3c;
-  display: flex;
-  align-items: center;
-  padding: 8px 15px;
-  background-color: rgba(231, 76, 60, 0.1);
-  border-radius: 20px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-}
-
-.timer::before {
-  content: "⏱️";
-  margin-right: 8px;
-}
-
-/* 状態アニメーション */
-.status-animation {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin: 15px 0;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  background-color: #6a3b98;
-  border-radius: 50%;
-  animation: pulseDot 1.5s infinite ease-in-out;
-}
-
-.dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes pulseDot {
-  0%, 100% {
-    transform: scale(0.8);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
+  .all-roles ul, 
+  .field-cards-reveal ul, 
+  .points-info ul {
+    grid-template-columns: 1fr;
   }
 }
