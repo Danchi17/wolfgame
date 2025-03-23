@@ -1,0 +1,294 @@
+/* css/card-animations.css */
+
+/* 山札とカードアニメーション */
+.deck {
+  position: fixed;
+  width: 150px;
+  height: 200px;
+  z-index: 1000;
+  perspective: 1000px;
+  transition: opacity 0.5s;
+}
+
+.deck-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.deck-card {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #6a3b98;
+  background-image: linear-gradient(135deg, #6a3b98, #9b59b6);
+  border-radius: 10px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.deck-card::before {
+  content: '山札';
+  font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.deck-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.2) 0%, 
+    rgba(255, 255, 255, 0) 50%, 
+    rgba(0, 0, 0, 0.1) 100%);
+}
+
+.deck-empty {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 山札から飛び出すカード */
+.flying-card {
+  position: fixed;
+  width: 150px;
+  height: 200px;
+  z-index: 999;
+  perspective: 1000px;
+  pointer-events: none;
+}
+
+.card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #6a3b98;
+  background-image: linear-gradient(135deg, #6a3b98, #9b59b6);
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* カードフリップアニメーション */
+.card {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.card-front, 
+.card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  background-color: #6a3b98;
+  background-image: url('../assets/images/card-back.svg');
+  background-size: cover;
+  background-position: center;
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* 役職カードのスタイル */
+.role-card {
+  width: 150px;
+  height: 220px;
+  position: relative;
+  margin: 0 10px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+  transform-style: preserve-3d;
+}
+
+.role-card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.role-card .card-front {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background-color: white;
+}
+
+.role-image {
+  height: 100px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  position: relative;
+}
+
+.role-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 5px;
+  transition: transform 0.3s;
+}
+
+.role-card:hover .role-image img {
+  transform: scale(1.05);
+}
+
+.role-info {
+  padding: 5px 0;
+}
+
+.role-name {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 5px;
+  text-align: center;
+  color: #2c3e50;
+}
+
+.role-team {
+  font-size: 12px;
+  margin-bottom: 5px;
+  text-align: center;
+  padding: 2px 5px;
+  border-radius: 10px;
+}
+
+.team-village {
+  color: #2980b9;
+  background-color: rgba(52, 152, 219, 0.1);
+}
+
+.team-werewolf {
+  color: #c0392b;
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+.role-cost {
+  font-size: 12px;
+  margin-bottom: 5px;
+  text-align: center;
+  color: #8e44ad;
+}
+
+.role-description {
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: left;
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 5px;
+  border-radius: 5px;
+  max-height: 60px;
+  overflow-y: auto;
+}
+
+/* カード受け取りアニメーション */
+.card-received {
+  animation: cardReceived 0.5s ease-out;
+}
+
+@keyframes cardReceived {
+  0% { transform: scale(0.9); opacity: 0.5; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* カード配置アニメーション */
+.card-dealing {
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* カード回転アニメーション */
+.reveal-result {
+  animation: cardReveal 1s ease-out;
+}
+
+@keyframes cardReveal {
+  0% { transform: rotateY(0) scale(1); }
+  50% { transform: rotateY(90deg) scale(1.1); }
+  100% { transform: rotateY(0) scale(1); }
+}
+
+/* モバイル対応 */
+@media (max-width: 768px) {
+  .role-card {
+    width: 120px;
+    height: 180px;
+  }
+  
+  .role-image {
+    height: 80px;
+  }
+  
+  .role-name {
+    font-size: 12px;
+  }
+  
+  .role-team, .role-cost {
+    font-size: 10px;
+  }
+  
+  .role-description {
+    font-size: 9px;
+    max-height: 50px;
+  }
+}
+
+/* 山札アニメーション */
+.deck {
+  animation: deckPulse 2s infinite alternate;
+}
+
+@keyframes deckPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.03); }
+}
+
+/* カード輝きエフェクト */
+.role-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(30deg);
+  animation: shineEffect 3s infinite;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.role-card:hover::after {
+  opacity: 1;
+}
+
+@keyframes shineEffect {
+  0% { transform: rotate(30deg) translateX(-100%); }
+  100% { transform: rotate(30deg) translateX(100%); }
+}
