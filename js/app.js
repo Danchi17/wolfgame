@@ -39,7 +39,10 @@ function showHomeScreen() {
   const appContainer = document.getElementById('app');
   appContainer.innerHTML = `
     <div class="home-container">
-      <h1>多能力一夜人狼</h1>
+      <div class="logo-container">
+        <img src="assets/images/game-logo.svg" alt="多能力一夜人狼" class="game-logo">
+      </div>
+      
       <div class="player-form">
         <div class="form-group">
           <label for="playerName">プレイヤー名:</label>
@@ -58,19 +61,28 @@ function showHomeScreen() {
         </div>
         
         <div class="buttons">
-          <button id="createGameBtn" class="btn primary">ゲームを作成</button>
+          <button id="createGameBtn" class="btn primary">
+            <span class="btn-icon">🎮</span>ゲームを作成
+          </button>
           
-          <div class="form-group">
+          <div class="form-divider">または</div>
+          
+          <div class="form-group join-game-group">
             <label for="gameId">ゲームID:</label>
-            <input type="text" id="gameId" placeholder="ゲームIDを入力">
+            <div class="input-with-button">
+              <input type="text" id="gameId" placeholder="ゲームIDを入力">
+              <button id="joinGameBtn" class="btn secondary">
+                <span class="btn-icon">🚪</span>参加
+              </button>
+            </div>
           </div>
-          
-          <button id="joinGameBtn" class="btn secondary">ゲームに参加</button>
         </div>
       </div>
       
       <div class="home-actions">
-        <button id="showTutorialBtn" class="btn info">遊び方を見る</button>
+        <button id="showTutorialBtn" class="btn info">
+          <span class="btn-icon">📖</span>遊び方を見る
+        </button>
       </div>
       
       <div class="connection-status ${isOnline ? 'online' : 'offline'}">
@@ -99,6 +111,11 @@ function showHomeScreen() {
     const playerName = document.getElementById('playerName').value.trim();
     if (!playerName) {
       notificationSystem.error('プレイヤー名を入力してください');
+      document.getElementById('playerName').focus();
+      document.getElementById('playerName').classList.add('input-error');
+      setTimeout(() => {
+        document.getElementById('playerName').classList.remove('input-error');
+      }, 1000);
       return;
     }
     
@@ -122,8 +139,23 @@ function showHomeScreen() {
     const playerName = document.getElementById('playerName').value.trim();
     const gameId = document.getElementById('gameId').value.trim();
     
-    if (!playerName || !gameId) {
-      notificationSystem.error('プレイヤー名とゲームIDを入力してください');
+    if (!playerName) {
+      notificationSystem.error('プレイヤー名を入力してください');
+      document.getElementById('playerName').focus();
+      document.getElementById('playerName').classList.add('input-error');
+      setTimeout(() => {
+        document.getElementById('playerName').classList.remove('input-error');
+      }, 1000);
+      return;
+    }
+    
+    if (!gameId) {
+      notificationSystem.error('ゲームIDを入力してください');
+      document.getElementById('gameId').focus();
+      document.getElementById('gameId').classList.add('input-error');
+      setTimeout(() => {
+        document.getElementById('gameId').classList.remove('input-error');
+      }, 1000);
       return;
     }
     
@@ -159,6 +191,17 @@ function showHomeScreen() {
       joinBtn.click();
     }
   });
+
+  // 入力フォームにフォーカスアニメーション
+  const inputs = document.querySelectorAll('input');
+  inputs.forEach(input => {
+    input.addEventListener('focus', () => {
+      input.parentElement.classList.add('focused');
+    });
+    input.addEventListener('blur', () => {
+      input.parentElement.classList.remove('focused');
+    });
+  });
 }
 
 // ゲームルーム画面表示
@@ -169,14 +212,23 @@ function enterGameRoom(gameId) {
   appContainer.innerHTML = `
     <div class="game-container">
       <div class="game-header">
-        <h2>ゲームID: ${gameId}</h2>
+        <div class="game-title">
+          <img src="assets/images/game-logo.svg" alt="多能力一夜人狼" class="game-logo-small">
+          <h2>ゲームID: <span class="game-id">${gameId}</span></h2>
+        </div>
         <div id="timer" class="timer"></div>
       </div>
       
       <div class="game-board">
         <div class="field-cards">
-          <div class="card field-card">?</div>
-          <div class="card field-card">?</div>
+          <div class="card field-card">
+            <div class="card-front">?</div>
+            <div class="card-back"></div>
+          </div>
+          <div class="card field-card">
+            <div class="card-front">?</div>
+            <div class="card-back"></div>
+          </div>
         </div>
         
         <div id="playersContainer" class="players-container"></div>
@@ -184,12 +236,24 @@ function enterGameRoom(gameId) {
         <div id="playerHand" class="player-hand"></div>
       </div>
       
-      <div id="gameStatus" class="game-status">ゲーム開始を待っています...</div>
+      <div id="gameStatus" class="game-status">
+        <h3>ゲーム開始を待っています...</h3>
+        <div class="status-animation">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
+        <p>全員の準備が完了するとゲームが開始されます</p>
+      </div>
       
       <div class="game-controls">
         <button id="readyBtn" class="btn secondary">準備完了</button>
-        <button id="helpBtn" class="btn info">遊び方</button>
-        <button id="leaveBtn" class="btn danger">退出する</button>
+        <button id="helpBtn" class="btn info">
+          <span class="btn-icon">📖</span>遊び方
+        </button>
+        <button id="leaveBtn" class="btn danger">
+          <span class="btn-icon">🚪</span>退出する
+        </button>
       </div>
       
       <div class="connection-status ${isOnline ? 'online' : 'offline'}">
@@ -218,6 +282,14 @@ function enterGameRoom(gameId) {
   document.getElementById('readyBtn').addEventListener('click', () => {
     const currentUserId = auth.currentUser.uid;
     const isReady = document.getElementById('readyBtn').classList.contains('active');
+    
+    // ボタンにクリック効果のアニメーション
+    const readyBtn = document.getElementById('readyBtn');
+    readyBtn.classList.add('button-click');
+    setTimeout(() => {
+      readyBtn.classList.remove('button-click');
+    }, 300);
+    
     updatePlayerReady(gameId, currentUserId, !isReady);
   });
   
@@ -228,15 +300,18 @@ function enterGameRoom(gameId) {
   
   // 退出ボタン
   document.getElementById('leaveBtn').addEventListener('click', async () => {
-    // ゲーム退出処理
-    if (auth.currentUser) {
-      await LoadingIndicator.withLoading(
-        async () => await leaveGame(gameId, auth.currentUser.uid),
-        'ゲームから退出しています...'
-      );
+    // 確認ダイアログ
+    if (confirm('本当にゲームから退出しますか？')) {
+      // ゲーム退出処理
+      if (auth.currentUser) {
+        await LoadingIndicator.withLoading(
+          async () => await leaveGame(gameId, auth.currentUser.uid),
+          'ゲームから退出しています...'
+        );
+      }
+      DataManager.unsubscribeAll();
+      showHomeScreen();
     }
-    DataManager.unsubscribeAll();
-    showHomeScreen();
   });
   
   // キーボードアクセシビリティの追加
@@ -284,7 +359,7 @@ function updateGameUI(gameData, gameId) {
   
   Object.entries(gameData.players).forEach(([id, player]) => {
     const playerElement = document.createElement('div');
-    playerElement.className = `player ${player.isHost ? 'host' : ''} ${player.ready ? 'ready' : ''}`;
+    playerElement.className = `player ${player.isHost ? 'host' : ''} ${player.ready ? 'ready' : ''} ${id === currentUserId ? 'current-player' : ''}`;
     playerElement.setAttribute('aria-label', `プレイヤー: ${player.name} ${player.isHost ? 'ホスト' : ''} ${player.ready ? '準備完了' : '準備中'} 持ち点: ${player.points}`);
     playerElement.innerHTML = `
       <div class="player-icon">
@@ -302,7 +377,6 @@ function updateGameUI(gameData, gameId) {
     // 自分のプレイヤーに複読機能で読み上げてもらえるようにマーク
     if (id === currentUserId) {
       playerElement.setAttribute('aria-current', 'true');
-      playerElement.classList.add('current-player');
     }
   });
   
@@ -339,13 +413,29 @@ function updateGameUI(gameData, gameId) {
   if (gameData.status === 'waiting') {
     // 待機状態の場合
     const statusArea = document.getElementById('gameStatus');
-    statusArea.innerHTML = 'ゲーム開始を待っています...';
+    statusArea.innerHTML = `
+      <h3>ゲーム開始を待っています...</h3>
+      <div class="status-animation">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+    `;
     statusArea.setAttribute('aria-live', 'polite');
     
     // 待機中のプレイヤー数と準備完了数を表示
     const players = Object.values(gameData.players);
     const readyCount = players.filter(p => p.ready).length;
-    statusArea.innerHTML += `<p>プレイヤー: ${players.length}人中${readyCount}人が準備完了</p>`;
+    
+    // 準備情報を視覚的に表示
+    statusArea.innerHTML += `
+      <div class="ready-status">
+        <div class="ready-progress">
+          <div class="ready-bar" style="width: ${(readyCount / players.length) * 100}%"></div>
+          <span class="ready-text">${readyCount}/${players.length} 準備完了</span>
+        </div>
+      </div>
+    `;
     
     // ホストプレイヤーの場合、開始ボタンを表示
     if (currentPlayer.isHost) {
@@ -369,8 +459,17 @@ function updateGameUI(gameData, gameId) {
         'result': '結果発表フェーズです'
       };
       
+      const statusIcons = {
+        'night': '🌙',
+        'day': '☀️',
+        'voting': '✍️',
+        'result': '🏆'
+      };
+      
       if (statusMessages[gameData.status]) {
-        notificationSystem.info(statusMessages[gameData.status]);
+        notificationSystem.info(
+          `${statusIcons[gameData.status]} ${statusMessages[gameData.status]}`
+        );
       }
       
       document.getElementById('gameStatus').setAttribute('data-status', gameData.status);
@@ -399,12 +498,18 @@ function showStartGameButton(gameData) {
     startBtn = document.createElement('button');
     startBtn.id = 'startGameBtn';
     startBtn.className = 'btn primary';
-    startBtn.textContent = 'ゲーム開始';
+    startBtn.innerHTML = '<span class="btn-icon">🎮</span>ゲーム開始';
     startBtn.setAttribute('aria-label', 'ゲームを開始する');
     
     gameControls.prepend(startBtn);
     
     startBtn.addEventListener('click', async () => {
+      // クリックエフェクト
+      startBtn.classList.add('button-click');
+      setTimeout(() => {
+        startBtn.classList.remove('button-click');
+      }, 300);
+      
       await LoadingIndicator.withLoading(
         async () => await startGame(gameData.gameId),
         'ゲームを開始しています...'
@@ -426,10 +531,48 @@ function showStartGameButton(gameData) {
     startBtn.title = reason;
     startBtn.setAttribute('aria-disabled', 'true');
     startBtn.setAttribute('aria-label', `ゲームを開始する - ${reason}`);
+    startBtn.classList.add('disabled');
+    
+    // 視覚的にヒントを表示
+    const statusArea = document.getElementById('gameStatus');
+    if (statusArea) {
+      const hintElement = document.createElement('p');
+      hintElement.className = 'start-hint';
+      hintElement.textContent = reason;
+      
+      // 既存のヒントがあれば更新、なければ追加
+      const existingHint = statusArea.querySelector('.start-hint');
+      if (existingHint) {
+        existingHint.textContent = reason;
+      } else {
+        statusArea.appendChild(hintElement);
+      }
+    }
   } else {
     startBtn.title = 'ゲームを開始する';
     startBtn.setAttribute('aria-disabled', 'false');
     startBtn.setAttribute('aria-label', 'ゲームを開始する - 準備完了');
+    startBtn.classList.remove('disabled');
+    
+    // 準備完了メッセージ
+    const statusArea = document.getElementById('gameStatus');
+    if (statusArea) {
+      const hintElement = document.createElement('p');
+      hintElement.className = 'start-hint ready';
+      hintElement.textContent = '全員の準備が完了しました！ゲームを開始できます';
+      
+      // 既存のヒントがあれば更新、なければ追加
+      const existingHint = statusArea.querySelector('.start-hint');
+      if (existingHint) {
+        existingHint.textContent = '全員の準備が完了しました！ゲームを開始できます';
+        existingHint.className = 'start-hint ready';
+      } else {
+        statusArea.appendChild(hintElement);
+      }
+    }
+    
+    // ボタンを強調
+    startBtn.classList.add('pulse-animation');
   }
 }
 
