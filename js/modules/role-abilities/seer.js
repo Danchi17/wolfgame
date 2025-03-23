@@ -1,5 +1,5 @@
 // js/modules/role-abilities/seer.js
-import { currentPlayer, nextPhase, getGameId } from '../game-core.js';
+import { currentPlayer, nextPhase, getGameId, setPhaseTimer } from '../game-core.js';
 import { notificationSystem } from '../../ui.js';
 import { db, ref, update, get } from '../../firebase.js';
 // 占星術師の能力をインポート
@@ -70,7 +70,8 @@ export function handleSeerAbility(gameData) {
     `;
     
     // 30秒後に自動で次のフェーズへ（実際のゲームではホストが管理）
-    setTimeout(() => {
+    // setTimeout の代わりに setPhaseTimer を使用（一元管理）
+    setPhaseTimer('seer', () => {
       nextPhase(gameId, 'seer');
     }, 30000);
   }
@@ -127,8 +128,8 @@ async function checkPlayerRole(gameId, targetId, targetName) {
         <p>次のフェーズに進みます...</p>
       `;
       
-      // 次のフェーズへ
-      setTimeout(() => {
+      // 次のフェーズへ - setPhaseTimerに変更
+      setPhaseTimer('seer_next', () => {
         nextPhase(gameId, 'seer');
       }, 5000);
     }
@@ -173,8 +174,8 @@ async function checkFieldCards(gameId) {
         <p>次のフェーズに進みます...</p>
       `;
       
-      // 次のフェーズへ
-      setTimeout(() => {
+      // 次のフェーズへ - setPhaseTimerに変更
+      setPhaseTimer('seer_next', () => {
         nextPhase(gameId, 'seer');
       }, 5000);
     }
