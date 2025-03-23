@@ -247,13 +247,9 @@ function checkAllVoted(gameData) {
  * @returns {string} HTML文字列
  */
 function addSpyReportUI(gameData) {
-  // すべてのプレイヤーから自分以外を抽出（スパイかどうかは表示しない）
+  // すべてのプレイヤーから自分以外を抽出
   const otherPlayers = Object.entries(gameData.players)
-    .filter(([id, player]) => 
-      id !== currentPlayer.id && 
-      player.role && 
-      player.role.team === 'village' // 市民陣営のみ表示
-    )
+    .filter(([id, player]) => id !== currentPlayer.id)
     .map(([id, player]) => ({ id, name: player.name }));
   
   if (otherPlayers.length === 0) {
@@ -274,6 +270,7 @@ function addSpyReportUI(gameData) {
     <div id="spyReportTargets" class="spy-report">
       <h4>スパイ通報機能</h4>
       <p>あなたは人狼陣営です。スパイを見つけて通報できます。正解なら市民陣営の強制敗北となります。誤った通報をすると追加で2点減点されます。</p>
+      <p>※ スパイはいずれかの市民陣営プレイヤーです</p>
       <div class="spy-report-targets">
         ${reportOptions}
       </div>
