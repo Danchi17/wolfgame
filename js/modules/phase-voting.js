@@ -48,6 +48,7 @@ export function handleVotingPhase(gameData) {
       <div class="voting-info warning-info">
         <p>あなたはやっかいな豚男の能力を使用したため、投票権を失いました。</p>
         <p>他のプレイヤーの投票を待っています...</p>
+        <p class="warning-text">注意: 全員が1票ずつ投票する場合、あなたが処刑されます！</p>
       </div>
     `;
   } else {
@@ -321,6 +322,19 @@ async function processVotingResults(gameId) {
       }
     });
     
+    // ===========================================
+    // 新規追加: やっかいな豚男の全員1票処理
+    // ===========================================
+    const forcedVoteBy = gameData.forced_vote_by;
+    if (forcedVoteBy && isAllOneVote(voteCounts)) {
+      console.log("全員が1票ずつの状態。やっかいな豚男を処刑します");
+      executedPlayers = [forcedVoteBy];
+      
+      // 通知を追加
+      notificationSystem.warning("全員1票ずつの状態となり、やっかいな豚男が処刑されます！", 8000);
+    }
+    // ===========================================
+    
     // 特殊勝利条件チェック
     let specialVictory = null;
     
@@ -415,6 +429,19 @@ async function processVotingResults(gameId) {
     notificationSystem.error('投票結果の処理に失敗しました');
     throw error; // エラーを再スローして呼び出し元で処理できるようにする
   }
+}
+
+/**
+ * すべてのプレイヤーが1票ずつ得票しているかをチェック
+ * @param {Object} voteCounts - 投票カウント
+ * @returns {boolean} 全員が1票ずつ得票している場合はtrue
+ */
+function isAllOneVote(voteCounts) {
+  // 投票数が0の場合はfalse
+  if (Object.keys(voteCounts).length === 0) return false;
+  
+  // すべての投票が1票ずつかチェック
+  return Object.values(voteCounts).every(count => count === 1);
 }
 
 /**
