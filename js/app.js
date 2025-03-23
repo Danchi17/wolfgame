@@ -6,6 +6,7 @@ import { initGameUtils } from './modules/game-utils.js';
 import LoadingIndicator from './modules/loading.js';
 import Tutorial from './modules/tutorial.js';
 import DataManager from './modules/data-manager.js';
+import CardAnimation from './modules/card-animation.js';
 
 // 利用可能なアイコン
 const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
@@ -13,6 +14,11 @@ const ICONS = ['icon1', 'icon2', 'icon3', 'icon4'];
 // アプリ初期化
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+    // スタイルシートの動的読み込み
+    document.head.insertAdjacentHTML('beforeend', `
+      <link rel="stylesheet" href="css/layout-improvements.css">
+    `);
+    
     // ローディングインジケーターの初期化
     LoadingIndicator.init();
     LoadingIndicator.show('ゲームを準備しています...');
@@ -220,7 +226,7 @@ function enterGameRoom(gameId) {
       </div>
       
       <div class="game-board">
-        <div class="field-cards">
+        <div class="field-area">
           <div class="card field-card">
             <div class="card-front">?</div>
             <div class="card-back"></div>
@@ -262,6 +268,9 @@ function enterGameRoom(gameId) {
       </div>
     </div>
   `;
+  
+  // カードを裏面から表示するように初期化
+  CardAnimation.setupFieldCards();
   
   // データマネージャーを使用してゲーム状態を監視
   DataManager.unsubscribeAll(); // 先に既存のリスナーをクリア
@@ -360,6 +369,7 @@ function updateGameUI(gameData, gameId) {
   Object.entries(gameData.players).forEach(([id, player]) => {
     const playerElement = document.createElement('div');
     playerElement.className = `player ${player.isHost ? 'host' : ''} ${player.ready ? 'ready' : ''} ${id === currentUserId ? 'current-player' : ''}`;
+    playerElement.setAttribute('data-player-id', id);
     playerElement.setAttribute('aria-label', `プレイヤー: ${player.name} ${player.isHost ? 'ホスト' : ''} ${player.ready ? '準備完了' : '準備中'} 持ち点: ${player.points}`);
     playerElement.innerHTML = `
       <div class="player-icon">
@@ -385,16 +395,14 @@ function updateGameUI(gameData, gameId) {
   playerHand.innerHTML = ''; // 一旦クリア
   
   if (currentPlayer.role) {
-    const roleCard = document.createElement('div');
-    roleCard.className = 'card my-role';
-    roleCard.setAttribute('aria-label', `あなたの役職: ${currentPlayer.role.name}, 陣営: ${currentPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}, コスト: ${currentPlayer.role.cost}`);
-    roleCard.innerHTML = `
-      <div class="role-name">${currentPlayer.role.name}</div>
-      <div class="role-team">${currentPlayer.role.team === 'village' ? '市民陣営' : '人狼陣営'}</div>
-      <div class="role-cost">コスト: ${currentPlayer.role.cost}</div>
-      <div class="role-description">${currentPlayer.role.description}</div>
-    `;
+    // 役職カードを生成
+    const roleCard = CardAnimation.createRoleCard(currentPlayer.role);
     playerHand.appendChild(roleCard);
+    
+    // ゲーム開始時のアニメーション効果
+    if (gameData.status === 'night' && gameData.current_phase === 'seer') {
+      CardAnimation.setupPlayerCard(playerHand);
+    }
   }
   
   // 準備完了ボタンの状態更新
@@ -473,6 +481,13 @@ function updateGameUI(gameData, gameId) {
       }
       
       document.getElementById('gameStatus').setAttribute('data-status', gameData.status);
+      
+      // ナイトフェーズのスタイルを適用/解除
+      if (gameData.status === 'night') {
+        document.body.classList.add('night-phase');
+      } else {
+        document.body.classList.remove('night-phase');
+      }
     }
     
     initGame(gameData, currentUserId);
