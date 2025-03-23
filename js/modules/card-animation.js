@@ -2,119 +2,231 @@
 
 /**
  * カードアニメーション管理モジュール
- * 役職カードの配布・めくりアニメーションを管理
  */
 const CardAnimation = {
   /**
-   * 山札からカードを配る演出
-   * @param {Array<HTMLElement>} targetElements - カードの配布先要素の配列
-   * @param {Function} onComplete - 配布完了後のコールバック関数
-   */
-  dealCardsFromDeck(targetElements, onComplete) {
-    // 山札の初期位置（画面中央上部）
-    const deckPosition = {
-      left: window.innerWidth / 2,
-      top: 50
-    };
-    
-    // アニメーションのセットアップ
-    setupDeckPosition(deckPosition);
-    
-    // カードを1枚ずつ順番に配る
-    dealNextCard(0);
-    
-    // カードを配る関数
-    function dealNextCard(index) {
-      if (index >= targetElements.length) {
-        // すべてのカードを配り終えたらコールバックを実行
-        if (onComplete) {
-          setTimeout(onComplete, 500);
-        }
-        return;
-      }
-      
-      const element = targetElements[index];
-      if (!element) {
-        dealNextCard(index + 1);
-        return;
-      }
-      
-      // カードの現在位置を取得
-      const rect = element.getBoundingClientRect();
-      const targetPosition = {
-        left: rect.left + rect.width / 2,
-        top: rect.top + rect.height / 2
-      };
-      
-      // 配布アニメーション実行
-      animateCardDeal(element, deckPosition, targetPosition, () => {
-        // カードを表に向ける
-        setTimeout(() => {
-          flipCard(element, true, () => {
-            // 次のカードを配る
-            dealNextCard(index + 1);
-          });
-        }, 150);
-      });
-    }
-  },
-  
-  /**
-   * カードをめくるアニメーション
+   * カードを裏返すアニメーション
    * @param {HTMLElement} card - カード要素
-   * @param {boolean} faceUp - 表向きにする場合はtrue、裏向きにする場合はfalse
-   * @param {Function} onComplete - めくり完了後のコールバック関数
+   * @param {boolean} isFront - 表面を表示するならtrue、裏面ならfalse
+   * @param {Function} callback - アニメーション完了後のコールバック（オプション）
    */
-  flipCard(card, faceUp, onComplete) {
+  flipCard(card, isFront, callback) {
     if (!card) {
-      if (onComplete) onComplete();
+      if (callback) callback();
       return;
     }
     
-    // カードの現在の向きを確認
-    const isFaceUp = !card.classList.contains('flipped');
+    // すでにアニメーション中であれば無視
+    if (card.dataset.flipping === 'true') return;
     
-    // 既に目的の向きならアニメーションしない
-    if ((faceUp && isFaceUp) || (!faceUp && !isFaceUp)) {
-      if (onComplete) onComplete();
+    card.dataset.flipping = 'true';
+    
+    // 現在の状態と目標が同じなら何もしない
+    const isCurrentlyFront = !card.classList.contains('flipped');
+    if (isCurrentlyFront === isFront) {
+      card.dataset.flipping = 'false';
+      if (callback) callback();
       return;
     }
     
-    // トランジションイベントを一度だけ監視
-    const handleTransitionEnd = () => {
-      card.removeEventListener('transitionend', handleTransitionEnd);
-      if (onComplete) onComplete();
-    };
+    // アニメーション追加
+    card.style.transition = 'transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
     
-    card.addEventListener('transitionend', handleTransitionEnd);
-    
-    // カードをめくる
-    if (faceUp) {
+    // 裏返す
+    if (isFront) {
       card.classList.remove('flipped');
     } else {
       card.classList.add('flipped');
     }
+    
+    // アニメーション完了後の処理
+    const onAnimationEnd = () => {
+      card.removeEventListener('transitionend', onAnimationEnd);
+      card.dataset.flipping = 'false';
+      if (callback) callback();
+    };
+    
+    card.addEventListener('transitionend', onAnimationEnd);
   },
   
   /**
-   * 役職カードを生成
-   * @param {Object} role - 役職オブジェクト
-   * @returns {HTMLElement} 生成したカード要素
+   * カードを揺らすアニメーション
+   * @param {HTMLElement} card - カード要素
+   */
+  shakeCard(card) {
+    if (!card) return;
+    
+    card.classList.add('shake-animation');
+    
+    setTimeout(() => {
+      card.classList.remove('shake-animation');
+    }, 500);
+  },
+  
+  /**
+   * カードを強調表示するアニメーション
+   * @param {HTMLElement} card - カード要素
+   * @param {number} duration - 持続時間（ミリ秒）（オプション、デフォルト1000ms）
+   */
+  highlightCard(card, duration = 1000) {
+    if (!card) return;
+    
+    card.classList.add('highlight-animation');
+    
+    setTimeout(() => {
+      card.classList.remove('highlight-animation');
+    }, duration);
+  },
+  
+  /**
+   * カードを浮かせるアニメーション
+   * @param {HTMLElement} card - カード要素
+   * @param {boolean} isFloating - 浮かせる状態にする場合はtrue
+   */
+  floatCard(card, isFloating) {
+    if (!card) return;
+    
+    if (isFloating) {
+      card.classList.add('float-animation');
+    } else {
+      card.classList.remove('float-animation');
+    }
+  },
+  
+  /**
+   * 山札からカードを配るアニメーション
+   * @param {HTMLElement} targetContainer - カードを配置するコンテナ
+   * @param {number} numCards - 配るカードの枚数
+   * @param {string} cardType - カードの種類 ('field', 'player')
+   * @param {Function} callback - アニメーション完了後のコールバック
+   */
+  dealCards(targetContainer, numCards, cardType, callback) {
+    if (!targetContainer) {
+      if (callback) callback();
+      return;
+    }
+    
+    // 山札の位置（画面外上部中央）
+    const deckPosition = {
+      x: window.innerWidth / 2,
+      y: -150
+    };
+    
+    // カードを生成して配置
+    const cards = [];
+    for (let i = 0; i < numCards; i++) {
+      const card = document.createElement('div');
+      card.className = `card ${cardType}-card deal-animation`;
+      card.style.position = 'absolute';
+      card.style.left = `${deckPosition.x}px`;
+      card.style.top = `${deckPosition.y}px`;
+      card.style.zIndex = `${1000 + i}`;
+      card.style.opacity = '0';
+      
+      // 裏面を初期表示
+      card.innerHTML = `
+        <div class="card-front"></div>
+        <div class="card-back"></div>
+      `;
+      card.classList.add('flipped');
+      
+      document.body.appendChild(card);
+      cards.push(card);
+    }
+    
+    // 順番にカードを配る
+    let cardIndex = 0;
+    const dealNextCard = () => {
+      if (cardIndex >= cards.length) {
+        // アニメーション完了後、カードを正しい位置に移動
+        setTimeout(() => {
+          cards.forEach(card => {
+            document.body.removeChild(card);
+          });
+          
+          // コールバックを実行
+          if (callback) callback();
+        }, 500);
+        return;
+      }
+      
+      const card = cards[cardIndex];
+      const targetRect = targetContainer.getBoundingClientRect();
+      const targetX = targetRect.left + (targetRect.width / (numCards + 1)) * (cardIndex + 1);
+      const targetY = targetRect.top + targetRect.height / 2;
+      
+      // カードを表示
+      card.style.opacity = '1';
+      
+      // アニメーションのタイミングを設定
+      setTimeout(() => {
+        card.style.transition = 'all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        card.style.left = `${targetX}px`;
+        card.style.top = `${targetY}px`;
+        card.style.transform = 'rotate(0deg)';
+        
+        // 次のカードを配る
+        cardIndex++;
+        setTimeout(dealNextCard, 200);
+      }, 100);
+    };
+    
+    // 配り始める
+    setTimeout(dealNextCard, 500);
+  },
+  
+  /**
+   * フィールドカードをセットアップ
+   * バックフェイスでカードが始まるようにする
+   */
+  setupFieldCards() {
+    const fieldCards = document.querySelectorAll('.field-card');
+    fieldCards.forEach(card => {
+      // 初期状態で裏面を表示
+      card.classList.add('flipped');
+    });
+  },
+  
+  /**
+   * プレイヤーカードをセットアップ
+   * 役職カードがスムーズに表示されるようにする
+   * @param {HTMLElement} cardContainer - カードコンテナ要素
+   */
+  setupPlayerCard(cardContainer) {
+    if (!cardContainer) return;
+    
+    const roleCard = cardContainer.querySelector('.my-role');
+    if (roleCard) {
+      // 初期状態は小さく透明
+      roleCard.style.opacity = '0';
+      roleCard.style.transform = 'scale(0.8)';
+      
+      // アニメーションで表示
+      setTimeout(() => {
+        roleCard.style.transition = 'all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        roleCard.style.opacity = '1';
+        roleCard.style.transform = 'scale(1)';
+      }, 300);
+    }
+  },
+  
+  /**
+   * 役職カードを作成
+   * @param {Object} role - 役職データ
+   * @returns {HTMLElement} 作成されたカード要素
    */
   createRoleCard(role) {
     const card = document.createElement('div');
-    card.className = 'card role-card flipped';
+    card.className = 'card role-card';
     
-    // 役職名から画像パスを生成
-    const imagePath = `assets/images/roles/${role.name}.jpg`;
+    const imagePath = `assets/images/roles/${role.name}.png`;
     
-    // カードの表面と裏面を作成
     card.innerHTML = `
       <div class="card-front">
-        <div class="card-image">
-          <img src="${imagePath}" alt="${role.name}" onerror="this.src='assets/images/roles/unknown.jpg'">
+        <div class="role-image">
+          <img src="${imagePath}" alt="${role.name}" onerror="this.src='assets/images/roles/default.png'">
         </div>
-        <div class="card-content">
+        <div class="role-info">
           <div class="role-name">${role.name}</div>
           <div class="role-team ${role.team === 'village' ? 'village-team' : 'werewolf-team'}">
             ${role.team === 'village' ? '市民陣営' : '人狼陣営'}
@@ -127,98 +239,7 @@ const CardAnimation = {
     `;
     
     return card;
-  },
-  
-  /**
-   * フィールドカードをセットアップ
-   */
-  setupFieldCards() {
-    const fieldCards = document.querySelectorAll('.field-card');
-    fieldCards.forEach(card => {
-      card.classList.add('flipped');
-    });
-  },
-  
-  /**
-   * すべてのカードアニメーションをセットアップ
-   * @param {Object} gameData - ゲームデータ
-   * @param {string} currentUserId - 現在のプレイヤーID
-   */
-  setupAllCards(gameData, currentUserId) {
-    // 場札のセットアップ
-    const fieldCards = document.querySelectorAll('.field-card');
-    
-    // プレイヤーカードのセットアップ
-    const playerCards = [];
-    const currentPlayerCard = document.querySelector('.my-role');
-    
-    if (currentPlayerCard) {
-      playerCards.push(currentPlayerCard);
-    }
-    
-    // すべてのカードに対してアニメーション処理
-    this.dealCardsFromDeck([...fieldCards, ...playerCards], () => {
-      console.log('すべてのカードの配布が完了しました');
-    });
   }
 };
-
-// カード配布アニメーション
-function animateCardDeal(element, fromPosition, toPosition, onComplete) {
-  // 最初はカードを山札の位置に配置し、非表示にしておく
-  element.style.transition = 'none';
-  element.style.opacity = '0';
-  element.style.transform = 'translate(0, 0) scale(0.8)';
-  
-  // カードをフェードイン
-  setTimeout(() => {
-    element.style.transition = 'all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-    element.style.opacity = '1';
-    element.style.transform = 'translate(0, 0) scale(1)';
-    
-    // アニメーション完了後
-    setTimeout(() => {
-      if (onComplete) onComplete();
-    }, 500);
-  }, 50);
-}
-
-// 山札の位置をセットアップ
-function setupDeckPosition(deckPosition) {
-  // 山札要素がなければ作成
-  let deck = document.getElementById('card-deck');
-  if (!deck) {
-    deck = document.createElement('div');
-    deck.id = 'card-deck';
-    deck.className = 'card-deck';
-    deck.style.position = 'fixed';
-    deck.style.left = `${deckPosition.left}px`;
-    deck.style.top = `${deckPosition.top}px`;
-    deck.style.width = '120px';
-    deck.style.height = '180px';
-    deck.style.backgroundColor = '#624a7e';
-    deck.style.backgroundImage = 'url("assets/images/card-back.svg")';
-    deck.style.backgroundSize = 'cover';
-    deck.style.borderRadius = '10px';
-    deck.style.boxShadow = '0 5px 15px rgba(0,0,0,0.3)';
-    deck.style.zIndex = '1000';
-    deck.style.transform = 'translate(-50%, -50%)';
-    document.body.appendChild(deck);
-    
-    // 山札が少しずつ薄くなるアニメーション
-    setTimeout(() => {
-      deck.style.transition = 'opacity 1s ease';
-      deck.style.opacity = '0';
-      setTimeout(() => {
-        deck.remove();
-      }, 1000);
-    }, 1000);
-  }
-}
-
-// カードめくりアニメーション
-function flipCard(card, faceUp, onComplete) {
-  CardAnimation.flipCard(card, faceUp, onComplete);
-}
 
 export default CardAnimation;
