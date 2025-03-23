@@ -1,6 +1,7 @@
 // js/modules/role-abilities/spy.js
 import { currentPlayer } from '../game-core.js';
 import { notificationSystem } from '../../ui.js';
+import { db, ref, update, get } from '../../firebase.js';
 
 /**
  * スパイの人狼陣営確認機能
@@ -103,14 +104,11 @@ function notifyWerewolvesAboutSpy(gameData) {
  * 投票フェーズで使用される
  * @param {string} gameId - ゲームID
  * @param {string} reportedId - 通報されたプレイヤーID（スパイと疑われるプレイヤー）
- * @param {Function} updateFunction - Firebase更新関数
- * @param {Function} getFunction - Firebase取得関数
- * @param {Function} dbRef - Firebaseリファレンス関数
  */
-async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction, dbRef) {
+async function reportAsWerewolf(gameId, reportedId) {
   try {
     // 通報対象が本当にスパイかチェック
-    const snapshot = await getFunction(dbRef(`games/${gameId}/players/${reportedId}`));
+    const snapshot = await get(ref(db, `games/${gameId}/players/${reportedId}`));
     const reportedPlayer = snapshot.val();
     
     if (!reportedPlayer) {
@@ -121,7 +119,7 @@ async function reportAsWerewolf(gameId, reportedId, updateFunction, getFunction,
     const isSpy = reportedPlayer && reportedPlayer.role && reportedPlayer.role.name === 'スパイ';
     
     // 通報情報を保存
-    await updateFunction(dbRef(`games/${gameId}`), {
+    await update(ref(db, `games/${gameId}`), {
       spy_report: {
         reporter: currentPlayer.id,
         reported: reportedId,
