@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 420">
+  <defs>
+    <linearGradient id="cardGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6a3b98"/>
+      <stop offset="100%" stop-color="#8e44ad"/>
+    </linearGradient>
+    <pattern id="dotPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+      <circle cx="5" cy="5" r="1" fill="white"/>
+    </pattern>
+  </defs>
+  
+  <!-- 背景 -->
+  <rect width="300" height="420" rx="15" fill="url(#cardGradient)"/>
+  
+  <!-- ドットパターン -->
+  <rect width="300" height="420" fill="url(#dotPattern)" opacity="0.1"/>
+  
+  <!-- カード内部のボーダー -->
+  <rect x="10" y="10" width="280" height="400" rx="10" fill="none" stroke="rgba(255, 255, 255, 0.3)" stroke-width="2"/>
+  
+  <!-- 中央の月シンボル -->
+  <circle cx="150" cy="180" r="70" fill="rgba(255, 255, 255, 0.1)"/>
+  <circle cx="150" cy="180" r="40" fill="rgba(255, 255, 255, 0.8)" filter="url(#moonGlow)"/>
+  <circle cx="175" cy="170" r="45" fill="url(#cardGradient)"/>
+  
+  <!-- 月の光彩効果 -->
+  <filter id="moonGlow">
+    <feGaussianBlur stdDeviation="3" result="blur"/>
+    <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+  </filter>
+  
+  <!-- コーナーのテキスト -->
+  <text x="30" y="45" font-family="sans-serif" font-weight="bold" font-size="24" fill="white">狼</text>
+  <text x="270" y="45" font-family="sans-serif" font-weight="bold" font-size="24" fill="white" text-anchor="end">狼</text>
+  <text x="30" y="380" font-family="sans-serif" font-weight="bold" font-size="24" fill="white">狼</text>
+  <text x="270" y="380" font-family="sans-serif" font-weight="bold" font-size="24" fill="white" text-anchor="end">狼</text>
+  
+  <!-- カードタイトル -->
+  <text x="150" y="340" font-family="'Noto Sans JP', sans-serif" font-weight="bold" font-size="18" fill="white" text-anchor="middle" filter="url(#textShadow)">多能力一夜人狼</text>
+  
+  <!-- テキスト影 -->
+  <filter id="textShadow">
+    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="black" flood-opacity="0.3"/>
+  </filter>
+</svg>
