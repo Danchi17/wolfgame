@@ -42,8 +42,39 @@ function handleResultPhase(gameData) {
   const executedPlayers = gameData.executed_players || [];
   const executedNames = executedPlayers.map(id => gameData.players[id]?.name || '不明').join('、');
   
-  // 投票情報の整理
-  let voteInfo = '<h4>投票結果:</h4><ul>';
+  // 投票集計を計算
+  const voteSummary = {};
+  if (gameData.votes) {
+    Object.entries(gameData.votes).forEach(([voterId, voteData]) => {
+      const targetId = voteData.target;
+      const voteValue = voteData.value || 1;
+      
+      if (!voteSummary[targetId]) {
+        voteSummary[targetId] = {
+          name: gameData.players[targetId]?.name || '不明',
+          count: 0
+        };
+      }
+      
+      voteSummary[targetId].count += voteValue;
+    });
+  }
+  
+  // 投票情報の整理（個別の投票内容）
+  let voteInfo = '<h4>投票結果:</h4>';
+  
+  // 合計票数を表示（新規追加）
+  voteInfo += '<div class="vote-summary">';
+  voteInfo += '<h5>合計投票数:</h5>';
+  voteInfo += '<ul>';
+  Object.entries(voteSummary).sort((a, b) => b[1].count - a[1].count).forEach(([targetId, summary]) => {
+    voteInfo += `<li>${summary.name}: <strong>${summary.count}票</strong></li>`;
+  });
+  voteInfo += '</ul>';
+  voteInfo += '</div>';
+  
+  // 個別投票内容
+  voteInfo += '<h5>個別投票:</h5><ul>';
   if (gameData.votes) {
     Object.entries(gameData.votes).forEach(([voterId, voteData]) => {
       const voterName = gameData.players[voterId]?.name || '不明';
