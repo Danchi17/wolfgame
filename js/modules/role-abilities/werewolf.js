@@ -153,6 +153,7 @@ function addTroublesomePigAbility(gameData, baseHtml) {
     <div class="pig-ability">
       <h4>投票先強制指定能力</h4>
       <p>あなたはやっかいな豚男です。他のプレイヤーの投票先を強制指定できますが、自身は投票権を失います。</p>
+      <p class="warning-text">警告: 投票結果が全員1票ずつになった場合、あなたが処刑されます！</p>
       <p>誰の投票先を指定しますか？</p>
       <div class="action-targets">
         <div class="player-targets">${playerOptions}</div>
@@ -209,6 +210,7 @@ function showVoteTargetOptions(gameData, targetId, targetName) {
   gameStatus.innerHTML = `
     <h3>投票先強制指定</h3>
     <p>${targetName}の投票先を指定します。誰に投票させますか？</p>
+    <p class="warning-text">警告: 投票結果が全員1票ずつになった場合、あなたが処刑されます！</p>
     <div class="vote-options">
       ${voteTargetOptions}
     </div>
@@ -237,6 +239,7 @@ function showVoteTargetOptions(gameData, targetId, targetName) {
           <h3>投票先強制指定完了</h3>
           <p>${targetName}の投票先を${voteName}に強制指定しました。</p>
           <p>あなたは投票権を失います。</p>
+          <p class="warning-text">警告: 投票結果が全員1票ずつになった場合、あなたが処刑されます！</p>
           <p>次のフェーズに進みます...</p>
         `;
         
