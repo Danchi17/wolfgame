@@ -10,6 +10,7 @@ import { handleDayPhase } from './phase-day.js';
 import { handleVotingPhase } from './phase-voting.js';
 import { handleResultPhase } from './phase-result.js';
 import LoadingIndicator from './loading.js';
+import CardAnimation from './card-animation.js';
 
 // 現在のプレイヤー情報
 export const currentPlayer = {
@@ -124,6 +125,30 @@ export function initGame(gameData, playerId) {
   currentPlayer.data = gameData.players[playerId];
   
   console.log(`ゲームを初期化: プレイヤー=${currentPlayer.data.name}, 役職=${currentPlayer.data.role?.name || 'なし'}`);
+  
+  // ゲーム状態が夜フェーズから始まる場合、カードフリップアニメーション
+  if (gameData.status === 'night' && gameData.current_phase === 'seer') {
+    // カードが配られるアニメーションを追加
+    const playerHand = document.getElementById('playerHand');
+    
+    if (playerHand && currentPlayer.data.role) {
+      // 既存のカードをクリア
+      playerHand.innerHTML = '';
+      
+      // 役職カードを生成してアペンド
+      const roleCard = CardAnimation.createRoleCard(currentPlayer.data.role);
+      playerHand.appendChild(roleCard);
+      
+      // カードが配られるアニメーションを開始
+      setTimeout(() => {
+        // 山札からカードが配られるアニメーション
+        CardAnimation.dealCards(playerHand, 1, 'role', () => {
+          // フィールドカードもセットアップ
+          CardAnimation.setupFieldCards();
+        });
+      }, 500);
+    }
+  }
 }
 
 /**
@@ -195,6 +220,7 @@ export async function startGame(gameId) {
     await update(ref(db, `games/${gameId}`), updates);
     
     notificationSystem.success('ゲームが開始されました！');
+    
     return true;
   } catch (error) {
     console.error('ゲーム開始エラー:', error);
@@ -242,6 +268,9 @@ export function handlePhase(phase, gameData) {
 function handleNightPhase(gameData) {
   const currentPhase = gameData.current_phase;
   
+  // 夜フェーズの視覚的な効果を追加
+  document.body.classList.add('night-phase');
+  
   switch (currentPhase) {
     case 'seer':
       handleSeerAbility(gameData);
@@ -267,6 +296,9 @@ export async function nextPhase(gameId, currentPhase) {
   try {
     // タイマーをクリア（重要: フェーズ変更前に必ずクリア）
     clearPhaseTimers();
+    
+    // 夜フェーズエフェクトを解除
+    document.body.classList.remove('night-phase');
     
     let nextPhaseValue;
     let updates = {};
@@ -320,6 +352,16 @@ export async function nextPhase(gameId, currentPhase) {
     await update(ref(db, `games/${gameId}`), updates);
     console.log(`フェーズ移行: ${currentPhase} → ${nextPhaseValue}`);
     notificationSystem.info(`${getPhaseDisplayName(nextPhaseValue)}に移行しました`);
+    
+    // フェーズ移行時のアニメーション処理
+    if (nextPhaseValue === 'day') {
+      // 夜フェーズから日中フェーズへの移行時の特殊処理
+      // フィールドカードを表に向ける
+      const fieldCards = document.querySelectorAll('.field-card');
+      fieldCards.forEach(card => {
+        CardAnimation.flipCard(card, true);
+      });
+    }
     
   } catch (error) {
     console.error('フェーズ移行エラー:', error);
