@@ -68,6 +68,107 @@ function flipCardSequence(cardElements, showBack, delay = 200, callback) {
 }
 
 /**
+ * 山札から役職カードを配るアニメーション 
+ * @param {string} deckPosition - 山札の位置（'center', 'top', 'left'など）
+ * @param {Array<Object>} targets - 配布先の情報配列 [{element, position, delay}]
+ * @param {Function} callback - アニメーション完了後のコールバック（オプション）
+ */
+function dealCardsFromDeck(deckPosition, targets, callback) {
+  // 山札の初期表示
+  const deck = document.createElement('div');
+  deck.className = 'deck';
+  deck.innerHTML = `
+    <div class="deck-inner">
+      <div class="deck-card"></div>
+    </div>
+  `;
+  document.body.appendChild(deck);
+  
+  // 山札の位置を設定
+  const setDeckPosition = () => {
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+    
+    switch(deckPosition) {
+      case 'center':
+        deck.style.left = `${windowWidth / 2 - 75}px`;
+        deck.style.top = `${windowHeight / 2 - 100}px`;
+        break;
+      case 'top':
+        deck.style.left = `${windowWidth / 2 - 75}px`;
+        deck.style.top = '50px';
+        break;
+      case 'left':
+        deck.style.left = '50px';
+        deck.style.top = `${windowHeight / 2 - 100}px`;
+        break;
+      default:
+        deck.style.left = `${windowWidth / 2 - 75}px`;
+        deck.style.top = `${windowHeight / 2 - 100}px`;
+    }
+  };
+  
+  setDeckPosition();
+  window.addEventListener('resize', setDeckPosition);
+  
+  // 山札からカードを順番に配る
+  let currentIndex = 0;
+  
+  const dealNext = () => {
+    if (currentIndex >= targets.length) {
+      // 全てのカードを配布した後、山札を非表示
+      deck.classList.add('deck-empty');
+      setTimeout(() => {
+        deck.remove();
+        if (callback) callback();
+      }, 500);
+      return;
+    }
+    
+    const target = targets[currentIndex];
+    currentIndex++;
+    
+    // カードを作成して山札から配る
+    const card = document.createElement('div');
+    card.className = 'card flying-card';
+    card.innerHTML = `<div class="card-inner"></div>`;
+    document.body.appendChild(card);
+    
+    // 山札の位置を取得
+    const deckRect = deck.getBoundingClientRect();
+    
+    // カードの初期位置を山札に合わせる
+    card.style.left = `${deckRect.left}px`;
+    card.style.top = `${deckRect.top}px`;
+    
+    // 対象要素の位置を取得
+    const targetRect = target.element.getBoundingClientRect();
+    
+    // アニメーション時間を設定
+    const animationDuration = 500;
+    
+    // カードを対象位置へ移動
+    setTimeout(() => {
+      card.style.transition = `left ${animationDuration}ms ease-out, top ${animationDuration}ms ease-out`;
+      card.style.left = `${targetRect.left}px`;
+      card.style.top = `${targetRect.top}px`;
+      
+      // アニメーション完了後、カードを非表示にし、次のカードを配る
+      setTimeout(() => {
+        card.remove();
+        target.element.classList.add('card-received');
+        
+        // 遅延して次のカードを配る
+        setTimeout(dealNext, target.delay || 200);
+      }, animationDuration);
+    }, 50);
+  };
+  
+  // カードの配布アニメーションを少し遅延して開始
+  setTimeout(dealNext, 300);
+}
+
+/**
  * フィールドカードを配置するアニメーション
  * @param {Array<HTMLElement>} cardElements - カード要素の配列
  * @param {Function} callback - アニメーション完了後のコールバック（オプション）
@@ -77,12 +178,6 @@ function dealFieldCards(cardElements, callback) {
     if (callback) callback();
     return;
   }
-  
-  // 元の位置を保存
-  const originalPositions = cardElements.map(card => {
-    const rect = card.getBoundingClientRect();
-    return { left: rect.left, top: rect.top };
-  });
   
   // アニメーション用のクラスを追加
   cardElements.forEach(card => {
@@ -167,17 +262,29 @@ function dealHandCard(handElement, callback) {
   }, 100);
 }
 
-// 役職カードを作成する関数
+/**
+ * 役職カードを作成する関数
+ * @param {Object} role - 役職情報オブジェクト
+ * @returns {HTMLElement} 作成されたカード要素
+ */
 function createRoleCard(role) {
   const cardElement = document.createElement('div');
   cardElement.className = 'card role-card';
   
+  // 役職画像のURLを取得
+  const roleImageUrl = `assets/images/roles/${role.name}.jpg`;
+  
   // カードの表と裏を作成
   cardElement.innerHTML = `
     <div class="card-front">
-      <div class="role-name">${role.name}</div>
-      <div class="role-team">${role.team === 'village' ? '市民陣営' : '人狼陣営'}</div>
-      <div class="role-cost">コスト: ${role.cost}</div>
+      <div class="role-image">
+        <img src="${roleImageUrl}" alt="${role.name}" onerror="this.src='assets/images/roles/unknown.jpg'">
+      </div>
+      <div class="role-info">
+        <div class="role-name">${role.name}</div>
+        <div class="role-team ${role.team === 'village' ? 'team-village' : 'team-werewolf'}">${role.team === 'village' ? '市民陣営' : '人狼陣営'}</div>
+        <div class="role-cost">コスト: ${role.cost}</div>
+      </div>
       <div class="role-description">${role.description}</div>
     </div>
     <div class="card-back"></div>
@@ -189,6 +296,7 @@ function createRoleCard(role) {
 export {
   flipCard,
   flipCardSequence,
+  dealCardsFromDeck,
   dealFieldCards,
   revealResultCard,
   dealHandCard,
