@@ -67,6 +67,12 @@ function updatePlayerPoints(gameData) {
 function resetGame(gameId) {
   console.log(`リセット処理を開始: ゲームID=${gameId}`);
   
+  if (!gameId) {
+    console.error('リセット処理エラー: ゲームIDが未定義です');
+    notificationSystem.error('ゲームIDが見つかりませんでした。ページを再読み込みしてください。');
+    return;
+  }
+  
   // ゲーム終了条件の確認
   const anyPlayerLost = Object.values(currentGame.players).some(player => player.points <= 0);
   
@@ -81,7 +87,8 @@ function resetGame(gameId) {
     resetData.status = 'waiting';
     resetData.current_phase = null;
     resetData.field_cards = [];
-    resetData.votes = {};
+    resetData.votes = null; // nullを使用して確実に削除
+    resetData.vote_counts = null; // 投票集計データも確実に削除
     resetData.executed_players = null;
     resetData.winning_team = null;
     resetData.points_updated = false;
@@ -89,6 +96,7 @@ function resetGame(gameId) {
     resetData.outlaw_exchanges = null;
     resetData.forced_vote_target = null;
     resetData.forced_vote_by = null;
+    resetData.forced_vote_to = null; // 追加：投票先の強制指定も削除
     resetData.spy_report = null;
     resetData.puppy_guessed = null;
     resetData.puppy_guessed_correct = null;
