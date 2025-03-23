@@ -1,5 +1,5 @@
 // js/modules/role-abilities/thief.js
-import { currentPlayer, nextPhase, getGameId } from '../game-core.js';
+import { currentPlayer, nextPhase, getGameId, setPhaseTimer } from '../game-core.js';
 import { notificationSystem } from '../../ui.js';
 import { db, ref, update, get } from '../../firebase.js';
 
@@ -54,7 +54,8 @@ export function handleThiefAbility(gameData) {
     `;
     
     // 30秒後に自動で次のフェーズへ（実際のゲームではホストが管理）
-    setTimeout(() => {
+    // setPhaseTimerに変更して一元管理
+    setPhaseTimer('thief', () => {
       nextPhase(gameId, 'thief');
     }, 30000);
   }
@@ -86,8 +87,8 @@ export function handleThiefAbility(gameData) {
         <p>次のフェーズに進みます...</p>
       `;
       
-      // 次のフェーズへ
-      setTimeout(() => {
+      // 次のフェーズへ - setPhaseTimerに変更
+      setPhaseTimer('thief_skip', () => {
         nextPhase(gameId, 'thief');
       }, 3000);
     });
@@ -149,8 +150,8 @@ async function exchangeRole(gameId, targetId, targetName) {
       <p>次のフェーズに進みます...</p>
     `;
     
-    // 次のフェーズへ
-    setTimeout(() => {
+    // 次のフェーズへ - setPhaseTimerに変更
+    setPhaseTimer('thief_exchange', () => {
       nextPhase(gameId, 'thief');
     }, 5000);
     
