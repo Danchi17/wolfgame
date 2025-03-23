@@ -1,265 +1,261 @@
 /* css/card-styles.css */
-/* カードのデザインとアニメーションに関するスタイル */
 
-/* カード基本スタイル */
-.card {
-  width: 180px;
-  height: 260px;
-  position: relative;
-  margin: 10px;
-  transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-  border-radius: 10px;
-  user-select: none;
+/* カードアニメーション */
+@keyframes dealCard {
+  0% { 
+    transform: translate(0, -50px) rotate(5deg) scale(0.8);
+    opacity: 0; 
+  }
+  100% { 
+    transform: translate(0, 0) rotate(0deg) scale(1);
+    opacity: 1; 
+  }
 }
 
-/* カード表面と裏面の共通スタイル */
-.card-front,
+@keyframes flipCard {
+  0% { transform: rotateY(0deg); }
+  100% { transform: rotateY(180deg); }
+}
+
+@keyframes floatCard {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes glowCard {
+  0% { box-shadow: 0 0 5px rgba(106, 59, 152, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(106, 59, 152, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(106, 59, 152, 0.5); }
+}
+
+@keyframes shakeCard {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-10px) rotate(-2deg); }
+  40%, 80% { transform: translateX(10px) rotate(2deg); }
+}
+
+/* カードスタイル強化 */
+.card {
+  width: 200px;
+  height: 280px;
+  background-color: #fff;
+  border-radius: 15px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin: 0 15px;
+  overflow: hidden;
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-front, 
 .card-back {
   position: absolute;
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 15px;
 }
 
-/* カード表面 */
 .card-front {
-  background: #fff;
   display: flex;
   flex-direction: column;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: linear-gradient(to bottom, #f9f9f9, #f0f0f0);
+  padding: 15px;
 }
 
-/* カード裏面 */
 .card-back {
-  background-image: url("../assets/images/card-back.svg");
-  background-size: cover;
-  background-position: center;
+  background: url('../assets/images/card-back.svg') center/cover no-repeat;
   transform: rotateY(180deg);
 }
 
-/* カードがめくられた状態 */
-.card.flipped {
-  transform: rotateY(180deg);
-}
-
-/* ホバー効果 */
-.card:hover {
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
-  transform: translateY(-5px) scale(1.02);
-}
-
-.card.flipped:hover {
-  transform: rotateY(180deg) translateY(-5px) scale(1.02);
-}
-
-/* カード内の画像 */
-.card-image {
-  height: 55%;
+/* 役職カードデザイン */
+.role-card .role-image {
+  width: 100%;
+  height: 120px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
+  border-radius: 10px;
+  background-color: #f9f4ff;
+}
+
+.role-card .role-image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.role-card .role-info {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.role-card .role-name {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 5px;
+  color: #6a3b98;
+  border-bottom: 2px solid #6a3b98;
+  padding-bottom: 5px;
+}
+
+.role-card .role-team {
+  font-size: 14px;
+  padding: 4px 8px;
+  text-align: center;
+  margin-bottom: 5px;
+  border-radius: 15px;
+}
+
+.role-card .village-team {
+  background-color: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+}
+
+.role-card .werewolf-team {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+}
+
+.role-card .role-cost {
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 5px;
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.role-card .role-description {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #666;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  padding: 8px;
+  flex-grow: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5px;
 }
 
-.card-image img {
+/* フィールドカードのスタイル */
+.field-card {
+  background: linear-gradient(135deg, #6a3b98, #9b59b6);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: bold;
+  box-shadow: 0 10px 20px rgba(106, 59, 152, 0.3);
+}
+
+.field-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: 5px;
+  background: linear-gradient(45deg, 
+    rgba(255,255,255,0) 30%, 
+    rgba(255,255,255,0.3) 50%, 
+    rgba(255,255,255,0) 70%
+  );
+  background-size: 200% 100%;
+  animation: shine 4s infinite linear;
 }
 
-/* カードのコンテンツ部分 */
-.card-content {
-  padding: 10px;
-  height: 45%;
-  display: flex;
-  flex-direction: column;
-  background: linear-gradient(to bottom, #f8f8f8, #fff);
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+@keyframes shine {
+  0% { background-position: -100px; }
+  20% { background-position: 300px; }
+  100% { background-position: 300px; }
 }
 
-/* 役職名 */
-.role-name {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 5px;
-  text-align: center;
-  color: #333;
+/* アニメーションクラス */
+.deal-animation {
+  animation: dealCard 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
 }
 
-/* 陣営表示 */
-.role-team {
-  font-size: 14px;
-  font-weight: 600;
-  padding: 2px 6px;
-  margin-bottom: 5px;
-  text-align: center;
-  border-radius: 10px;
+.float-animation {
+  animation: floatCard 3s ease-in-out infinite;
 }
 
-.village-team {
-  background-color: #e3f2fd;
-  color: #0d47a1;
+.shake-animation {
+  animation: shakeCard 0.5s ease-in-out;
 }
 
-.werewolf-team {
-  background-color: #ffebee;
-  color: #b71c1c;
+.highlight-animation {
+  animation: glowCard 2s ease-in-out;
 }
 
-/* コスト表示 */
-.role-cost {
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 5px;
-  text-align: center;
-}
-
-/* 役職説明 */
-.role-description {
-  font-size: 11px;
-  color: #666;
-  overflow-y: auto;
-  max-height: 60px;
-  text-align: center;
-  line-height: 1.3;
-}
-
-/* フィールドカード */
-.field-card {
-  width: 150px;
-  height: 220px;
-}
-
-/* 山札のスタイル */
+/* 山札からのカード配布アニメーション */
 .card-deck {
-  will-change: transform;
-  animation: float 3s ease-in-out infinite;
+  position: absolute;
+  width: 200px;
+  height: 280px;
+  top: -300px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
 }
 
-.stacked-card {
-  will-change: transform;
-}
-
-/* カードの配布アニメーション */
-@keyframes dealCard {
-  0% {
-    transform: translate(0, 0) scale(0.8);
-    opacity: 0;
-  }
-  100% {
-    transform: translate(0, 0) scale(1);
-    opacity: 1;
-  }
-}
-
-/* カードの浮遊アニメーション */
-@keyframes float {
-  0%, 100% {
-    transform: translate(-50%, -50%);
-  }
-  50% {
-    transform: translate(-50%, -55%);
-  }
-}
-
-/* カードめくりアニメーション */
-@keyframes cardFlip {
-  0% {
-    transform: rotateY(0);
-  }
-  100% {
-    transform: rotateY(180deg);
-  }
-}
-
-/* 役職カードの画像を強調するスタイル */
-.role-card.my-role {
-  transform: scale(1.05);
-  box-shadow: 0 12px 24px rgba(106, 59, 152, 0.3);
-}
-
-.my-role .card-image {
-  height: 60%;
-  border-bottom: 2px solid rgba(106, 59, 152, 0.3);
-}
-
-.my-role .card-content {
-  background: linear-gradient(to bottom, #f4f1f8, #fcfaff);
-}
-
-/* 場札領域のスタイル */
-.field-cards {
-  min-height: 250px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 30px;
-  margin: 20px 0;
-  perspective: 1000px;
-}
-
-/* プレイヤーの手札領域 */
+/* プレイヤーハンドスタイル調整 */
 .player-hand {
   display: flex;
   justify-content: center;
-  min-height: 280px;
   margin: 20px 0;
+  min-height: 300px;
   perspective: 1000px;
 }
 
-/* レスポンシブ調整 */
+/* レスポンシブ対応 */
 @media (max-width: 768px) {
   .card {
-    width: 140px;
-    height: 200px;
+    width: 150px;
+    height: 210px;
   }
   
-  .field-card {
-    width: 120px;
-    height: 180px;
+  .role-card .role-image {
+    height: 80px;
   }
   
-  .role-name {
+  .role-card .role-name {
     font-size: 16px;
   }
   
-  .role-team, .role-cost {
-    font-size: 12px;
-  }
-  
-  .role-description {
+  .role-card .role-description {
     font-size: 10px;
-    max-height: 45px;
   }
 }
 
 @media (max-width: 480px) {
   .card {
     width: 120px;
-    height: 180px;
-    margin: 5px;
+    height: 170px;
   }
   
-  .field-card {
-    width: 100px;
-    height: 150px;
+  .role-card .role-image {
+    height: 60px;
   }
   
-  .role-name {
+  .role-card .role-name {
     font-size: 14px;
   }
   
-  .card-image {
-    height: 50%;
-  }
-  
-  .role-description {
-    max-height: 35px;
+  .role-card .role-description {
+    font-size: 9px;
+    padding: 4px;
   }
 }
