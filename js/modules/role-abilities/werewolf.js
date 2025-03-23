@@ -22,33 +22,36 @@ export function handleWerewolfAbility(gameData) {
   
   if (isWerewolf) {
     // 他の人狼プレイヤーを取得（役職は表示しない、名前だけ）
+    // 修正: スパイも人狼陣営の仲間として表示する
     const otherWerewolves = Object.entries(gameData.players)
       .filter(([id, player]) => 
         id !== currentPlayer.id && 
         player.role && 
-        player.role.team === 'werewolf' &&
-        player.role.name !== '占い人狼' && // 占い人狼は他の人狼と確認し合えない
-        player.role.name !== 'スパイ' // スパイは通常の人狼と確認し合えない
+        ((player.role.team === 'werewolf' && player.role.name !== '占い人狼') || 
+         player.role.name === 'スパイ')
       )
       .map(([id, player]) => ({
         id,
-        name: player.name
+        name: player.name,
+        // スパイかどうかは区別しないが、内部的に保持
+        isSpy: player.role?.name === 'スパイ'
       }));
     
     if (otherWerewolves.length > 0) {
-      // 他の人狼がいる場合
+      // 他の人狼陣営メンバーがいる場合
       statusHtml += `
         <div class="werewolf-info">
           <h4>人狼陣営の仲間</h4>
           <ul>
             ${otherWerewolves.map(wolf => `<li>${wolf.name}</li>`).join('')}
           </ul>
+          <p class="warning-text">※ 仲間の中にはスパイも含まれている可能性があります。誰がスパイかはわかりません。</p>
         </div>
       `;
       
       // 通知
       const werewolfInfo = otherWerewolves.map(wolf => `${wolf.name}`).join('\n');
-      notificationSystem.info(`【人狼情報】人狼陣営の仲間:\n${werewolfInfo}`, 10000);
+      notificationSystem.info(`【人狼情報】人狼陣営の仲間:\n${werewolfInfo}\n\n※仲間の中にはスパイも含まれている可能性があります。`, 10000);
     } else {
       // 他の人狼がいない場合
       statusHtml += `
@@ -61,20 +64,18 @@ export function handleWerewolfAbility(gameData) {
       notificationSystem.info('【人狼情報】他の人狼陣営のプレイヤーはいません。場札に人狼陣営がある可能性があります。', 10000);
     }
     
-    // スパイの存在をチェック（誰かはわからない）
-    const spyExists = Object.values(gameData.players).some(player => 
-      player.role && player.role.name === 'スパイ' && player.id !== currentPlayer.id
-    );
+    // スパイの存在警告は削除（スパイは仲間として表示する）
+    // 代わりに「裏切り者がいる可能性」についての警告を表示
     
-    if (spyExists) {
+    if (otherWerewolves.length > 0) {
       statusHtml += `
         <div class="spy-warning">
-          <h4>注意: スパイの存在</h4>
-          <p>市民陣営プレイヤーの中にスパイがいる可能性があります。投票フェーズでスパイを見つけて通報できます。</p>
+          <h4>注意: 裏切りの可能性</h4>
+          <p>仲間の中に裏切り者（スパイ）が潜んでいる可能性があります。投票フェーズでは慎重に行動しましょう。</p>
         </div>
       `;
       
-      notificationSystem.warning('【注意】市民陣営の中にスパイがいる可能性があります。投票フェーズでスパイを通報できます。', 10000);
+      notificationSystem.warning('【注意】仲間に見えるプレイヤーの中にスパイがいる可能性があります。投票フェーズでは慎重に判断してください。', 10000);
     }
     
     // やっかいな豚男の能力
