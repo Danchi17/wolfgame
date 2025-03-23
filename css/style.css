@@ -433,6 +433,17 @@ input {
   }
 }
 
+/* 警告テキスト */
+.warning-text {
+  color: #e74c3c;
+  font-weight: bold;
+  margin: 10px 0;
+  padding: 5px;
+  background-color: #fadbd8;
+  border-radius: 5px;
+  text-align: center;
+}
+
 /* フェーズ管理UI */
 .phase-control {
   margin-top: 20px;
