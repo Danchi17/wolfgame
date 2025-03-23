@@ -141,8 +141,8 @@ export function handleVotingPhase(gameData) {
     reportButtons.forEach(button => {
       button.addEventListener('click', async () => {
         const targetId = button.dataset.playerId;
-        // 第三引数以降はFirebase関数の参照
-        await reportAsWerewolf(gameId, targetId, update, get, ref);
+        // 修正: 直接reportAsWerewolf関数を呼び出す
+        await reportAsWerewolf(gameId, targetId);
       });
     });
   }
@@ -270,7 +270,7 @@ function addSpyReportUI(gameData) {
     <div id="spyReportTargets" class="spy-report">
       <h4>スパイ通報機能</h4>
       <p>あなたは人狼陣営です。スパイを見つけて通報できます。正解なら市民陣営の強制敗北となります。誤った通報をすると追加で2点減点されます。</p>
-      <p>※ スパイはいずれかの市民陣営プレイヤーです</p>
+      <p>※ スパイはいずれかの市民陣営プレイヤーです。仲間に見えるプレイヤーの中にもスパイがいる可能性があります。</p>
       <div class="spy-report-targets">
         ${reportOptions}
       </div>
@@ -353,15 +353,26 @@ async function processVotingResults(gameId) {
     );
     
     if (bigBearPlayer) {
-      // 人狼陣営のプレイヤー数をカウント
+      // 人狼陣営のプレイヤー数をカウント（スパイは除外）
       const werewolfCount = Object.values(gameData.players).filter(player => 
-        player.role && player.role.team === 'werewolf' && player.role.name !== 'スパイ'
+        player.role && 
+        player.role.team === 'werewolf' && 
+        player.role.name !== 'スパイ'
       ).length;
       
-      const playerCount = Object.keys(gameData.players).length;
+      // プレイヤー総数からスパイを除外した数
+      const spyCount = Object.values(gameData.players).filter(player => 
+        player.role && player.role.name === 'スパイ'
+      ).length;
       
+      const playerCount = Object.keys(gameData.players).length - spyCount;
+      
+      console.log(`大熊判定：人狼陣営=${werewolfCount}人、総プレイヤー数(スパイ除外)=${playerCount}人、過半数=${playerCount / 2}`);
+      
+      // 人狼陣営が過半数（スパイを除外した人数で計算）の場合、強制勝利
       if (werewolfCount > playerCount / 2) {
         specialVictory = 'big_bear';
+        console.log("大熊の特殊勝利条件満足：人狼陣営過半数");
       }
     }
     
@@ -409,6 +420,7 @@ async function processVotingResults(gameId) {
       executed_players: executedPlayers,
       winning_team: winningTeam,
       special_victory: specialVictory,
+      vote_counts: voteCounts, // 投票カウントを保存
       status: 'result'  // 直接resultステータスを設定
     });
     
@@ -418,7 +430,8 @@ async function processVotingResults(gameId) {
     console.log("投票処理が完了しました", {
       executed: executedPlayers.map(id => gameData.players[id]?.name || 'unknown'),
       winningTeam,
-      specialVictory
+      specialVictory,
+      voteCounts
     });
     
   } catch (error) {
