@@ -1,5 +1,5 @@
 // js/modules/role-abilities/werewolf.js
-import { currentPlayer, nextPhase, getGameId } from '../game-core.js';
+import { currentPlayer, nextPhase, getGameId, setPhaseTimer } from '../game-core.js';
 import { notificationSystem } from '../../ui.js';
 import { db, ref, update, get } from '../../firebase.js';
 
@@ -106,7 +106,8 @@ export function handleWerewolfAbility(gameData) {
     `;
     
     // 30秒後に自動で次のフェーズへ（実際のゲームではホストが管理）
-    setTimeout(() => {
+    // setPhaseTimerを使用して一元管理
+    setPhaseTimer('werewolf', () => {
       nextPhase(gameId, 'werewolf');
     }, 30000);
   }
@@ -239,7 +240,8 @@ function showVoteTargetOptions(gameData, targetId, targetName) {
           <p>次のフェーズに進みます...</p>
         `;
         
-        setTimeout(() => {
+        // setPhaseTimerに変更して一元管理
+        setPhaseTimer('werewolf_next', () => {
           nextPhase(gameId, 'werewolf');
         }, 3000);
       } catch (error) {
