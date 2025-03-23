@@ -157,6 +157,23 @@ export async function startGame(gameId) {
     // 更新データを準備
     const updates = {};
     
+    // 前回ゲームのデータをリセット（投票データを確実に削除）
+    updates.votes = null;
+    updates.vote_counts = null;
+    updates.executed_players = null;
+    updates.winning_team = null;
+    updates.points_updated = false;
+    updates.role_exchanges = null;
+    updates.outlaw_exchanges = null;
+    updates.forced_vote_target = null;
+    updates.forced_vote_by = null;
+    updates.forced_vote_to = null;
+    updates.spy_report = null;
+    updates.puppy_guessed = null;
+    updates.puppy_guessed_correct = null;
+    updates.special_victory = null;
+    updates.hidden_roles = null;
+    
     // 役職をランダムに割り当て
     const shuffledPlayerIds = [...playerIds].sort(() => 0.5 - Math.random());
     
