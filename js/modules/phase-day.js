@@ -61,6 +61,10 @@ export function handleDayPhase(gameData) {
       // タイマー終了
       if (remainingTime <= 0) {
         clearInterval(timerInterval);
+        // グローバル参照を削除
+        if (window.gameIntervals && window.gameIntervals.dayPhase === timerInterval) {
+          window.gameIntervals.dayPhase = null;
+        }
         timerElement.textContent = '00:00';
         
         if (currentPlayer.data?.isHost) {
@@ -72,12 +76,21 @@ export function handleDayPhase(gameData) {
     }
   }, 1000);
   
+  // グローバル参照を保存（他の場所でもクリアできるように）
+  if (window.gameIntervals) {
+    window.gameIntervals.dayPhase = timerInterval;
+  }
+  
   // ホストの場合、次のフェーズボタンにイベントリスナーを追加
   if (currentPlayer.data?.isHost) {
     const nextPhaseBtn = document.getElementById('nextPhaseBtn');
     if (nextPhaseBtn) {
       nextPhaseBtn.addEventListener('click', async () => {
         clearInterval(timerInterval);
+        // グローバル参照を削除
+        if (window.gameIntervals && window.gameIntervals.dayPhase === timerInterval) {
+          window.gameIntervals.dayPhase = null;
+        }
         await nextPhase(gameId, 'day');
       });
     }
