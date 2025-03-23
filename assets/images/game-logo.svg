@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 100">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6a3b98"/>
+      <stop offset="100%" stop-color="#9b59b6"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <text x="30" y="65" font-family="'Noto Sans JP', sans-serif" font-size="40" font-weight="bold" fill="url(#gradient)">多能力一夜人狼</text>
+    <path d="M20,70 C20,50 60,40 40,60 C20,80 60,90 70,70" stroke="#ffb347" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="360" cy="30" r="15" fill="#e74c3c" opacity="0.7"/>
+    <circle cx="30" cy="20" r="5" fill="#2ecc71" opacity="0.7"/>
+    <circle cx="370" cy="80" r="8" fill="#3498db" opacity="0.7"/>
+    <path d="M350,40 C355,20 370,25 375,40 Z" fill="#6a3b98" opacity="0.7"/>
+  </g>
+</svg>
