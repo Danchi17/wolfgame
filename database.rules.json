@@ -1,31 +1,39 @@
 {
   "rules": {
     "games": {
-      ".read": true,
-      ".write": true,
+      ".read": "auth != null",
+      ".write": "auth != null",
       "$gameId": {
-        ".read": true,
-        ".write": true,
+        ".read": "auth != null",
+        ".write": "auth != null && (root.child('games').child($gameId).child('players').child(auth.uid).exists() || !data.exists())",
+        ".validate": "newData.hasChildren(['status', 'host', 'created_at', 'players'])",
         "players": {
           "$playerId": {
-            ".read": true,
-            ".write": "auth.uid === $playerId || root.child('games').child($gameId).child('host').val() === auth.uid"
+            ".read": "auth != null",
+            ".write": "(auth.uid === $playerId && (!data.exists() || data.child('isHost').val() !== true)) || root.child('games').child($gameId).child('host').val() === auth.uid",
+            ".validate": "newData.hasChildren(['name', 'icon', 'isHost', 'points'])"
           }
         },
         "votes": {
           "$voterId": {
-            ".read": true,
-            ".write": "auth.uid === $voterId || root.child('games').child($gameId).child('host').val() === auth.uid"
+            ".read": "auth != null",
+            ".write": "(auth.uid === $voterId && root.child('games').child($gameId).child('status').val() === 'voting') || root.child('games').child($gameId).child('host').val() === auth.uid"
           }
         },
         "status": {
-          ".read": true,
+          ".read": "auth != null",
           ".write": "root.child('games').child($gameId).child('host').val() === auth.uid"
         },
         "current_phase": {
-          ".read": true,
+          ".read": "auth != null",
           ".write": "root.child('games').child($gameId).child('host').val() === auth.uid"
         }
+      }
+    },
+    "users": {
+      "$userId": {
+        ".read": "auth != null && auth.uid === $userId",
+        ".write": "auth != null && auth.uid === $userId"
       }
     }
   }
